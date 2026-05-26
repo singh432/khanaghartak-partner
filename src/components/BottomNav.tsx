@@ -16,12 +16,12 @@ export function BottomNav() {
     return null;
   }
 
-  const tabs = [
+  const tabs: Array<{ to: "/home" | "/menu" | "/orders" | "/cart"; label: string; icon: typeof Home; badge?: number }> = [
     { to: "/home", label: "Home", icon: Home },
     { to: "/menu", label: "Menu", icon: UtensilsCrossed },
     { to: "/orders", label: "Orders", icon: Receipt },
     { to: "/cart", label: "Cart", icon: ShoppingBag, badge: totalQty },
-  ] as const;
+  ];
 
   return (
     <nav
