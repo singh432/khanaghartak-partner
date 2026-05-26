@@ -30,7 +30,7 @@ function CartPage() {
         <BrandHeader subtitle="Your cart" />
         <div className="flex flex-col items-center justify-center px-6 py-24 text-center">
           <ShoppingBag className="h-14 w-14 text-muted-foreground" />
-          <h2 className="mt-4 text-lg font-bold">Your cart is empty</h2>
+          <h1 className="mt-4 text-lg font-bold">Your cart is empty</h1>
           <p className="mt-1 text-sm text-muted-foreground">Add tasty dishes to get started.</p>
           <Link to="/menu" className="mt-6 rounded-full bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground">
             Browse Menu
