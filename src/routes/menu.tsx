@@ -157,9 +157,9 @@ function MenuPage() {
                             </button>
                           ) : (
                             <div className="flex items-center rounded-lg border-2 border-primary bg-primary text-primary-foreground shadow-sm">
-                              <button onClick={() => dec(item.id)} className="px-2 py-1"><Minus className="h-3 w-3" /></button>
+                              <button aria-label={`Remove one ${item.name}`} onClick={() => dec(item.id)} className="px-2 py-1"><Minus className="h-3 w-3" aria-hidden="true" /></button>
                               <span className="px-1 text-xs font-bold tabular-nums">{qtyInCart(item.id)}</span>
-                              <button onClick={() => inc(item.id)} className="px-2 py-1"><Plus className="h-3 w-3" /></button>
+                              <button aria-label={`Add one ${item.name}`} onClick={() => inc(item.id)} className="px-2 py-1"><Plus className="h-3 w-3" aria-hidden="true" /></button>
                             </div>
                           )}
                         </div>
