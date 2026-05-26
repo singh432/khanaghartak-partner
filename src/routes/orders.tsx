@@ -50,6 +50,7 @@ function OrdersPage() {
     <div className="pb-10">
       <BrandHeader subtitle="My orders" />
       <div className="space-y-3 px-4 pt-4">
+        <h1 className="text-xl font-extrabold tracking-tight">My orders</h1>
         {orders.length === 0 && (
           <p className="py-16 text-center text-sm text-muted-foreground">No orders yet.</p>
         )}
