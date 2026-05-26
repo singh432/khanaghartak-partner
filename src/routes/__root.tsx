@@ -115,9 +115,9 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <CartProvider>
-          <div className="app-shell pb-16">
+          <main className="app-shell pb-16">
             <Outlet />
-          </div>
+          </main>
           <BottomNav />
           <Toaster position="top-center" richColors />
         </CartProvider>
