@@ -8,7 +8,19 @@ import { useAuth } from "@/hooks/useAuth";
 import logo from "@/assets/logo.png";
 import { Loader2 } from "lucide-react";
 
-export const Route = createFileRoute("/login")({ component: LoginPage });
+export const Route = createFileRoute("/login")({
+  component: LoginPage,
+  head: () => ({
+    meta: [
+      { title: "Sign in — KhanaGharTak" },
+      { name: "description", content: "Sign in or create your KhanaGharTak account to order home-style food with Cash on Delivery." },
+      { property: "og:title", content: "Sign in — KhanaGharTak" },
+      { property: "og:description", content: "Sign in or create your KhanaGharTak account to order home-style food with Cash on Delivery." },
+      { property: "og:url", content: "https://khanaghartak.lovable.app/login" },
+    ],
+    links: [{ rel: "canonical", href: "https://khanaghartak.lovable.app/login" }],
+  }),
+});
 
 const emailSchema = z.string().trim().email("Enter a valid email").max(255);
 const passwordSchema = z.string().min(6, "Password must be at least 6 characters").max(72);
