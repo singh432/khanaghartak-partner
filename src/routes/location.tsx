@@ -7,7 +7,19 @@ import { useAuth } from "@/hooks/useAuth";
 import { BrandHeader } from "@/components/BrandHeader";
 import { MapPin, Navigation, Loader2 } from "lucide-react";
 
-export const Route = createFileRoute("/location")({ component: LocationPage });
+export const Route = createFileRoute("/location")({
+  component: LocationPage,
+  head: () => ({
+    meta: [
+      { title: "Delivery Location — KhanaGharTak" },
+      { name: "description", content: "Set your delivery address and pin your exact location for faster KhanaGharTak deliveries." },
+      { property: "og:title", content: "Delivery Location — KhanaGharTak" },
+      { property: "og:description", content: "Set your delivery address and pin your exact location for faster KhanaGharTak deliveries." },
+      { property: "og:url", content: "https://khanaghartak.lovable.app/location" },
+    ],
+    links: [{ rel: "canonical", href: "https://khanaghartak.lovable.app/location" }],
+  }),
+});
 
 const schema = z.object({
   address: z.string().trim().min(8, "Enter a complete address").max(300),
