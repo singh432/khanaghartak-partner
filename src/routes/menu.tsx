@@ -6,7 +6,19 @@ import { useCart } from "@/hooks/useCart";
 import { useAuth } from "@/hooks/useAuth";
 import { Plus, Minus, Search, Star, Clock } from "lucide-react";
 
-export const Route = createFileRoute("/menu")({ component: MenuPage });
+export const Route = createFileRoute("/menu")({
+  component: MenuPage,
+  head: () => ({
+    meta: [
+      { title: "Our Menu — KhanaGharTak" },
+      { name: "description", content: "Explore our full menu of home-style Indian dishes. Order online with Cash on Delivery." },
+      { property: "og:title", content: "Our Menu — KhanaGharTak" },
+      { property: "og:description", content: "Explore our full menu of home-style Indian dishes. Order online with Cash on Delivery." },
+      { property: "og:url", content: "https://khanaghartak.lovable.app/menu" },
+    ],
+    links: [{ rel: "canonical", href: "https://khanaghartak.lovable.app/menu" }],
+  }),
+});
 
 type Category = { id: string; name: string; priority: number };
 type MenuItem = {
