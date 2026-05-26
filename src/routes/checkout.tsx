@@ -8,7 +8,19 @@ import { useCart } from "@/hooks/useCart";
 import { BrandHeader } from "@/components/BrandHeader";
 import { MapPin, Navigation, Loader2, Wallet } from "lucide-react";
 
-export const Route = createFileRoute("/checkout")({ component: CheckoutPage });
+export const Route = createFileRoute("/checkout")({
+  component: CheckoutPage,
+  head: () => ({
+    meta: [
+      { title: "Checkout — KhanaGharTak" },
+      { name: "description", content: "Confirm your delivery details and place your Cash on Delivery order with KhanaGharTak." },
+      { property: "og:title", content: "Checkout — KhanaGharTak" },
+      { property: "og:description", content: "Confirm your delivery details and place your Cash on Delivery order with KhanaGharTak." },
+      { property: "og:url", content: "https://khanaghartak.lovable.app/checkout" },
+    ],
+    links: [{ rel: "canonical", href: "https://khanaghartak.lovable.app/checkout" }],
+  }),
+});
 
 const DELIVERY_FEE = 25;
 
