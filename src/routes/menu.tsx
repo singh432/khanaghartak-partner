@@ -116,8 +116,9 @@ function MenuPage() {
         )}
 
         <div className="mt-4 flex items-center gap-2 rounded-2xl border bg-card px-3 shadow-[var(--shadow-card)]">
-          <Search className="h-4 w-4 text-muted-foreground" />
+          <Search className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
           <input value={q} onChange={(e) => setQ(e.target.value)} maxLength={60}
+            aria-label="Search dishes"
             placeholder="Search dishes..." className="h-11 flex-1 bg-transparent text-sm outline-none" />
         </div>
 
