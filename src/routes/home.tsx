@@ -6,7 +6,19 @@ import { BrandHeader } from "@/components/BrandHeader";
 import { Star, Clock, MapPin, LogOut } from "lucide-react";
 import hero from "@/assets/hero.jpg";
 
-export const Route = createFileRoute("/home")({ component: HomePage });
+export const Route = createFileRoute("/home")({
+  component: HomePage,
+  head: () => ({
+    meta: [
+      { title: "Home — KhanaGharTak" },
+      { name: "description", content: "Browse today's home-style dishes from KhanaGharTak and order with Cash on Delivery." },
+      { property: "og:title", content: "Home — KhanaGharTak" },
+      { property: "og:description", content: "Browse today's home-style dishes from KhanaGharTak and order with Cash on Delivery." },
+      { property: "og:url", content: "https://khanaghartak.lovable.app/home" },
+    ],
+    links: [{ rel: "canonical", href: "https://khanaghartak.lovable.app/home" }],
+  }),
+});
 
 type Restaurant = {
   id: string; name: string; tagline: string | null;
