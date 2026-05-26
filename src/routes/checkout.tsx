@@ -101,6 +101,7 @@ function CheckoutPage() {
     <div className="pb-32">
       <BrandHeader subtitle="Checkout" />
       <div className="px-4 pt-4 space-y-5">
+        <h1 className="text-xl font-extrabold tracking-tight">Checkout</h1>
         <Section title="Delivery details">
           <Field label="Name">
             <input className="ck-input" value={form.name} maxLength={80}
