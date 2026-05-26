@@ -1,3 +1,4 @@
+import "./lib/ssr-storage-polyfill";
 import "./lib/error-capture";
 
 import { consumeLastCapturedError } from "./lib/error-capture";
