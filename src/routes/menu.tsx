@@ -138,7 +138,7 @@ function MenuPage() {
                       <div className="flex-1">
                         <div className="flex items-center gap-1.5">
                           <VegDot type={item.veg_type} />
-                          <h4 className="font-semibold leading-tight">{item.name}</h4>
+                          <h3 className="font-semibold leading-tight">{item.name}</h3>
                         </div>
                         <p className="mt-1 text-xs leading-snug text-muted-foreground line-clamp-2">{item.description}</p>
                         <p className="mt-2 text-sm font-bold">₹{Number(item.price).toFixed(0)}</p>
