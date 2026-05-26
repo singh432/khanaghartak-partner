@@ -177,10 +177,10 @@ function CheckoutPage() {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-2xl bg-card p-4 shadow-[var(--shadow-card)]">
-      <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-muted-foreground">{title}</h3>
+    <section className="rounded-2xl bg-card p-4 shadow-[var(--shadow-card)]">
+      <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-muted-foreground">{title}</h2>
       <div className="space-y-3">{children}</div>
-    </div>
+    </section>
   );
 }
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
