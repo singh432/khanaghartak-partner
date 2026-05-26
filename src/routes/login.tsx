@@ -1,0 +1,171 @@
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { z } from "zod";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { lovable } from "@/integrations/lovable";
+import { useAuth } from "@/hooks/useAuth";
+import logo from "@/assets/logo.png";
+import { Loader2 } from "lucide-react";
+
+export const Route = createFileRoute("/login")({ component: LoginPage });
+
+const schema = z.object({
+  email: z.string().trim().email("Enter a valid email").max(255),
+  password: z.string().min(6, "Password must be at least 6 characters").max(72),
+  full_name: z.string().trim().min(2).max(80).optional(),
+  phone: z.string().trim().regex(/^[0-9+\-\s]{7,15}$/, "Enter a valid phone").optional(),
+});
+
+function LoginPage() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [loading, setLoading] = useState(false);
+  const [form, setForm] = useState({ email: "", password: "", full_name: "", phone: "" });
+
+  useEffect(() => { if (user) navigate({ to: "/home" }); }, [user, navigate]);
+
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const parsed = schema.safeParse(
+      mode === "signup" ? form : { email: form.email, password: form.password }
+    );
+    if (!parsed.success) {
+      toast.error(parsed.error.issues[0]?.message ?? "Invalid input");
+      return;
+    }
+    setLoading(true);
+    try {
+      if (mode === "signup") {
+        const { error } = await supabase.auth.signUp({
+          email: form.email,
+          password: form.password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/home`,
+            data: { full_name: form.full_name, phone: form.phone },
+          },
+        });
+        if (error) throw error;
+        toast.success("Account created! Check your email to confirm.");
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({
+          email: form.email,
+          password: form.password,
+        });
+        if (error) throw error;
+        toast.success("Welcome back!");
+      }
+    } catch (err: any) {
+      toast.error(err?.message ?? "Authentication failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onGoogle = async () => {
+    setLoading(true);
+    const result = await lovable.auth.signInWithOAuth("google", {
+      redirect_uri: `${window.location.origin}/home`,
+    });
+    if (result.error) {
+      toast.error(result.error.message ?? "Google sign-in failed");
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex min-h-[100dvh] flex-col px-6 py-10">
+      <div className="text-center">
+        <img src={logo} alt="KhanaGharTak" width={72} height={72} className="mx-auto h-16 w-16" />
+        <h1 className="mt-3 text-2xl font-extrabold tracking-tight">
+          {mode === "signin" ? "Welcome back" : "Create your account"}
+        </h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Ghar jaisa khana, seedha aapke ghar tak.
+        </p>
+      </div>
+
+      <form onSubmit={onSubmit} className="mt-8 space-y-3">
+        {mode === "signup" && (
+          <>
+            <Field label="Full name">
+              <input
+                value={form.full_name}
+                onChange={(e) => setForm({ ...form, full_name: e.target.value })}
+                className="input" placeholder="Surya Kumar" maxLength={80}
+              />
+            </Field>
+            <Field label="Phone (with country code)">
+              <input
+                value={form.phone}
+                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                className="input" placeholder="+91 98765 43210" maxLength={15}
+              />
+            </Field>
+          </>
+        )}
+        <Field label="Email">
+          <input
+            type="email" value={form.email}
+            onChange={(e) => setForm({ ...form, email: e.target.value })}
+            className="input" placeholder="you@example.com" autoComplete="email" maxLength={255}
+          />
+        </Field>
+        <Field label="Password">
+          <input
+            type="password" value={form.password}
+            onChange={(e) => setForm({ ...form, password: e.target.value })}
+            className="input" placeholder="••••••••"
+            autoComplete={mode === "signin" ? "current-password" : "new-password"}
+            maxLength={72}
+          />
+        </Field>
+
+        <button type="submit" disabled={loading} className="btn-primary w-full">
+          {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          {mode === "signin" ? "Sign in" : "Create account"}
+        </button>
+      </form>
+
+      <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground">
+        <span className="h-px flex-1 bg-border" /> or <span className="h-px flex-1 bg-border" />
+      </div>
+
+      <button onClick={onGoogle} disabled={loading} className="btn-secondary w-full">
+        <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24"><path fill="#EA4335" d="M12 11v2.7h6.4c-.3 1.6-2 4.6-6.4 4.6-3.9 0-7-3.2-7-7.2s3.1-7.2 7-7.2c2.2 0 3.7.9 4.6 1.7l3.1-3C17.7 1.4 15.1.3 12 .3 5.9.3 1 5.2 1 11.1S5.9 22 12 22c6.9 0 11.5-4.8 11.5-11.7 0-.8-.1-1.4-.2-2L12 11z"/></svg>
+        Continue with Google
+      </button>
+
+      <p className="mt-6 text-center text-sm text-muted-foreground">
+        {mode === "signin" ? "New to KhanaGharTak?" : "Already have an account?"}{" "}
+        <button onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
+          className="font-semibold text-primary">
+          {mode === "signin" ? "Create account" : "Sign in"}
+        </button>
+      </p>
+
+      <p className="mt-8 text-center text-xs text-muted-foreground">
+        Are you the restaurant owner?{" "}
+        <Link to="/admin" className="font-medium underline">Open admin panel</Link>
+      </p>
+
+      <style>{`
+        .input { width:100%; height:48px; border-radius: 12px; padding: 0 14px; background: var(--color-input); border: 1px solid var(--color-border); font-size: 15px; outline: none; }
+        .input:focus { border-color: var(--color-ring); box-shadow: 0 0 0 3px oklch(0.66 0.21 35 / 0.15); }
+        .btn-primary { display:inline-flex; align-items:center; justify-content:center; height: 50px; border-radius: 14px; background: var(--color-primary); color: var(--color-primary-foreground); font-weight: 700; font-size: 15px; box-shadow: var(--shadow-soft); }
+        .btn-primary:disabled { opacity: .7; }
+        .btn-secondary { display:inline-flex; align-items:center; justify-content:center; height: 48px; border-radius: 14px; background: var(--color-card); border: 1px solid var(--color-border); font-weight: 600; font-size: 14px; }
+      `}</style>
+    </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="block">
+      <span className="mb-1 block text-xs font-medium text-muted-foreground">{label}</span>
+      {children}
+    </label>
+  );
+}

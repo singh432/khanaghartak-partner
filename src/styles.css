@@ -1,0 +1,125 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * KhanaGharTak design system — warm Swiggy-style orange brand,
+ * mobile-first, rounded cards, soft shadows. All colors in oklch.
+ */
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --shadow-soft: 0 4px 16px -2px oklch(0.65 0.18 35 / 0.18);
+  --shadow-card: 0 2px 12px -3px oklch(0.2 0.04 30 / 0.08);
+}
+
+:root {
+  --radius: 0.875rem;
+  --background: oklch(0.99 0.005 60);
+  --foreground: oklch(0.18 0.02 30);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.18 0.02 30);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.18 0.02 30);
+  --primary: oklch(0.66 0.21 35);          /* warm orange #F45D2C-ish */
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.96 0.02 60);
+  --secondary-foreground: oklch(0.25 0.04 30);
+  --muted: oklch(0.96 0.01 60);
+  --muted-foreground: oklch(0.52 0.02 30);
+  --accent: oklch(0.95 0.04 70);
+  --accent-foreground: oklch(0.28 0.08 35);
+  --destructive: oklch(0.6 0.22 27);
+  --destructive-foreground: oklch(1 0 0);
+  --success: oklch(0.62 0.16 150);
+  --success-foreground: oklch(1 0 0);
+  --border: oklch(0.92 0.01 60);
+  --input: oklch(0.94 0.01 60);
+  --ring: oklch(0.66 0.21 35);
+}
+
+.dark {
+  --background: oklch(0.14 0.02 30);
+  --foreground: oklch(0.97 0.01 60);
+  --card: oklch(0.2 0.02 30);
+  --card-foreground: oklch(0.97 0.01 60);
+  --popover: oklch(0.2 0.02 30);
+  --popover-foreground: oklch(0.97 0.01 60);
+  --primary: oklch(0.7 0.2 35);
+  --primary-foreground: oklch(0.15 0.02 30);
+  --secondary: oklch(0.26 0.02 30);
+  --secondary-foreground: oklch(0.97 0.01 60);
+  --muted: oklch(0.26 0.02 30);
+  --muted-foreground: oklch(0.7 0.02 30);
+  --accent: oklch(0.3 0.06 35);
+  --accent-foreground: oklch(0.97 0.01 60);
+  --destructive: oklch(0.65 0.2 27);
+  --destructive-foreground: oklch(1 0 0);
+  --success: oklch(0.65 0.16 150);
+  --success-foreground: oklch(1 0 0);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 14%);
+  --ring: oklch(0.7 0.2 35);
+}
+
+* { border-color: var(--color-border); }
+html, body { background: var(--color-background); color: var(--color-foreground); }
+body {
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Mobile-app shell: center on desktop, full-width on phone */
+.app-shell {
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100dvh;
+  background: var(--color-background);
+  position: relative;
+  box-shadow: 0 0 40px -10px oklch(0 0 0 / 0.12);
+}
+
+.scroll-hide::-webkit-scrollbar { display: none; }
+.scroll-hide { scrollbar-width: none; }
+
+.fade-in { animation: fadeIn 0.35s ease-out both; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px);} to { opacity: 1; transform: none;} }
+
+.pulse-dot::after {
+  content: "";
+  display: inline-block;
+  width: 8px; height: 8px;
+  border-radius: 9999px;
+  background: var(--color-success);
+  margin-left: 6px;
+  animation: pulse 1.6s infinite;
+}
+@keyframes pulse { 0%,100% { opacity: 1;} 50% { opacity: 0.4;} }
