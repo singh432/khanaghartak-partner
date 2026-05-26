@@ -10,31 +10,42 @@ import { Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/login")({ component: LoginPage });
 
-const schema = z.object({
-  email: z.string().trim().email("Enter a valid email").max(255),
-  password: z.string().min(6, "Password must be at least 6 characters").max(72),
-  full_name: z.string().trim().min(2).max(80).optional(),
-  phone: z.string().trim().regex(/^[0-9+\-\s]{7,15}$/, "Enter a valid phone").optional(),
-});
+const emailSchema = z.string().trim().email("Enter a valid email").max(255);
+const passwordSchema = z.string().min(6, "Password must be at least 6 characters").max(72);
+const nameSchema = z.string().trim().min(2, "Name is too short").max(80);
+const phoneSchema = z.string().trim().regex(/^[0-9+\-\s]{7,15}$/, "Enter a valid phone");
+const otpSchema = z.string().trim().regex(/^\d{6}$/, "Enter the 6-digit code");
+
+type Method = "password" | "otp";
+type Mode = "signin" | "signup";
 
 function LoginPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [method, setMethod] = useState<Method>("password");
+  const [mode, setMode] = useState<Mode>("signin");
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ email: "", password: "", full_name: "", phone: "" });
 
+  // OTP flow state
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpCode, setOtpCode] = useState("");
+
   useEffect(() => { if (user) navigate({ to: "/home" }); }, [user, navigate]);
 
-  const onSubmit = async (e: React.FormEvent) => {
+  const onSubmitPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    const parsed = schema.safeParse(
-      mode === "signup" ? form : { email: form.email, password: form.password }
-    );
-    if (!parsed.success) {
-      toast.error(parsed.error.issues[0]?.message ?? "Invalid input");
-      return;
+    const emailRes = emailSchema.safeParse(form.email);
+    if (!emailRes.success) return toast.error(emailRes.error.issues[0].message);
+    const passRes = passwordSchema.safeParse(form.password);
+    if (!passRes.success) return toast.error(passRes.error.issues[0].message);
+    if (mode === "signup") {
+      const nRes = nameSchema.safeParse(form.full_name);
+      if (!nRes.success) return toast.error(nRes.error.issues[0].message);
+      const phRes = phoneSchema.safeParse(form.phone);
+      if (!phRes.success) return toast.error(phRes.error.issues[0].message);
     }
+
     setLoading(true);
     try {
       if (mode === "signup") {
@@ -63,6 +74,58 @@ function LoginPage() {
     }
   };
 
+  const onSendOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const emailRes = emailSchema.safeParse(form.email);
+    if (!emailRes.success) return toast.error(emailRes.error.issues[0].message);
+    if (mode === "signup") {
+      const nRes = nameSchema.safeParse(form.full_name);
+      if (!nRes.success) return toast.error(nRes.error.issues[0].message);
+    }
+
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email: form.email,
+        options: {
+          shouldCreateUser: mode === "signup",
+          emailRedirectTo: `${window.location.origin}/home`,
+          data: mode === "signup"
+            ? { full_name: form.full_name, phone: form.phone }
+            : undefined,
+        },
+      });
+      if (error) throw error;
+      setOtpSent(true);
+      toast.success("OTP sent! Check your email for the 6-digit code.");
+    } catch (err: any) {
+      toast.error(err?.message ?? "Could not send OTP");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const codeRes = otpSchema.safeParse(otpCode);
+    if (!codeRes.success) return toast.error(codeRes.error.issues[0].message);
+
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.verifyOtp({
+        email: form.email,
+        token: otpCode,
+        type: "email",
+      });
+      if (error) throw error;
+      toast.success("Logged in!");
+    } catch (err: any) {
+      toast.error(err?.message ?? "Invalid or expired code");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const onGoogle = async () => {
     setLoading(true);
     const result = await lovable.auth.signInWithOAuth("google", {
@@ -72,6 +135,12 @@ function LoginPage() {
       toast.error(result.error.message ?? "Google sign-in failed");
       setLoading(false);
     }
+  };
+
+  const switchMethod = (next: Method) => {
+    setMethod(next);
+    setOtpSent(false);
+    setOtpCode("");
   };
 
   return (
@@ -86,47 +155,129 @@ function LoginPage() {
         </p>
       </div>
 
-      <form onSubmit={onSubmit} className="mt-8 space-y-3">
-        {mode === "signup" && (
-          <>
-            <Field label="Full name">
-              <input
-                value={form.full_name}
-                onChange={(e) => setForm({ ...form, full_name: e.target.value })}
-                className="input" placeholder="Surya Kumar" maxLength={80}
-              />
-            </Field>
-            <Field label="Phone (with country code)">
-              <input
-                value={form.phone}
-                onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                className="input" placeholder="+91 98765 43210" maxLength={15}
-              />
-            </Field>
-          </>
-        )}
-        <Field label="Email">
-          <input
-            type="email" value={form.email}
-            onChange={(e) => setForm({ ...form, email: e.target.value })}
-            className="input" placeholder="you@example.com" autoComplete="email" maxLength={255}
-          />
-        </Field>
-        <Field label="Password">
-          <input
-            type="password" value={form.password}
-            onChange={(e) => setForm({ ...form, password: e.target.value })}
-            className="input" placeholder="••••••••"
-            autoComplete={mode === "signin" ? "current-password" : "new-password"}
-            maxLength={72}
-          />
-        </Field>
-
-        <button type="submit" disabled={loading} className="btn-primary w-full">
-          {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          {mode === "signin" ? "Sign in" : "Create account"}
+      {/* Method tabs */}
+      <div className="mt-6 grid grid-cols-2 gap-1 rounded-xl bg-muted p-1 text-sm font-semibold">
+        <button
+          type="button"
+          onClick={() => switchMethod("otp")}
+          className={`h-10 rounded-lg transition ${method === "otp" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground"}`}
+        >
+          Email OTP
         </button>
-      </form>
+        <button
+          type="button"
+          onClick={() => switchMethod("password")}
+          className={`h-10 rounded-lg transition ${method === "password" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground"}`}
+        >
+          Password
+        </button>
+      </div>
+
+      {method === "password" ? (
+        <form onSubmit={onSubmitPassword} className="mt-5 space-y-3">
+          {mode === "signup" && (
+            <>
+              <Field label="Full name">
+                <input
+                  value={form.full_name}
+                  onChange={(e) => setForm({ ...form, full_name: e.target.value })}
+                  className="input" placeholder="Surya Kumar" maxLength={80}
+                />
+              </Field>
+              <Field label="Phone (with country code)">
+                <input
+                  value={form.phone}
+                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  className="input" placeholder="+91 98765 43210" maxLength={15}
+                />
+              </Field>
+            </>
+          )}
+          <Field label="Email">
+            <input
+              type="email" value={form.email}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
+              className="input" placeholder="you@example.com" autoComplete="email" maxLength={255}
+            />
+          </Field>
+          <Field label="Password">
+            <input
+              type="password" value={form.password}
+              onChange={(e) => setForm({ ...form, password: e.target.value })}
+              className="input" placeholder="••••••••"
+              autoComplete={mode === "signin" ? "current-password" : "new-password"}
+              maxLength={72}
+            />
+          </Field>
+          <button type="submit" disabled={loading} className="btn-primary w-full">
+            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {mode === "signin" ? "Sign in" : "Create account"}
+          </button>
+        </form>
+      ) : !otpSent ? (
+        <form onSubmit={onSendOtp} className="mt-5 space-y-3">
+          {mode === "signup" && (
+            <>
+              <Field label="Full name">
+                <input
+                  value={form.full_name}
+                  onChange={(e) => setForm({ ...form, full_name: e.target.value })}
+                  className="input" placeholder="Surya Kumar" maxLength={80}
+                />
+              </Field>
+              <Field label="Phone (with country code)">
+                <input
+                  value={form.phone}
+                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  className="input" placeholder="+91 98765 43210" maxLength={15}
+                />
+              </Field>
+            </>
+          )}
+          <Field label="Email">
+            <input
+              type="email" value={form.email}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
+              className="input" placeholder="you@example.com" autoComplete="email" maxLength={255}
+            />
+          </Field>
+          <button type="submit" disabled={loading} className="btn-primary w-full">
+            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Send OTP to email
+          </button>
+          <p className="text-center text-xs text-muted-foreground">
+            We'll email you a 6-digit code. No password needed.
+          </p>
+        </form>
+      ) : (
+        <form onSubmit={onVerifyOtp} className="mt-5 space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Enter the 6-digit code sent to <span className="font-semibold text-foreground">{form.email}</span>
+          </p>
+          <Field label="6-digit code">
+            <input
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              value={otpCode}
+              onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+              className="input text-center text-2xl tracking-[0.5em] font-bold"
+              placeholder="••••••"
+              maxLength={6}
+            />
+          </Field>
+          <button type="submit" disabled={loading || otpCode.length !== 6} className="btn-primary w-full">
+            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Verify & continue
+          </button>
+          <button
+            type="button"
+            onClick={() => { setOtpSent(false); setOtpCode(""); }}
+            className="block w-full text-center text-sm font-medium text-primary"
+          >
+            Use a different email
+          </button>
+        </form>
+      )}
 
       <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground">
         <span className="h-px flex-1 bg-border" /> or <span className="h-px flex-1 bg-border" />
@@ -139,7 +290,7 @@ function LoginPage() {
 
       <p className="mt-6 text-center text-sm text-muted-foreground">
         {mode === "signin" ? "New to KhanaGharTak?" : "Already have an account?"}{" "}
-        <button onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
+        <button onClick={() => { setMode(mode === "signin" ? "signup" : "signin"); setOtpSent(false); setOtpCode(""); }}
           className="font-semibold text-primary">
           {mode === "signin" ? "Create account" : "Sign in"}
         </button>
