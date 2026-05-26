@@ -4,7 +4,19 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { BrandHeader } from "@/components/BrandHeader";
 
-export const Route = createFileRoute("/orders")({ component: OrdersPage });
+export const Route = createFileRoute("/orders")({
+  component: OrdersPage,
+  head: () => ({
+    meta: [
+      { title: "My Orders — KhanaGharTak" },
+      { name: "description", content: "Track your past and active orders from KhanaGharTak in one place." },
+      { property: "og:title", content: "My Orders — KhanaGharTak" },
+      { property: "og:description", content: "Track your past and active orders from KhanaGharTak in one place." },
+      { property: "og:url", content: "https://khanaghartak.lovable.app/orders" },
+    ],
+    links: [{ rel: "canonical", href: "https://khanaghartak.lovable.app/orders" }],
+  }),
+});
 
 type Order = {
   id: string; status: string; total: number; created_at: string;
@@ -38,6 +50,7 @@ function OrdersPage() {
     <div className="pb-10">
       <BrandHeader subtitle="My orders" />
       <div className="space-y-3 px-4 pt-4">
+        <h1 className="text-xl font-extrabold tracking-tight">My orders</h1>
         {orders.length === 0 && (
           <p className="py-16 text-center text-sm text-muted-foreground">No orders yet.</p>
         )}

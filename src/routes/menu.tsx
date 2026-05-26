@@ -6,7 +6,19 @@ import { useCart } from "@/hooks/useCart";
 import { useAuth } from "@/hooks/useAuth";
 import { Plus, Minus, Search, Star, Clock } from "lucide-react";
 
-export const Route = createFileRoute("/menu")({ component: MenuPage });
+export const Route = createFileRoute("/menu")({
+  component: MenuPage,
+  head: () => ({
+    meta: [
+      { title: "Our Menu — KhanaGharTak" },
+      { name: "description", content: "Explore our full menu of home-style Indian dishes. Order online with Cash on Delivery." },
+      { property: "og:title", content: "Our Menu — KhanaGharTak" },
+      { property: "og:description", content: "Explore our full menu of home-style Indian dishes. Order online with Cash on Delivery." },
+      { property: "og:url", content: "https://khanaghartak.lovable.app/menu" },
+    ],
+    links: [{ rel: "canonical", href: "https://khanaghartak.lovable.app/menu" }],
+  }),
+});
 
 type Category = { id: string; name: string; priority: number };
 type MenuItem = {
@@ -104,8 +116,9 @@ function MenuPage() {
         )}
 
         <div className="mt-4 flex items-center gap-2 rounded-2xl border bg-card px-3 shadow-[var(--shadow-card)]">
-          <Search className="h-4 w-4 text-muted-foreground" />
+          <Search className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
           <input value={q} onChange={(e) => setQ(e.target.value)} maxLength={60}
+            aria-label="Search dishes"
             placeholder="Search dishes..." className="h-11 flex-1 bg-transparent text-sm outline-none" />
         </div>
 
@@ -116,16 +129,16 @@ function MenuPage() {
             return (
               <section key={cat.id} data-cat={cat.id}
                 ref={(el: HTMLElement | null) => { sectionRefs.current[cat.id] = el; }}>
-                <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-muted-foreground">
+                <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-muted-foreground">
                   {cat.name} <span className="text-foreground/60">· {list.length}</span>
-                </h3>
+                </h2>
                 <div className="space-y-3">
                   {list.map((item) => (
                     <article key={item.id} className="flex gap-3 rounded-2xl border bg-card p-3 shadow-[var(--shadow-card)]">
                       <div className="flex-1">
                         <div className="flex items-center gap-1.5">
                           <VegDot type={item.veg_type} />
-                          <h4 className="font-semibold leading-tight">{item.name}</h4>
+                          <h3 className="font-semibold leading-tight">{item.name}</h3>
                         </div>
                         <p className="mt-1 text-xs leading-snug text-muted-foreground line-clamp-2">{item.description}</p>
                         <p className="mt-2 text-sm font-bold">₹{Number(item.price).toFixed(0)}</p>
@@ -144,9 +157,9 @@ function MenuPage() {
                             </button>
                           ) : (
                             <div className="flex items-center rounded-lg border-2 border-primary bg-primary text-primary-foreground shadow-sm">
-                              <button onClick={() => dec(item.id)} className="px-2 py-1"><Minus className="h-3 w-3" /></button>
+                              <button aria-label={`Remove one ${item.name}`} onClick={() => dec(item.id)} className="px-2 py-1"><Minus className="h-3 w-3" aria-hidden="true" /></button>
                               <span className="px-1 text-xs font-bold tabular-nums">{qtyInCart(item.id)}</span>
-                              <button onClick={() => inc(item.id)} className="px-2 py-1"><Plus className="h-3 w-3" /></button>
+                              <button aria-label={`Add one ${item.name}`} onClick={() => inc(item.id)} className="px-2 py-1"><Plus className="h-3 w-3" aria-hidden="true" /></button>
                             </div>
                           )}
                         </div>

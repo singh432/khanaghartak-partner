@@ -8,7 +8,19 @@ import { useCart } from "@/hooks/useCart";
 import { BrandHeader } from "@/components/BrandHeader";
 import { MapPin, Navigation, Loader2, Wallet } from "lucide-react";
 
-export const Route = createFileRoute("/checkout")({ component: CheckoutPage });
+export const Route = createFileRoute("/checkout")({
+  component: CheckoutPage,
+  head: () => ({
+    meta: [
+      { title: "Checkout — KhanaGharTak" },
+      { name: "description", content: "Confirm your delivery details and place your Cash on Delivery order with KhanaGharTak." },
+      { property: "og:title", content: "Checkout — KhanaGharTak" },
+      { property: "og:description", content: "Confirm your delivery details and place your Cash on Delivery order with KhanaGharTak." },
+      { property: "og:url", content: "https://khanaghartak.lovable.app/checkout" },
+    ],
+    links: [{ rel: "canonical", href: "https://khanaghartak.lovable.app/checkout" }],
+  }),
+});
 
 const DELIVERY_FEE = 25;
 
@@ -89,6 +101,7 @@ function CheckoutPage() {
     <div className="pb-32">
       <BrandHeader subtitle="Checkout" />
       <div className="px-4 pt-4 space-y-5">
+        <h1 className="text-xl font-extrabold tracking-tight">Checkout</h1>
         <Section title="Delivery details">
           <Field label="Name">
             <input className="ck-input" value={form.name} maxLength={80}
@@ -164,10 +177,10 @@ function CheckoutPage() {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-2xl bg-card p-4 shadow-[var(--shadow-card)]">
-      <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-muted-foreground">{title}</h3>
+    <section className="rounded-2xl bg-card p-4 shadow-[var(--shadow-card)]">
+      <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-muted-foreground">{title}</h2>
       <div className="space-y-3">{children}</div>
-    </div>
+    </section>
   );
 }
 function Field({ label, children }: { label: string; children: React.ReactNode }) {

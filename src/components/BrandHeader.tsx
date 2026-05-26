@@ -14,8 +14,8 @@ export function BrandHeader({ subtitle }: { subtitle?: string }) {
           {subtitle && <div className="text-[11px] text-muted-foreground">{subtitle}</div>}
         </div>
       </Link>
-      <Link to="/cart" className="relative inline-flex h-10 w-10 items-center justify-center rounded-full bg-secondary">
-        <ShoppingBag className="h-5 w-5" />
+      <Link to="/cart" aria-label={`Cart${totalQty > 0 ? `, ${totalQty} item${totalQty > 1 ? "s" : ""}` : ""}`} className="relative inline-flex h-10 w-10 items-center justify-center rounded-full bg-secondary">
+        <ShoppingBag className="h-5 w-5" aria-hidden="true" />
         {totalQty > 0 && (
           <span className="absolute -top-1 -right-1 grid h-5 min-w-5 place-items-center rounded-full bg-primary px-1 text-[11px] font-bold text-primary-foreground">
             {totalQty}

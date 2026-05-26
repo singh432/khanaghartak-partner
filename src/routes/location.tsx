@@ -7,7 +7,19 @@ import { useAuth } from "@/hooks/useAuth";
 import { BrandHeader } from "@/components/BrandHeader";
 import { MapPin, Navigation, Loader2 } from "lucide-react";
 
-export const Route = createFileRoute("/location")({ component: LocationPage });
+export const Route = createFileRoute("/location")({
+  component: LocationPage,
+  head: () => ({
+    meta: [
+      { title: "Delivery Location — KhanaGharTak" },
+      { name: "description", content: "Set your delivery address and pin your exact location for faster KhanaGharTak deliveries." },
+      { property: "og:title", content: "Delivery Location — KhanaGharTak" },
+      { property: "og:description", content: "Set your delivery address and pin your exact location for faster KhanaGharTak deliveries." },
+      { property: "og:url", content: "https://khanaghartak.lovable.app/location" },
+    ],
+    links: [{ rel: "canonical", href: "https://khanaghartak.lovable.app/location" }],
+  }),
+});
 
 const schema = z.object({
   address: z.string().trim().min(8, "Enter a complete address").max(300),
@@ -71,7 +83,7 @@ function LocationPage() {
     <div className="pb-24">
       <BrandHeader subtitle="Delivery location" />
       <div className="px-4 pt-4">
-        <h2 className="text-lg font-bold">Where should we deliver?</h2>
+        <h1 className="text-lg font-bold">Where should we deliver?</h1>
         <p className="text-sm text-muted-foreground">Pin your exact location for accurate delivery.</p>
 
         <button onClick={detect} disabled={locating}

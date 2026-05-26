@@ -6,7 +6,19 @@ import { BrandHeader } from "@/components/BrandHeader";
 import { Star, Clock, MapPin, LogOut } from "lucide-react";
 import hero from "@/assets/hero.jpg";
 
-export const Route = createFileRoute("/home")({ component: HomePage });
+export const Route = createFileRoute("/home")({
+  component: HomePage,
+  head: () => ({
+    meta: [
+      { title: "Home — KhanaGharTak" },
+      { name: "description", content: "Browse today's home-style dishes from KhanaGharTak and order with Cash on Delivery." },
+      { property: "og:title", content: "Home — KhanaGharTak" },
+      { property: "og:description", content: "Browse today's home-style dishes from KhanaGharTak and order with Cash on Delivery." },
+      { property: "og:url", content: "https://khanaghartak.lovable.app/home" },
+    ],
+    links: [{ rel: "canonical", href: "https://khanaghartak.lovable.app/home" }],
+  }),
+});
 
 type Restaurant = {
   id: string; name: string; tagline: string | null;
@@ -54,7 +66,7 @@ function HomePage() {
                 className="h-full w-full object-cover" width={1600} height={900} />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
               <div className="absolute bottom-3 left-4 right-4 text-white">
-                <h2 className="text-2xl font-extrabold tracking-tight">{restaurant.name}</h2>
+                <h1 className="text-2xl font-extrabold tracking-tight">{restaurant.name}</h1>
                 <p className="text-xs opacity-90">{restaurant.tagline}</p>
               </div>
               <span className={`absolute right-3 top-3 rounded-full px-3 py-1 text-xs font-semibold ${restaurant.is_open ? "bg-success text-success-foreground" : "bg-destructive text-destructive-foreground"}`}>

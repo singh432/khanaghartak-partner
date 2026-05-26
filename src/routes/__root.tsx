@@ -69,6 +69,30 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:type", content: "website" },
     ],
     links: [{ rel: "stylesheet", href: appCss }],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Restaurant",
+          name: "KhanaGharTak",
+          description: "Home-style food delivered fast with Cash on Delivery.",
+          servesCuisine: ["Indian", "Home-style"],
+          url: "https://khanaghartak.lovable.app",
+          image: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/91b140d3-d27b-4b4b-9a74-f5b323a08933",
+          priceRange: "₹₹",
+        }),
+      },
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "WebSite",
+          name: "KhanaGharTak",
+          url: "https://khanaghartak.lovable.app",
+        }),
+      },
+    ],
   }),
   shellComponent: RootShell,
   component: RootComponent,
@@ -91,9 +115,9 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <CartProvider>
-          <div className="app-shell pb-16">
+          <main className="app-shell pb-16">
             <Outlet />
-          </div>
+          </main>
           <BottomNav />
           <Toaster position="top-center" richColors />
         </CartProvider>
