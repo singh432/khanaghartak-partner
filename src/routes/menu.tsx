@@ -24,7 +24,7 @@ function MenuPage() {
   const [menu, setMenu] = useState<MenuItem[]>([]);
   const [q, setQ] = useState("");
   const [activeCat, setActiveCat] = useState<string | null>(null);
-  const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
   const [showCatPanel, setShowCatPanel] = useState(false);
 
   useEffect(() => { if (!loading && !user) navigate({ to: "/login" }); }, [user, loading, navigate]);
@@ -115,7 +115,7 @@ function MenuPage() {
             if (list.length === 0) return null;
             return (
               <section key={cat.id} data-cat={cat.id}
-                ref={(el: HTMLDivElement | null) => { sectionRefs.current[cat.id] = el; }}>
+                ref={(el: HTMLElement | null) => { sectionRefs.current[cat.id] = el; }}>
                 <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-muted-foreground">
                   {cat.name} <span className="text-foreground/60">· {list.length}</span>
                 </h3>
