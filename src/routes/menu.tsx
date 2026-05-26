@@ -115,7 +115,7 @@ function MenuPage() {
             if (list.length === 0) return null;
             return (
               <section key={cat.id} data-cat={cat.id}
-                ref={(el) => { sectionRefs.current[cat.id] = el; }}>
+                ref={(el: HTMLDivElement | null) => { sectionRefs.current[cat.id] = el; }}>
                 <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-muted-foreground">
                   {cat.name} <span className="text-foreground/60">· {list.length}</span>
                 </h3>
