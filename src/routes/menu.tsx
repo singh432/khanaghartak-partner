@@ -129,9 +129,9 @@ function MenuPage() {
             return (
               <section key={cat.id} data-cat={cat.id}
                 ref={(el: HTMLElement | null) => { sectionRefs.current[cat.id] = el; }}>
-                <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-muted-foreground">
+                <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-muted-foreground">
                   {cat.name} <span className="text-foreground/60">· {list.length}</span>
-                </h3>
+                </h2>
                 <div className="space-y-3">
                   {list.map((item) => (
                     <article key={item.id} className="flex gap-3 rounded-2xl border bg-card p-3 shadow-[var(--shadow-card)]">
