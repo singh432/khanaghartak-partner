@@ -11,6 +11,7 @@ import {
 import { Toaster } from "sonner";
 import { AuthProvider } from "@/hooks/useAuth";
 import { CartProvider } from "@/hooks/useCart";
+import { BottomNav } from "@/components/BottomNav";
 
 import appCss from "../styles.css?url";
 
@@ -82,9 +83,10 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <CartProvider>
-          <div className="app-shell">
+          <div className="app-shell pb-16">
             <Outlet />
           </div>
+          <BottomNav />
           <Toaster position="top-center" richColors />
         </CartProvider>
       </AuthProvider>
