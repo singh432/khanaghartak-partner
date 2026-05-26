@@ -44,6 +44,7 @@ function CartPage() {
     <div className="pb-32">
       <BrandHeader subtitle={`${totalQty} item${totalQty > 1 ? "s" : ""} in cart`} />
       <div className="px-4 pt-4 space-y-3">
+        <h1 className="sr-only">Your cart</h1>
         {items.map((it) => (
           <div key={it.id} className="flex items-center gap-3 rounded-2xl border bg-card p-3 shadow-[var(--shadow-card)]">
             {it.image_url && (
@@ -55,12 +56,12 @@ function CartPage() {
               <p className="text-xs text-muted-foreground">₹{it.price.toFixed(0)} × {it.qty} = <span className="font-semibold text-foreground">₹{(it.price * it.qty).toFixed(0)}</span></p>
             </div>
             <div className="flex items-center rounded-lg border-2 border-primary bg-primary text-primary-foreground">
-              <button onClick={() => dec(it.id)} className="px-2 py-1"><Minus className="h-3 w-3" /></button>
+              <button aria-label={`Remove one ${it.name}`} onClick={() => dec(it.id)} className="px-2 py-1"><Minus className="h-3 w-3" aria-hidden="true" /></button>
               <span className="px-1 text-xs font-bold tabular-nums">{it.qty}</span>
-              <button onClick={() => inc(it.id)} className="px-2 py-1"><Plus className="h-3 w-3" /></button>
+              <button aria-label={`Add one ${it.name}`} onClick={() => inc(it.id)} className="px-2 py-1"><Plus className="h-3 w-3" aria-hidden="true" /></button>
             </div>
-            <button onClick={() => remove(it.id)} className="rounded-lg p-2 text-muted-foreground">
-              <Trash2 className="h-4 w-4" />
+            <button aria-label={`Remove ${it.name} from cart`} onClick={() => remove(it.id)} className="rounded-lg p-2 text-muted-foreground">
+              <Trash2 className="h-4 w-4" aria-hidden="true" />
             </button>
           </div>
         ))}
