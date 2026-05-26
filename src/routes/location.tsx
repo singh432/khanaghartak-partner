@@ -83,7 +83,7 @@ function LocationPage() {
     <div className="pb-24">
       <BrandHeader subtitle="Delivery location" />
       <div className="px-4 pt-4">
-        <h2 className="text-lg font-bold">Where should we deliver?</h2>
+        <h1 className="text-lg font-bold">Where should we deliver?</h1>
         <p className="text-sm text-muted-foreground">Pin your exact location for accurate delivery.</p>
 
         <button onClick={detect} disabled={locating}
