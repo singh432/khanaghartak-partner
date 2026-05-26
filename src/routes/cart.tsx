@@ -3,7 +3,19 @@ import { BrandHeader } from "@/components/BrandHeader";
 import { useCart } from "@/hooks/useCart";
 import { Plus, Minus, Trash2, ShoppingBag } from "lucide-react";
 
-export const Route = createFileRoute("/cart")({ component: CartPage });
+export const Route = createFileRoute("/cart")({
+  component: CartPage,
+  head: () => ({
+    meta: [
+      { title: "Your Cart — KhanaGharTak" },
+      { name: "description", content: "Review the items in your cart and proceed to checkout for fast home delivery." },
+      { property: "og:title", content: "Your Cart — KhanaGharTak" },
+      { property: "og:description", content: "Review the items in your cart and proceed to checkout for fast home delivery." },
+      { property: "og:url", content: "https://khanaghartak.lovable.app/cart" },
+    ],
+    links: [{ rel: "canonical", href: "https://khanaghartak.lovable.app/cart" }],
+  }),
+});
 
 const DELIVERY_FEE = 25;
 
