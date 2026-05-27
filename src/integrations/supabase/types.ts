@@ -247,6 +247,19 @@ export type Database = {
         }
         Returns: boolean
       }
+      place_order: {
+        Args: {
+          _address: string
+          _customer_name: string
+          _customer_phone: string
+          _items: Json
+          _landmark?: string
+          _latitude?: number
+          _longitude?: number
+          _notes?: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       app_role: "customer" | "restaurant_admin"
