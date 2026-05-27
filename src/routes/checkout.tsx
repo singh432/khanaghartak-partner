@@ -73,28 +73,25 @@ function CheckoutPage() {
     if (!parsed.success) return toast.error(parsed.error.issues[0].message);
     if (!user) return;
     setPlacing(true);
-    const { data, error } = await supabase.from("orders").insert({
-      user_id: user.id,
-      customer_name: form.name,
-      customer_phone: form.phone,
-      address: form.address,
-      landmark: form.landmark || null,
-      notes: form.notes || null,
-      latitude: coords?.lat ?? null, longitude: coords?.lng ?? null,
-      items: items.map((i) => ({ id: i.id, name: i.name, price: i.price, qty: i.qty })),
-      subtotal, delivery_fee: DELIVERY_FEE, total: grand,
-      payment_method: "cod", status: "placed",
-    }).select("id").single();
+    const { data, error } = await supabase.rpc("place_order", {
+      _items: items.map((i) => ({ id: i.id, qty: i.qty })),
+      _customer_name: form.name,
+      _customer_phone: form.phone,
+      _address: form.address,
+      _landmark: form.landmark || null,
+      _notes: form.notes || null,
+      _latitude: coords?.lat ?? null,
+      _longitude: coords?.lng ?? null,
+    });
     setPlacing(false);
-    if (error) return toast.error(error.message);
-    // also persist address to profile for next time
+    if (error || !data) return toast.error(error?.message ?? "Could not place order");
     await supabase.from("profiles").upsert({
       id: user.id, full_name: form.name, phone: form.phone,
       address: form.address, landmark: form.landmark || null,
       latitude: coords?.lat ?? null, longitude: coords?.lng ?? null,
     }, { onConflict: "id" });
     clear();
-    navigate({ to: "/order/$id", params: { id: data.id } });
+    navigate({ to: "/order/$id", params: { id: data as unknown as string } });
   };
 
   return (
