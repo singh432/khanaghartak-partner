@@ -78,10 +78,10 @@ function CheckoutPage() {
       _customer_name: form.name,
       _customer_phone: form.phone,
       _address: form.address,
-      _landmark: form.landmark || null,
-      _notes: form.notes || null,
-      _latitude: coords?.lat ?? null,
-      _longitude: coords?.lng ?? null,
+      _landmark: form.landmark || undefined,
+      _notes: form.notes || undefined,
+      _latitude: coords?.lat,
+      _longitude: coords?.lng,
     });
     setPlacing(false);
     if (error || !data) return toast.error(error?.message ?? "Could not place order");
