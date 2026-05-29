@@ -4,6 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { BrandHeader } from "@/components/BrandHeader";
 import { useCart } from "@/hooks/useCart";
 import { useAuth } from "@/hooks/useAuth";
+import { PageError, PageSpinner } from "@/components/PageState";
+import { withTimeout } from "@/lib/supabase-query";
 import { Plus, Minus, Search, Star, Clock } from "lucide-react";
 
 export const Route = createFileRoute("/menu")({
@@ -38,21 +40,35 @@ function MenuPage() {
   const [activeCat, setActiveCat] = useState<string | null>(null);
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
   const [showCatPanel, setShowCatPanel] = useState(false);
+  const [dataLoading, setDataLoading] = useState(true);
+  const [dataError, setDataError] = useState<string | null>(null);
 
   useEffect(() => { if (!loading && !user) navigate({ to: "/login" }); }, [user, loading, navigate]);
 
   useEffect(() => {
+    let active = true;
     (async () => {
-      const [{ data: r }, { data: c }, { data: m }] = await Promise.all([
-        supabase.from("restaurant").select("name, rating, delivery_time").limit(1).maybeSingle(),
-        supabase.from("categories").select("*").order("priority"),
-        supabase.from("menu_items").select("*").eq("is_available", true).order("name"),
-      ]);
-      setRestaurant(r as Restaurant | null);
-      setCategories((c ?? []) as Category[]);
-      setMenu((m ?? []) as MenuItem[]);
-      if (c && c.length) setActiveCat(c[0].id);
+      setDataLoading(true);
+      setDataError(null);
+      try {
+        const [{ data: r, error: rError }, { data: c, error: cError }, { data: m, error: mError }] = await Promise.all([
+          withTimeout(supabase.from("restaurant").select("name, rating, delivery_time").limit(1).maybeSingle()),
+          withTimeout(supabase.from("categories").select("*").order("priority")),
+          withTimeout(supabase.from("menu_items").select("*").eq("is_available", true).order("name")),
+        ]);
+        if (rError || cError || mError) throw rError ?? cError ?? mError;
+        if (!active) return;
+        setRestaurant(r as Restaurant | null);
+        setCategories((c ?? []) as Category[]);
+        setMenu((m ?? []) as MenuItem[]);
+        if (c && c.length) setActiveCat(c[0].id);
+      } catch (err) {
+        if (active) setDataError(err instanceof Error ? err.message : "Could not load menu");
+      } finally {
+        if (active) setDataLoading(false);
+      }
     })();
+    return () => { active = false; };
   }, []);
 
   const filtered = useMemo(() => {
@@ -101,6 +117,14 @@ function MenuPage() {
       <BrandHeader subtitle={restaurant?.name} />
 
       <div className="px-4 pt-4">
+        {loading && <PageSpinner label="Checking your session…" />}
+        {!loading && !user && <PageSpinner label="Opening sign in…" />}
+        {!loading && user && dataLoading && <PageSpinner label="Loading menu…" />}
+        {!loading && user && dataError && (
+          <PageError message={dataError} onRetry={() => window.location.reload()} />
+        )}
+        {!loading && user && !dataLoading && !dataError && (
+          <>
         {restaurant && (
           <div className="rounded-2xl bg-card p-4 shadow-[var(--shadow-card)]">
             <h1 className="text-xl font-extrabold tracking-tight">{restaurant.name}</h1>
@@ -174,6 +198,8 @@ function MenuPage() {
             <p className="py-12 text-center text-sm text-muted-foreground">No dishes match "{q}"</p>
           )}
         </div>
+          </>
+        )}
       </div>
 
       {/* Floating category nav */}
