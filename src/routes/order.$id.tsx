@@ -1,6 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { PageError, PageSpinner } from "@/components/PageState";
+import { withTimeout } from "@/lib/supabase-query";
 import { CheckCircle2, Clock } from "lucide-react";
 
 export const Route = createFileRoute("/order/$id")({ component: OrderSuccess });
@@ -13,16 +15,32 @@ type Order = {
 function OrderSuccess() {
   const { id } = Route.useParams();
   const [order, setOrder] = useState<Order | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    supabase.from("orders").select("id,status,total,customer_name,created_at,address")
-      .eq("id", id).maybeSingle().then(({ data }) => setOrder(data as Order | null));
+    let active = true;
+    setLoading(true);
+    setError(null);
+    withTimeout(supabase.from("orders").select("id,status,total,customer_name,created_at,address")
+      .eq("id", id).maybeSingle()).then(({ data, error }) => {
+        if (!active) return;
+        if (error) throw error;
+        setOrder(data as Order | null);
+      }).catch((err) => {
+        if (active) setError(err instanceof Error ? err.message : "Could not load order");
+      }).finally(() => {
+        if (active) setLoading(false);
+      });
     const channel = supabase.channel(`order-${id}`)
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "orders", filter: `id=eq.${id}` },
         (payload) => setOrder((o) => ({ ...(o ?? {} as Order), ...(payload.new as Order) })))
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    return () => { active = false; supabase.removeChannel(channel); };
   }, [id]);
+
+  if (loading) return <PageSpinner label="Loading order…" />;
+  if (error) return <PageError message={error} onRetry={() => window.location.reload()} />;
 
   return (
     <div className="flex min-h-[100dvh] flex-col items-center justify-center px-6 text-center">

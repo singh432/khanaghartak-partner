@@ -56,7 +56,7 @@ function CheckoutPage() {
           });
           if (data.latitude && data.longitude) setCoords({ lat: data.latitude, lng: data.longitude });
         }
-      }));
+      })).catch(() => {});
   }, [user]);
 
   if (loading || !ready) return <PageSpinner label="Preparing checkout…" />;
