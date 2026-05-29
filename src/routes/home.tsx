@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { BrandHeader } from "@/components/BrandHeader";
+import { PageError, PageSpinner } from "@/components/PageState";
+import { withTimeout } from "@/lib/supabase-query";
 import { Star, Clock, MapPin, LogOut } from "lucide-react";
 import hero from "@/assets/hero.jpg";
 
@@ -31,19 +33,38 @@ function HomePage() {
   const { user, loading, signOut } = useAuth();
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [profileAddress, setProfileAddress] = useState<string>("");
+  const [restaurantLoading, setRestaurantLoading] = useState(true);
+  const [restaurantError, setRestaurantError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/login" });
   }, [user, loading, navigate]);
 
   useEffect(() => {
-    supabase.from("restaurant").select("*").limit(1).maybeSingle()
-      .then(({ data }) => setRestaurant(data as Restaurant | null));
+    let active = true;
+    setRestaurantLoading(true);
+    setRestaurantError(null);
+    withTimeout(supabase.from("restaurant").select("*").limit(1).maybeSingle())
+      .then(({ data, error }) => {
+        if (!active) return;
+        if (error) throw error;
+        setRestaurant(data as Restaurant | null);
+      })
+      .catch((err) => {
+        if (active) setRestaurantError(err instanceof Error ? err.message : "Could not load restaurant");
+      })
+      .finally(() => {
+        if (active) setRestaurantLoading(false);
+      });
     if (user) {
-      supabase.from("profiles").select("address").eq("id", user.id).maybeSingle()
+      withTimeout(supabase.from("profiles").select("address").eq("id", user.id).maybeSingle())
         .then(({ data }) => setProfileAddress(data?.address ?? ""));
     }
+    return () => { active = false; };
   }, [user]);
+
+  if (loading) return <PageSpinner label="Checking your session…" />;
+  if (!user) return <PageSpinner label="Opening sign in…" />;
 
   return (
     <div className="pb-10">
@@ -59,7 +80,14 @@ function HomePage() {
           </Link>
         )}
 
-        {restaurant && (
+        {restaurantLoading && <PageSpinner label="Loading kitchen details…" />}
+        {restaurantError && (
+          <PageError message={restaurantError} onRetry={() => window.location.reload()} />
+        )}
+        {!restaurantLoading && !restaurantError && !restaurant && (
+          <PageError title="Kitchen is unavailable" message="Menu details could not be found right now." />
+        )}
+        {!restaurantLoading && !restaurantError && restaurant && (
           <div className="overflow-hidden rounded-3xl bg-card shadow-[var(--shadow-card)] fade-in">
             <div className="relative h-44 w-full overflow-hidden">
               <img src={restaurant.banner_url ?? hero} alt={restaurant.name}
