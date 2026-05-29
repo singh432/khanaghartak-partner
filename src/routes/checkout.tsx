@@ -6,6 +6,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useCart } from "@/hooks/useCart";
 import { BrandHeader } from "@/components/BrandHeader";
+import { PageSpinner } from "@/components/PageState";
+import { withTimeout } from "@/lib/supabase-query";
 import { MapPin, Navigation, Loader2, Wallet } from "lucide-react";
 
 export const Route = createFileRoute("/checkout")({
@@ -35,17 +37,17 @@ const schema = z.object({
 function CheckoutPage() {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
-  const { items, subtotal, clear } = useCart();
+  const { items, ready, subtotal, clear } = useCart();
   const [form, setForm] = useState({ name: "", phone: "", address: "", landmark: "", notes: "" });
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [placing, setPlacing] = useState(false);
 
   useEffect(() => { if (!loading && !user) navigate({ to: "/login" }); }, [user, loading, navigate]);
-  useEffect(() => { if (!loading && items.length === 0) navigate({ to: "/menu" }); }, [items, loading, navigate]);
+  useEffect(() => { if (!loading && ready && items.length === 0) navigate({ to: "/menu" }); }, [items, loading, ready, navigate]);
 
   useEffect(() => {
     if (!user) return;
-    supabase.from("profiles").select("full_name, phone, address, landmark, latitude, longitude")
+    withTimeout(supabase.from("profiles").select("full_name, phone, address, landmark, latitude, longitude")
       .eq("id", user.id).maybeSingle().then(({ data }) => {
         if (data) {
           setForm({
@@ -54,8 +56,11 @@ function CheckoutPage() {
           });
           if (data.latitude && data.longitude) setCoords({ lat: data.latitude, lng: data.longitude });
         }
-      });
+      }));
   }, [user]);
+
+  if (loading || !ready) return <PageSpinner label="Preparing checkout…" />;
+  if (!user) return <PageSpinner label="Opening sign in…" />;
 
   const pinLocation = () => {
     if (!navigator.geolocation) return toast.error("Geolocation not supported");

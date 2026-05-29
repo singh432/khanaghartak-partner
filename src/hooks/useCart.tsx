@@ -11,6 +11,7 @@ export type CartItem = {
 
 type CartCtx = {
   items: CartItem[];
+  ready: boolean;
   add: (item: Omit<CartItem, "qty">) => void;
   inc: (id: string) => void;
   dec: (id: string) => void;
@@ -25,17 +26,22 @@ const STORAGE_KEY = "kgt_cart_v1";
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) setItems(JSON.parse(raw));
-    } catch {}
+    } catch {
+    } finally {
+      setReady(true);
+    }
   }, []);
 
   useEffect(() => {
+    if (!ready) return;
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); } catch {}
-  }, [items]);
+  }, [items, ready]);
 
   const add: CartCtx["add"] = (it) => {
     setItems((cur) => {
@@ -55,7 +61,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const subtotal = items.reduce((s, i) => s + i.qty * i.price, 0);
 
   return (
-    <Ctx.Provider value={{ items, add, inc, dec, remove, clear, totalQty, subtotal }}>
+    <Ctx.Provider value={{ items, ready, add, inc, dec, remove, clear, totalQty, subtotal }}>
       {children}
     </Ctx.Provider>
   );
