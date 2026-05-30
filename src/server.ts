@@ -1,8 +1,10 @@
-import "./lib/ssr-storage-polyfill";
 import "./lib/error-capture";
 
+import { installSsrStoragePolyfill } from "./lib/ssr-storage-polyfill";
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
+
+installSsrStoragePolyfill();
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
