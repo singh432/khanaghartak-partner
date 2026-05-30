@@ -84,6 +84,8 @@
     "lint": "eslint .",
     "preview": "vite preview"
   },
-  "sideEffects": false,
+  "sideEffects": [
+    "src/lib/ssr-storage-polyfill.ts"
+  ],
   "type": "module"
 }
