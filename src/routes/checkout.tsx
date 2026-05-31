@@ -24,7 +24,7 @@ export const Route = createFileRoute("/checkout")({
   }),
 });
 
-const DELIVERY_FEE = 25;
+const DELIVERY_FEE = 5;
 
 const schema = z.object({
   name: z.string().trim().min(2).max(80),
@@ -148,7 +148,7 @@ function CheckoutPage() {
           ))}
           <div className="my-2 h-px bg-border" />
           <Row label="Item total" value={`₹${subtotal.toFixed(0)}`} />
-          <Row label="Delivery fee" value={`₹${DELIVERY_FEE.toFixed(0)}`} />
+          <Row label="Platform fee" value={`₹${DELIVERY_FEE.toFixed(0)}`} />
           <Row label="Grand total" value={`₹${grand.toFixed(0)}`} bold />
         </Section>
 

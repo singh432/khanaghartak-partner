@@ -93,6 +93,7 @@ export type Database = {
           longitude: number | null
           notes: string | null
           payment_method: string
+          rejection_reason: string | null
           status: string
           subtotal: number
           total: number
@@ -112,6 +113,7 @@ export type Database = {
           longitude?: number | null
           notes?: string | null
           payment_method?: string
+          rejection_reason?: string | null
           status?: string
           subtotal: number
           total: number
@@ -131,6 +133,7 @@ export type Database = {
           longitude?: number | null
           notes?: string | null
           payment_method?: string
+          rejection_reason?: string | null
           status?: string
           subtotal?: number
           total?: number

@@ -54,7 +54,7 @@ function MenuPage() {
         const [{ data: r, error: rError }, { data: c, error: cError }, { data: m, error: mError }] = await Promise.all([
           withTimeout(supabase.from("restaurant").select("name, rating, delivery_time").limit(1).maybeSingle()),
           withTimeout(supabase.from("categories").select("*").order("priority")),
-          withTimeout(supabase.from("menu_items").select("*").eq("is_available", true).order("name")),
+          withTimeout(supabase.from("menu_items").select("*").order("name")),
         ]);
         if (rError || cError || mError) throw rError ?? cError ?? mError;
         if (!active) return;
@@ -174,7 +174,11 @@ function MenuPage() {
                             className="h-24 w-24 rounded-xl object-cover" />
                         )}
                         <div className="absolute -bottom-2 left-1/2 -translate-x-1/2">
-                          {qtyInCart(item.id) === 0 ? (
+                          {!item.is_available ? (
+                            <span className="rounded-lg border-2 border-muted bg-card px-3 py-1 text-[10px] font-bold uppercase text-muted-foreground">
+                              Currently Unavailable
+                            </span>
+                          ) : qtyInCart(item.id) === 0 ? (
                             <button onClick={() => add({ id: item.id, name: item.name, price: Number(item.price), image_url: item.image_url, veg_type: item.veg_type })}
                               className="rounded-lg border-2 border-primary bg-card px-4 py-1 text-xs font-bold text-primary shadow-sm">
                               ADD
