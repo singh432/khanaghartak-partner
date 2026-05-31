@@ -148,7 +148,7 @@ function CheckoutPage() {
           ))}
           <div className="my-2 h-px bg-border" />
           <Row label="Item total" value={`₹${subtotal.toFixed(0)}`} />
-          <Row label="Delivery fee" value={`₹${DELIVERY_FEE.toFixed(0)}`} />
+          <Row label="Platform fee" value={`₹${DELIVERY_FEE.toFixed(0)}`} />
           <Row label="Grand total" value={`₹${grand.toFixed(0)}`} bold />
         </Section>
 
