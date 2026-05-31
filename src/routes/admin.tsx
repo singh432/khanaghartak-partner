@@ -6,12 +6,13 @@ import { LayoutDashboard, ClipboardList, UtensilsCrossed, UserCog, LogOut, Bell 
 
 export const Route = createFileRoute("/admin")({ component: AdminLayout });
 
-const NAV = [
+type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; exact?: boolean };
+const NAV: NavItem[] = [
   { to: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { to: "/admin/orders", label: "Orders", icon: ClipboardList },
   { to: "/admin/menu", label: "Menu", icon: UtensilsCrossed },
   { to: "/admin/profile", label: "Profile", icon: UserCog },
-] as const;
+];
 
 function AdminLayout() {
   const navigate = useNavigate();
