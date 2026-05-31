@@ -54,7 +54,7 @@ function AdminLayout() {
         </div>
         <nav className="flex-1 space-y-1 p-3">
           {NAV.map((n) => (
-            <Link key={n.to} to={n.to}
+            <Link key={n.to} to={n.to as "/admin"}
               className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold ${
                 isActive(n.to, n.exact) ? "bg-primary text-primary-foreground" : "text-foreground/80 hover:bg-secondary"
               }`}>
