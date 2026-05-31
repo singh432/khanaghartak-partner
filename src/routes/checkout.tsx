@@ -24,7 +24,7 @@ export const Route = createFileRoute("/checkout")({
   }),
 });
 
-const DELIVERY_FEE = 25;
+const DELIVERY_FEE = 5;
 
 const schema = z.object({
   name: z.string().trim().min(2).max(80),
