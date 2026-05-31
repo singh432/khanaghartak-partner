@@ -71,7 +71,7 @@ function CartPage() {
 
         <div className="mt-4 rounded-2xl border bg-card p-4 text-sm shadow-[var(--shadow-card)]">
           <Row label="Item total" value={`₹${subtotal.toFixed(0)}`} />
-          <Row label="Delivery fee" value={`₹${DELIVERY_FEE.toFixed(0)}`} />
+          <Row label="Platform fee" value={`₹${PLATFORM_FEE.toFixed(0)}`} />
           <div className="my-2 h-px bg-border" />
           <Row label="Grand total" value={`₹${grand.toFixed(0)}`} bold />
           <span className="mt-3 inline-block rounded-full bg-accent px-2.5 py-1 text-[11px] font-semibold text-accent-foreground">
