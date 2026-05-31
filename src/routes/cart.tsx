@@ -18,12 +18,12 @@ export const Route = createFileRoute("/cart")({
   }),
 });
 
-const DELIVERY_FEE = 25;
+const PLATFORM_FEE = 5;
 
 function CartPage() {
   const navigate = useNavigate();
   const { items, ready, inc, dec, remove, subtotal, totalQty } = useCart();
-  const grand = subtotal + (subtotal > 0 ? DELIVERY_FEE : 0);
+  const grand = subtotal + (subtotal > 0 ? PLATFORM_FEE : 0);
 
   if (!ready) return <PageSpinner label="Loading your cart…" />;
 
