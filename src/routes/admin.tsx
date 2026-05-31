@@ -94,7 +94,7 @@ function AdminLayout() {
           {NAV.map((n) => {
             const active = isActive(n.to, n.exact);
             return (
-              <Link key={n.to} to={n.to}
+              <Link key={n.to} to={n.to as "/admin"}
                 className={`flex flex-col items-center gap-0.5 py-2 text-[10px] font-semibold ${active ? "text-primary" : "text-muted-foreground"}`}>
                 <n.icon className="h-5 w-5" /> {n.label}
               </Link>
