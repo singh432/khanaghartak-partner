@@ -35,19 +35,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             .maybeSingle(),
         );
         if (active) setIsAdmin(!!data);
+        return !!data;
       } catch {
         if (active) setIsAdmin(false);
+        return false;
       }
     };
 
     const { data: sub } = supabase.auth.onAuthStateChange((_event, sess) => {
+      setLoading(true);
       setSession(sess);
       setUser(sess?.user ?? null);
       if (sess?.user) {
         // defer DB check to avoid deadlock inside the auth callback
-        setTimeout(() => loadAdminRole(sess.user.id), 0);
+        setTimeout(async () => {
+          await loadAdminRole(sess.user.id);
+          if (active) setLoading(false);
+        }, 0);
       } else {
         setIsAdmin(false);
+        setLoading(false);
       }
     });
 
