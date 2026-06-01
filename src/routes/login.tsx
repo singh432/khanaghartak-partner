@@ -43,7 +43,13 @@ function LoginPage() {
   const [otpSent, setOtpSent] = useState(false);
   const [otpCode, setOtpCode] = useState("");
 
-  useEffect(() => { if (user) navigate({ to: "/home" }); }, [user, navigate]);
+  useEffect(() => {
+    if (!user) return;
+    const params = new URLSearchParams(window.location.search);
+    const redirect = params.get("redirect");
+    const target = redirect && redirect.startsWith("/") ? redirect : "/home";
+    navigate({ to: target as "/home" });
+  }, [user, navigate]);
 
   const onSubmitPassword = async (e: React.FormEvent) => {
     e.preventDefault();
