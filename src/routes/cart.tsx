@@ -80,7 +80,10 @@ function CartPage() {
         </div>
       </div>
 
-      <div className="fixed bottom-0 left-1/2 z-30 w-full max-w-[480px] -translate-x-1/2 border-t bg-background p-4">
+      <div
+        className="fixed left-1/2 z-50 w-full max-w-[480px] -translate-x-1/2 border-t bg-background p-4"
+        style={{ bottom: "calc(64px + env(safe-area-inset-bottom))" }}
+      >
         <button onClick={() => navigate({ to: "/checkout" })}
           className="flex h-12 w-full items-center justify-center rounded-2xl bg-primary text-sm font-bold text-primary-foreground shadow-[var(--shadow-soft)]">
           Proceed to Checkout · ₹{grand.toFixed(0)}
