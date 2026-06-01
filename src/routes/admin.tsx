@@ -19,7 +19,9 @@ function AdminLayout() {
   const { user, loading, isAdmin, signOut } = useAuth();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
-  useEffect(() => { if (!loading && !user) navigate({ to: "/login" }); }, [user, loading, navigate]);
+  useEffect(() => {
+    if (!loading && !user) navigate({ to: "/login", search: { redirect: "/admin" } as never });
+  }, [user, loading, navigate]);
 
   if (loading) return <div className="p-8 text-center text-sm">Loading…</div>;
   if (!user) return null;
