@@ -39,15 +39,19 @@ function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ email: "", password: "", full_name: "", phone: "" });
 
+  const getRedirectTarget = () => {
+    const params = new URLSearchParams(window.location.search);
+    const redirect = params.get("redirect");
+    return redirect && redirect.startsWith("/") ? redirect : "/home";
+  };
+
   // OTP flow state
   const [otpSent, setOtpSent] = useState(false);
   const [otpCode, setOtpCode] = useState("");
 
   useEffect(() => {
     if (!user) return;
-    const params = new URLSearchParams(window.location.search);
-    const redirect = params.get("redirect");
-    const target = redirect && redirect.startsWith("/") ? redirect : "/home";
+    const target = getRedirectTarget();
     navigate({ to: target as "/home" });
   }, [user, navigate]);
 
@@ -71,7 +75,7 @@ function LoginPage() {
           email: form.email,
           password: form.password,
           options: {
-            emailRedirectTo: `${window.location.origin}/home`,
+            emailRedirectTo: `${window.location.origin}${getRedirectTarget()}`,
             data: { full_name: form.full_name, phone: form.phone },
           },
         });
@@ -107,7 +111,7 @@ function LoginPage() {
         email: form.email,
         options: {
           shouldCreateUser: mode === "signup",
-          emailRedirectTo: `${window.location.origin}/home`,
+          emailRedirectTo: `${window.location.origin}${getRedirectTarget()}`,
           data: mode === "signup"
             ? { full_name: form.full_name, phone: form.phone }
             : undefined,
@@ -147,7 +151,7 @@ function LoginPage() {
   const onGoogle = async () => {
     setLoading(true);
     const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: `${window.location.origin}/home`,
+      redirect_uri: `${window.location.origin}${getRedirectTarget()}`,
     });
     if (result.error) {
       toast.error(result.error.message ?? "Google sign-in failed");
