@@ -2,7 +2,7 @@ import { createFileRoute, Outlet, useNavigate, Link, useRouterState } from "@tan
 import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import logo from "@/assets/logo.png";
-import { LayoutDashboard, ClipboardList, UtensilsCrossed, UserCog, LogOut, Bell } from "lucide-react";
+import { LayoutDashboard, ClipboardList, UtensilsCrossed, BarChart3, Settings as SettingsIcon, LogOut, Bell } from "lucide-react";
 
 export const Route = createFileRoute("/admin")({ component: AdminLayout });
 
@@ -11,7 +11,8 @@ const NAV: NavItem[] = [
   { to: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { to: "/admin/orders", label: "Orders", icon: ClipboardList },
   { to: "/admin/menu", label: "Menu", icon: UtensilsCrossed },
-  { to: "/admin/profile", label: "Profile", icon: UserCog },
+  { to: "/admin/analytics", label: "Analytics", icon: BarChart3 },
+  { to: "/admin/settings", label: "Settings", icon: SettingsIcon },
 ];
 
 function AdminLayout() {
@@ -92,7 +93,7 @@ function AdminLayout() {
         </main>
 
         {/* Mobile bottom nav */}
-        <nav className="fixed bottom-0 left-0 right-0 z-30 grid grid-cols-4 border-t bg-background md:hidden">
+        <nav className="fixed bottom-0 left-0 right-0 z-30 grid grid-cols-5 border-t bg-background md:hidden">
           {NAV.map((n) => {
             const active = isActive(n.to, n.exact);
             return (
