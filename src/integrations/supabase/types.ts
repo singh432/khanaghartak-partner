@@ -20,18 +20,45 @@ export type Database = {
           id: string
           name: string
           priority: number
+          restaurant_id: string | null
         }
         Insert: {
           created_at?: string
           id?: string
           name: string
           priority?: number
+          restaurant_id?: string | null
         }
         Update: {
           created_at?: string
           id?: string
           name?: string
           priority?: number
+          restaurant_id?: string | null
+        }
+        Relationships: []
+      }
+      customer_blocks: {
+        Row: {
+          blocked_by: string | null
+          created_at: string
+          id: string
+          reason: string | null
+          user_id: string
+        }
+        Insert: {
+          blocked_by?: string | null
+          created_at?: string
+          id?: string
+          reason?: string | null
+          user_id: string
+        }
+        Update: {
+          blocked_by?: string | null
+          created_at?: string
+          id?: string
+          reason?: string | null
+          user_id?: string
         }
         Relationships: []
       }
@@ -43,8 +70,11 @@ export type Database = {
           id: string
           image_url: string | null
           is_available: boolean
+          is_out_of_stock: boolean
           name: string
+          offer_price: number | null
           price: number
+          restaurant_id: string | null
           veg_type: string
         }
         Insert: {
@@ -54,8 +84,11 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_available?: boolean
+          is_out_of_stock?: boolean
           name: string
+          offer_price?: number | null
           price: number
+          restaurant_id?: string | null
           veg_type?: string
         }
         Update: {
@@ -65,8 +98,11 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_available?: boolean
+          is_out_of_stock?: boolean
           name?: string
+          offer_price?: number | null
           price?: number
+          restaurant_id?: string | null
           veg_type?: string
         }
         Relationships: [
@@ -94,6 +130,7 @@ export type Database = {
           notes: string | null
           payment_method: string
           rejection_reason: string | null
+          restaurant_id: string | null
           status: string
           subtotal: number
           total: number
@@ -114,6 +151,7 @@ export type Database = {
           notes?: string | null
           payment_method?: string
           rejection_reason?: string | null
+          restaurant_id?: string | null
           status?: string
           subtotal: number
           total: number
@@ -134,11 +172,45 @@ export type Database = {
           notes?: string | null
           payment_method?: string
           rejection_reason?: string | null
+          restaurant_id?: string | null
           status?: string
           subtotal?: number
           total?: number
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      platform_settings: {
+        Row: {
+          default_delivery_charges: number
+          id: string
+          platform_fee: number
+          privacy: string | null
+          support_email: string | null
+          support_phone: string | null
+          terms: string | null
+          updated_at: string
+        }
+        Insert: {
+          default_delivery_charges?: number
+          id?: string
+          platform_fee?: number
+          privacy?: string | null
+          support_email?: string | null
+          support_phone?: string | null
+          terms?: string | null
+          updated_at?: string
+        }
+        Update: {
+          default_delivery_charges?: number
+          id?: string
+          platform_fee?: number
+          privacy?: string | null
+          support_email?: string | null
+          support_phone?: string | null
+          terms?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
@@ -178,42 +250,66 @@ export type Database = {
         }
         Relationships: []
       }
-      restaurant: {
+      restaurants: {
         Row: {
           address: string | null
           banner_url: string | null
+          closing_time: string | null
           created_at: string
+          delivery_charges: number
           delivery_time: string | null
           id: string
           image_url: string | null
           is_open: boolean | null
+          min_order_value: number
           name: string
+          opening_time: string | null
+          owner_id: string | null
+          phone: string | null
           rating: number | null
+          status: string
           tagline: string | null
+          updated_at: string
         }
         Insert: {
           address?: string | null
           banner_url?: string | null
+          closing_time?: string | null
           created_at?: string
+          delivery_charges?: number
           delivery_time?: string | null
           id?: string
           image_url?: string | null
           is_open?: boolean | null
+          min_order_value?: number
           name: string
+          opening_time?: string | null
+          owner_id?: string | null
+          phone?: string | null
           rating?: number | null
+          status?: string
           tagline?: string | null
+          updated_at?: string
         }
         Update: {
           address?: string | null
           banner_url?: string | null
+          closing_time?: string | null
           created_at?: string
+          delivery_charges?: number
           delivery_time?: string | null
           id?: string
           image_url?: string | null
           is_open?: boolean | null
+          min_order_value?: number
           name?: string
+          opening_time?: string | null
+          owner_id?: string | null
+          phone?: string | null
           rating?: number | null
+          status?: string
           tagline?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
