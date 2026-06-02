@@ -52,7 +52,7 @@ function MenuPage() {
       setDataError(null);
       try {
         const [{ data: r, error: rError }, { data: c, error: cError }, { data: m, error: mError }] = await Promise.all([
-          withTimeout(supabase.from("restaurant").select("name, rating, delivery_time").limit(1).maybeSingle()),
+          withTimeout(supabase.from("restaurants").select("name, rating, delivery_time").limit(1).maybeSingle()),
           withTimeout(supabase.from("categories").select("*").order("priority")),
           withTimeout(supabase.from("menu_items").select("*").order("name")),
         ]);

@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SuperRouteImport } from './routes/super'
 import { Route as OrdersRouteImport } from './routes/orders'
 import { Route as MenuRouteImport } from './routes/menu'
 import { Route as LoginRouteImport } from './routes/login'
@@ -18,12 +19,24 @@ import { Route as CheckoutRouteImport } from './routes/checkout'
 import { Route as CartRouteImport } from './routes/cart'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as SuperIndexRouteImport } from './routes/super.index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as SuperSettingsRouteImport } from './routes/super.settings'
+import { Route as SuperRestaurantsRouteImport } from './routes/super.restaurants'
+import { Route as SuperOrdersRouteImport } from './routes/super.orders'
+import { Route as SuperCustomersRouteImport } from './routes/super.customers'
+import { Route as SuperAnalyticsRouteImport } from './routes/super.analytics'
 import { Route as OrderIdRouteImport } from './routes/order.$id'
-import { Route as AdminProfileRouteImport } from './routes/admin.profile'
+import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
 import { Route as AdminOrdersRouteImport } from './routes/admin.orders'
 import { Route as AdminMenuRouteImport } from './routes/admin.menu'
+import { Route as AdminAnalyticsRouteImport } from './routes/admin.analytics'
 
+const SuperRoute = SuperRouteImport.update({
+  id: '/super',
+  path: '/super',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OrdersRoute = OrdersRouteImport.update({
   id: '/orders',
   path: '/orders',
@@ -69,19 +82,49 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SuperIndexRoute = SuperIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => SuperRoute,
+} as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AdminRoute,
+} as any)
+const SuperSettingsRoute = SuperSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => SuperRoute,
+} as any)
+const SuperRestaurantsRoute = SuperRestaurantsRouteImport.update({
+  id: '/restaurants',
+  path: '/restaurants',
+  getParentRoute: () => SuperRoute,
+} as any)
+const SuperOrdersRoute = SuperOrdersRouteImport.update({
+  id: '/orders',
+  path: '/orders',
+  getParentRoute: () => SuperRoute,
+} as any)
+const SuperCustomersRoute = SuperCustomersRouteImport.update({
+  id: '/customers',
+  path: '/customers',
+  getParentRoute: () => SuperRoute,
+} as any)
+const SuperAnalyticsRoute = SuperAnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
+  getParentRoute: () => SuperRoute,
 } as any)
 const OrderIdRoute = OrderIdRouteImport.update({
   id: '/order/$id',
   path: '/order/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminProfileRoute = AdminProfileRouteImport.update({
-  id: '/profile',
-  path: '/profile',
+const AdminSettingsRoute = AdminSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminOrdersRoute = AdminOrdersRouteImport.update({
@@ -92,6 +135,11 @@ const AdminOrdersRoute = AdminOrdersRouteImport.update({
 const AdminMenuRoute = AdminMenuRouteImport.update({
   id: '/menu',
   path: '/menu',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminAnalyticsRoute = AdminAnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
   getParentRoute: () => AdminRoute,
 } as any)
 
@@ -105,11 +153,19 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/menu': typeof MenuRoute
   '/orders': typeof OrdersRoute
+  '/super': typeof SuperRouteWithChildren
+  '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/menu': typeof AdminMenuRoute
   '/admin/orders': typeof AdminOrdersRoute
-  '/admin/profile': typeof AdminProfileRoute
+  '/admin/settings': typeof AdminSettingsRoute
   '/order/$id': typeof OrderIdRoute
+  '/super/analytics': typeof SuperAnalyticsRoute
+  '/super/customers': typeof SuperCustomersRoute
+  '/super/orders': typeof SuperOrdersRoute
+  '/super/restaurants': typeof SuperRestaurantsRoute
+  '/super/settings': typeof SuperSettingsRoute
   '/admin/': typeof AdminIndexRoute
+  '/super/': typeof SuperIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -120,11 +176,18 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/menu': typeof MenuRoute
   '/orders': typeof OrdersRoute
+  '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/menu': typeof AdminMenuRoute
   '/admin/orders': typeof AdminOrdersRoute
-  '/admin/profile': typeof AdminProfileRoute
+  '/admin/settings': typeof AdminSettingsRoute
   '/order/$id': typeof OrderIdRoute
+  '/super/analytics': typeof SuperAnalyticsRoute
+  '/super/customers': typeof SuperCustomersRoute
+  '/super/orders': typeof SuperOrdersRoute
+  '/super/restaurants': typeof SuperRestaurantsRoute
+  '/super/settings': typeof SuperSettingsRoute
   '/admin': typeof AdminIndexRoute
+  '/super': typeof SuperIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -137,11 +200,19 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/menu': typeof MenuRoute
   '/orders': typeof OrdersRoute
+  '/super': typeof SuperRouteWithChildren
+  '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/menu': typeof AdminMenuRoute
   '/admin/orders': typeof AdminOrdersRoute
-  '/admin/profile': typeof AdminProfileRoute
+  '/admin/settings': typeof AdminSettingsRoute
   '/order/$id': typeof OrderIdRoute
+  '/super/analytics': typeof SuperAnalyticsRoute
+  '/super/customers': typeof SuperCustomersRoute
+  '/super/orders': typeof SuperOrdersRoute
+  '/super/restaurants': typeof SuperRestaurantsRoute
+  '/super/settings': typeof SuperSettingsRoute
   '/admin/': typeof AdminIndexRoute
+  '/super/': typeof SuperIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -155,11 +226,19 @@ export interface FileRouteTypes {
     | '/login'
     | '/menu'
     | '/orders'
+    | '/super'
+    | '/admin/analytics'
     | '/admin/menu'
     | '/admin/orders'
-    | '/admin/profile'
+    | '/admin/settings'
     | '/order/$id'
+    | '/super/analytics'
+    | '/super/customers'
+    | '/super/orders'
+    | '/super/restaurants'
+    | '/super/settings'
     | '/admin/'
+    | '/super/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -170,11 +249,18 @@ export interface FileRouteTypes {
     | '/login'
     | '/menu'
     | '/orders'
+    | '/admin/analytics'
     | '/admin/menu'
     | '/admin/orders'
-    | '/admin/profile'
+    | '/admin/settings'
     | '/order/$id'
+    | '/super/analytics'
+    | '/super/customers'
+    | '/super/orders'
+    | '/super/restaurants'
+    | '/super/settings'
     | '/admin'
+    | '/super'
   id:
     | '__root__'
     | '/'
@@ -186,11 +272,19 @@ export interface FileRouteTypes {
     | '/login'
     | '/menu'
     | '/orders'
+    | '/super'
+    | '/admin/analytics'
     | '/admin/menu'
     | '/admin/orders'
-    | '/admin/profile'
+    | '/admin/settings'
     | '/order/$id'
+    | '/super/analytics'
+    | '/super/customers'
+    | '/super/orders'
+    | '/super/restaurants'
+    | '/super/settings'
     | '/admin/'
+    | '/super/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -203,11 +297,19 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   MenuRoute: typeof MenuRoute
   OrdersRoute: typeof OrdersRoute
+  SuperRoute: typeof SuperRouteWithChildren
   OrderIdRoute: typeof OrderIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/super': {
+      id: '/super'
+      path: '/super'
+      fullPath: '/super'
+      preLoaderRoute: typeof SuperRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/orders': {
       id: '/orders'
       path: '/orders'
@@ -271,12 +373,54 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/super/': {
+      id: '/super/'
+      path: '/'
+      fullPath: '/super/'
+      preLoaderRoute: typeof SuperIndexRouteImport
+      parentRoute: typeof SuperRoute
+    }
     '/admin/': {
       id: '/admin/'
       path: '/'
       fullPath: '/admin/'
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRoute
+    }
+    '/super/settings': {
+      id: '/super/settings'
+      path: '/settings'
+      fullPath: '/super/settings'
+      preLoaderRoute: typeof SuperSettingsRouteImport
+      parentRoute: typeof SuperRoute
+    }
+    '/super/restaurants': {
+      id: '/super/restaurants'
+      path: '/restaurants'
+      fullPath: '/super/restaurants'
+      preLoaderRoute: typeof SuperRestaurantsRouteImport
+      parentRoute: typeof SuperRoute
+    }
+    '/super/orders': {
+      id: '/super/orders'
+      path: '/orders'
+      fullPath: '/super/orders'
+      preLoaderRoute: typeof SuperOrdersRouteImport
+      parentRoute: typeof SuperRoute
+    }
+    '/super/customers': {
+      id: '/super/customers'
+      path: '/customers'
+      fullPath: '/super/customers'
+      preLoaderRoute: typeof SuperCustomersRouteImport
+      parentRoute: typeof SuperRoute
+    }
+    '/super/analytics': {
+      id: '/super/analytics'
+      path: '/analytics'
+      fullPath: '/super/analytics'
+      preLoaderRoute: typeof SuperAnalyticsRouteImport
+      parentRoute: typeof SuperRoute
     }
     '/order/$id': {
       id: '/order/$id'
@@ -285,11 +429,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OrderIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin/profile': {
-      id: '/admin/profile'
-      path: '/profile'
-      fullPath: '/admin/profile'
-      preLoaderRoute: typeof AdminProfileRouteImport
+    '/admin/settings': {
+      id: '/admin/settings'
+      path: '/settings'
+      fullPath: '/admin/settings'
+      preLoaderRoute: typeof AdminSettingsRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/orders': {
@@ -306,24 +450,53 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminMenuRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/analytics': {
+      id: '/admin/analytics'
+      path: '/analytics'
+      fullPath: '/admin/analytics'
+      preLoaderRoute: typeof AdminAnalyticsRouteImport
+      parentRoute: typeof AdminRoute
+    }
   }
 }
 
 interface AdminRouteChildren {
+  AdminAnalyticsRoute: typeof AdminAnalyticsRoute
   AdminMenuRoute: typeof AdminMenuRoute
   AdminOrdersRoute: typeof AdminOrdersRoute
-  AdminProfileRoute: typeof AdminProfileRoute
+  AdminSettingsRoute: typeof AdminSettingsRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminAnalyticsRoute: AdminAnalyticsRoute,
   AdminMenuRoute: AdminMenuRoute,
   AdminOrdersRoute: AdminOrdersRoute,
-  AdminProfileRoute: AdminProfileRoute,
+  AdminSettingsRoute: AdminSettingsRoute,
   AdminIndexRoute: AdminIndexRoute,
 }
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
+interface SuperRouteChildren {
+  SuperAnalyticsRoute: typeof SuperAnalyticsRoute
+  SuperCustomersRoute: typeof SuperCustomersRoute
+  SuperOrdersRoute: typeof SuperOrdersRoute
+  SuperRestaurantsRoute: typeof SuperRestaurantsRoute
+  SuperSettingsRoute: typeof SuperSettingsRoute
+  SuperIndexRoute: typeof SuperIndexRoute
+}
+
+const SuperRouteChildren: SuperRouteChildren = {
+  SuperAnalyticsRoute: SuperAnalyticsRoute,
+  SuperCustomersRoute: SuperCustomersRoute,
+  SuperOrdersRoute: SuperOrdersRoute,
+  SuperRestaurantsRoute: SuperRestaurantsRoute,
+  SuperSettingsRoute: SuperSettingsRoute,
+  SuperIndexRoute: SuperIndexRoute,
+}
+
+const SuperRouteWithChildren = SuperRoute._addFileChildren(SuperRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
@@ -335,18 +508,9 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   MenuRoute: MenuRoute,
   OrdersRoute: OrdersRoute,
+  SuperRoute: SuperRouteWithChildren,
   OrderIdRoute: OrderIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

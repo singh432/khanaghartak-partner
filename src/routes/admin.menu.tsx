@@ -18,6 +18,7 @@ type FormState = {
 const EMPTY: FormState = { name: "", category_id: "", description: "", price: "", image_url: "", veg_type: "veg", is_available: true };
 
 function AdminMenu() {
+  const [restaurantId, setRestaurantId] = useState<string | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [items, setItems] = useState<MenuItem[]>([]);
   const [editing, setEditing] = useState<FormState | null>(null);
@@ -27,9 +28,14 @@ function AdminMenu() {
   const [newCat, setNewCat] = useState("");
 
   const load = async () => {
+    const { data: u } = await supabase.auth.getUser();
+    if (!u.user) return;
+    const { data: r } = await supabase.from("restaurants").select("id").eq("owner_id", u.user.id).limit(1).maybeSingle();
+    const rid = (r as any)?.id ?? null;
+    setRestaurantId(rid);
     const [{ data: c }, { data: m }] = await Promise.all([
-      supabase.from("categories").select("*").order("priority"),
-      supabase.from("menu_items").select("*").order("name"),
+      supabase.from("categories").select("*").eq("restaurant_id", rid).order("priority"),
+      supabase.from("menu_items").select("*").eq("restaurant_id", rid).order("name"),
     ]);
     setCategories((c ?? []) as Category[]);
     setItems((m ?? []) as MenuItem[]);
@@ -77,11 +83,12 @@ function AdminMenu() {
     if (!price || price <= 0) return toast.error("Enter a valid price");
 
     setSaving(true);
-    const payload = {
+    const payload: any = {
       name: editing.name.trim(), description: editing.description.trim() || null,
       price, image_url: editing.image_url || null, veg_type: editing.veg_type,
       is_available: editing.is_available, category_id: editing.category_id,
     };
+    if (!editing.id) payload.restaurant_id = restaurantId;
     const { error } = editing.id
       ? await supabase.from("menu_items").update(payload).eq("id", editing.id)
       : await supabase.from("menu_items").insert(payload);
@@ -100,7 +107,7 @@ function AdminMenu() {
 
   const addCategory = async () => {
     const name = newCat.trim(); if (name.length < 2) return;
-    const { error } = await supabase.from("categories").insert({ name, priority: categories.length });
+    const { error } = await supabase.from("categories").insert({ name, priority: categories.length, restaurant_id: restaurantId });
     if (error) toast.error(error.message); else { toast.success("Category added"); setNewCat(""); load(); }
   };
 
