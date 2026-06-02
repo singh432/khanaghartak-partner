@@ -44,7 +44,7 @@ function HomePage() {
     let active = true;
     setRestaurantLoading(true);
     setRestaurantError(null);
-    withTimeout(supabase.from("restaurant").select("*").limit(1).maybeSingle())
+    withTimeout(supabase.from("restaurants").select("*").limit(1).maybeSingle())
       .then(({ data, error }) => {
         if (!active) return;
         if (error) throw error;

@@ -17,14 +17,14 @@ function AdminProfile() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    supabase.from("restaurant").select("*").limit(1).maybeSingle()
+    supabase.from("restaurants").select("*").limit(1).maybeSingle()
       .then(({ data }) => setR(data as Restaurant | null));
   }, []);
 
   const save = async () => {
     if (!r) return;
     setSaving(true);
-    const { error } = await supabase.from("restaurant").update({
+    const { error } = await supabase.from("restaurants").update({
       name: r.name, tagline: r.tagline, address: r.address,
       delivery_time: r.delivery_time, is_open: r.is_open,
     }).eq("id", r.id);
