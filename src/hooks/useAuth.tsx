@@ -28,12 +28,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const loadRoles = async (userId: string) => {
       try {
-        const { data } = await withTimeout(
-          supabase.from("user_roles").select("role").eq("user_id", userId),
-        );
+        const [{ data }, { data: ownedRestaurant }] = await Promise.all([
+          withTimeout(supabase.from("user_roles").select("role").eq("user_id", userId)),
+          withTimeout(supabase.from("restaurants").select("id").eq("owner_id", userId).limit(1).maybeSingle()),
+        ]);
         const roles = (data ?? []).map((r: any) => r.role);
         if (active) {
-          setIsAdmin(roles.includes("restaurant_admin") || roles.includes("super_admin"));
+          setIsAdmin(roles.includes("restaurant_admin") || roles.includes("super_admin") || !!ownedRestaurant);
           setIsSuperAdmin(roles.includes("super_admin"));
         }
       } catch {
