@@ -32,9 +32,13 @@ function AdminLayout() {
     if (!user) return;
     let active = true;
     setRestaurantChecked(false);
-    supabase.from("restaurants").select("id").eq("owner_id", user.id).limit(1).maybeSingle()
-      .then(({ data }) => { if (active) setHasRestaurant(!!data); })
-      .finally(() => { if (active) setRestaurantChecked(true); });
+    (async () => {
+      const { data } = await supabase.from("restaurants").select("id").eq("owner_id", user.id).limit(1).maybeSingle();
+      if (active) {
+        setHasRestaurant(!!data);
+        setRestaurantChecked(true);
+      }
+    })();
     return () => { active = false; };
   }, [user]);
 
