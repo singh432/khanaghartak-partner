@@ -1,7 +1,7 @@
 import { createFileRoute, Outlet, useNavigate, Link, useRouterState } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import logo from "@/assets/logo.png";
+import { khanaGharTakLogoUrl } from "@/assets/brand";
 import { LayoutDashboard, ClipboardList, UtensilsCrossed, BarChart3, Settings as SettingsIcon, LogOut, Bell } from "lucide-react";
 
 export const Route = createFileRoute("/admin")({ component: AdminLayout });
@@ -49,7 +49,7 @@ function AdminLayout() {
       {/* Sidebar (desktop) */}
       <aside className="hidden md:flex md:w-60 md:flex-col md:border-r md:bg-card">
         <div className="flex items-center gap-2 border-b px-4 py-4">
-          <img src={logo} width={32} height={32} alt="" className="h-8 w-8" />
+          <img src={khanaGharTakLogoUrl} width={36} height={36} alt="" className="h-9 w-9 rounded-lg object-contain" />
           <div>
             <p className="text-sm font-bold leading-tight">KhanaGharTak</p>
             <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Admin Panel</p>
@@ -75,7 +75,7 @@ function AdminLayout() {
         {/* Mobile top header */}
         <header className="sticky top-0 z-30 flex items-center justify-between border-b bg-background/95 px-4 py-3 backdrop-blur md:hidden">
           <div className="flex items-center gap-2">
-            <img src={logo} width={32} height={32} alt="" className="h-8 w-8" />
+            <img src={khanaGharTakLogoUrl} width={36} height={36} alt="" className="h-9 w-9 rounded-lg object-contain" />
             <div>
               <p className="text-sm font-bold leading-tight">Restaurant Admin</p>
               <p className="text-[11px] text-muted-foreground inline-flex items-center gap-1">
