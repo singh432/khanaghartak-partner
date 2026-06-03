@@ -30,7 +30,7 @@ function AdminLayout() {
   if (!isAdmin) {
     return (
       <div className="p-6 text-center">
-        <img src={logo} width={56} height={56} alt="" className="mx-auto h-14 w-14" />
+        <img src={khanaGharTakLogoUrl} width={64} height={64} alt="" className="mx-auto h-16 w-16 rounded-xl object-contain" />
         <h1 className="mt-4 text-lg font-bold">Restaurant Admin</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Your account doesn't have admin access. Ask the owner to grant you the
