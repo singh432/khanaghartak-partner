@@ -1,5 +1,5 @@
 import { createFileRoute, Outlet, useNavigate, Link, useRouterState } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { khanaGharTakLogoUrl } from "@/assets/brand";
 import { supabase } from "@/integrations/supabase/client";
@@ -21,15 +21,27 @@ function AdminLayout() {
   const navigate = useNavigate();
   const { user, loading, isAdmin, signOut } = useAuth();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const [restaurantChecked, setRestaurantChecked] = useState(false);
+  const [hasRestaurant, setHasRestaurant] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/login", search: { redirect: "/admin" } as never });
   }, [user, loading, navigate]);
 
-  if (loading) return <div className="p-8 text-center text-sm">Loading…</div>;
+  useEffect(() => {
+    if (!user) return;
+    let active = true;
+    setRestaurantChecked(false);
+    supabase.from("restaurants").select("id").eq("owner_id", user.id).limit(1).maybeSingle()
+      .then(({ data }) => { if (active) setHasRestaurant(!!data); })
+      .finally(() => { if (active) setRestaurantChecked(true); });
+    return () => { active = false; };
+  }, [user]);
+
+  if (loading || (user && !restaurantChecked)) return <div className="p-8 text-center text-sm">Loading…</div>;
   if (!user) return null;
 
-  if (!isAdmin) {
+  if (!isAdmin || !hasRestaurant) {
     return <RestaurantSetup userId={user.id} onSignOut={signOut} />;
   }
 
@@ -104,7 +116,7 @@ function RestaurantSetup({ userId, onSignOut }: { userId: string; onSignOut: () 
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ name: "", tagline: "", phone: "", address: "" });
 
-  const createRestaurant = async (event: React.FormEvent) => {
+  const createRestaurant = async (event: FormEvent) => {
     event.preventDefault();
     const name = form.name.trim();
     if (name.length < 2) return toast.error("Restaurant name is required");
@@ -157,6 +169,6 @@ function RestaurantSetup({ userId, onSignOut }: { userId: string; onSignOut: () 
   );
 }
 
-function SetupField({ label, children }: { label: string; children: React.ReactNode }) {
+function SetupField({ label, children }: { label: string; children: ReactNode }) {
   return <label className="block"><span className="mb-1 block text-xs font-semibold text-muted-foreground">{label}</span>{children}</label>;
 }
