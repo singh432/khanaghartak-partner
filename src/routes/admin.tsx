@@ -1,8 +1,10 @@
 import { createFileRoute, Outlet, useNavigate, Link, useRouterState } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { khanaGharTakLogoUrl } from "@/assets/brand";
-import { LayoutDashboard, ClipboardList, UtensilsCrossed, BarChart3, Settings as SettingsIcon, LogOut, Bell } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { LayoutDashboard, ClipboardList, UtensilsCrossed, BarChart3, Settings as SettingsIcon, LogOut, Bell, Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/admin")({ component: AdminLayout });
 
@@ -28,18 +30,7 @@ function AdminLayout() {
   if (!user) return null;
 
   if (!isAdmin) {
-    return (
-      <div className="p-6 text-center">
-        <img src={khanaGharTakLogoUrl} width={64} height={64} alt="" className="mx-auto h-16 w-16 rounded-xl object-contain" />
-        <h1 className="mt-4 text-lg font-bold">Restaurant Admin</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Your account doesn't have admin access. Ask the owner to grant you the
-          <code className="mx-1 rounded bg-secondary px-1.5 py-0.5 text-xs">restaurant_admin</code> role.
-        </p>
-        <p className="mt-4 text-xs text-muted-foreground break-all">Your user ID: {user.id}</p>
-        <button onClick={signOut} className="mt-6 rounded-full bg-secondary px-4 py-2 text-sm">Sign out</button>
-      </div>
-    );
+    return <RestaurantSetup userId={user.id} onSignOut={signOut} />;
   }
 
   const isActive = (to: string, exact?: boolean) => exact ? pathname === to : pathname === to || pathname.startsWith(to + "/");
@@ -107,4 +98,65 @@ function AdminLayout() {
       </div>
     </div>
   );
+}
+
+function RestaurantSetup({ userId, onSignOut }: { userId: string; onSignOut: () => Promise<void> }) {
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({ name: "", tagline: "", phone: "", address: "" });
+
+  const createRestaurant = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const name = form.name.trim();
+    if (name.length < 2) return toast.error("Restaurant name is required");
+    setSaving(true);
+    const { data, error } = await supabase.from("restaurants").insert({
+      owner_id: userId,
+      name,
+      tagline: form.tagline.trim() || null,
+      phone: form.phone.trim() || null,
+      address: form.address.trim() || null,
+      status: "active",
+      is_open: true,
+      delivery_time: "30-40 min",
+      delivery_charges: 25,
+      min_order_value: 0,
+    }).select("id").single();
+    if (error || !data) {
+      setSaving(false);
+      return toast.error(error?.message ?? "Could not add restaurant");
+    }
+    await supabase.from("categories").insert([
+      { restaurant_id: data.id, name: "Breakfast", priority: 0 },
+      { restaurant_id: data.id, name: "Main Course", priority: 1 },
+      { restaurant_id: data.id, name: "Snacks", priority: 2 },
+      { restaurant_id: data.id, name: "Beverages", priority: 3 },
+    ]);
+    toast.success("Restaurant added");
+    window.location.href = "/admin/settings";
+  };
+
+  return (
+    <div className="min-h-screen bg-secondary/30 px-4 py-8">
+      <div className="mx-auto max-w-md rounded-2xl border bg-card p-5 shadow-sm">
+        <img src={khanaGharTakLogoUrl} width={84} height={84} alt="KhanaGharTak" className="mx-auto h-20 w-20 rounded-2xl object-contain" />
+        <h1 className="mt-4 text-center text-xl font-extrabold tracking-tight">Add your restaurant</h1>
+        <p className="mt-1 text-center text-sm text-muted-foreground">Create your restaurant profile to open the owner dashboard.</p>
+        <form onSubmit={createRestaurant} className="mt-5 space-y-3">
+          <SetupField label="Restaurant name"><input className="setup-input" value={form.name} maxLength={80} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="KhanaGharTak Kitchen" /></SetupField>
+          <SetupField label="Tagline"><input className="setup-input" value={form.tagline} maxLength={120} onChange={(e) => setForm({ ...form, tagline: e.target.value })} placeholder="Fresh home-style meals" /></SetupField>
+          <SetupField label="Phone"><input className="setup-input" value={form.phone} maxLength={20} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+91 98765 43210" /></SetupField>
+          <SetupField label="Address"><textarea className="setup-input" rows={3} value={form.address} maxLength={300} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="Restaurant address" /></SetupField>
+          <button type="submit" disabled={saving} className="inline-flex h-12 w-full items-center justify-center rounded-xl bg-primary text-sm font-bold text-primary-foreground disabled:opacity-60">
+            {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Add restaurant
+          </button>
+        </form>
+        <button onClick={onSignOut} className="mt-4 w-full text-center text-xs font-medium text-muted-foreground underline">Sign out</button>
+      </div>
+      <style>{`.setup-input { width:100%; border-radius:12px; padding:11px 12px; background:var(--color-input); border:1px solid var(--color-border); font-size:14px; outline:none; } .setup-input:focus{ border-color:var(--color-ring); }`}</style>
+    </div>
+  );
+}
+
+function SetupField({ label, children }: { label: string; children: React.ReactNode }) {
+  return <label className="block"><span className="mb-1 block text-xs font-semibold text-muted-foreground">{label}</span>{children}</label>;
 }
