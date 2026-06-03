@@ -1,11 +1,11 @@
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { z } from "zod";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 import { useAuth } from "@/hooks/useAuth";
-import logo from "@/assets/logo.png";
+import { khanaGharTakLogoUrl } from "@/assets/brand";
 import { Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/login")({
@@ -149,7 +149,7 @@ function LoginPage() {
   return (
     <div className="flex min-h-[100dvh] flex-col px-6 py-10">
       <div className="text-center">
-        <img src={logo} alt="KhanaGharTak" width={72} height={72} className="mx-auto h-16 w-16" />
+        <img src={khanaGharTakLogoUrl} alt="KhanaGharTak" width={112} height={112} className="mx-auto h-24 w-24 rounded-2xl object-contain" />
         <h1 className="mt-3 text-2xl font-extrabold tracking-tight">
           {mode === "signin" ? "Welcome back" : "Create your account"}
         </h1>
@@ -231,7 +231,7 @@ function LoginPage() {
 
       <p className="mt-8 text-center text-xs text-muted-foreground">
         Are you a restaurant owner?{" "}
-        <Link to="/admin" className="font-medium underline">Open admin panel</Link>
+        <button type="button" onClick={() => { window.location.href = "/admin"; }} className="font-medium underline">Open admin panel</button>
       </p>
 
       <style>{`

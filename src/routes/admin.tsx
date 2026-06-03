@@ -1,8 +1,10 @@
 import { createFileRoute, Outlet, useNavigate, Link, useRouterState } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import logo from "@/assets/logo.png";
-import { LayoutDashboard, ClipboardList, UtensilsCrossed, BarChart3, Settings as SettingsIcon, LogOut, Bell } from "lucide-react";
+import { khanaGharTakLogoUrl } from "@/assets/brand";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { LayoutDashboard, ClipboardList, UtensilsCrossed, BarChart3, Settings as SettingsIcon, LogOut, Bell, Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/admin")({ component: AdminLayout });
 
@@ -19,27 +21,32 @@ function AdminLayout() {
   const navigate = useNavigate();
   const { user, loading, isAdmin, signOut } = useAuth();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const [restaurantChecked, setRestaurantChecked] = useState(false);
+  const [hasRestaurant, setHasRestaurant] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/login", search: { redirect: "/admin" } as never });
   }, [user, loading, navigate]);
 
-  if (loading) return <div className="p-8 text-center text-sm">Loading…</div>;
+  useEffect(() => {
+    if (!user) return;
+    let active = true;
+    setRestaurantChecked(false);
+    (async () => {
+      const { data } = await supabase.from("restaurants").select("id").eq("owner_id", user.id).limit(1).maybeSingle();
+      if (active) {
+        setHasRestaurant(!!data);
+        setRestaurantChecked(true);
+      }
+    })();
+    return () => { active = false; };
+  }, [user]);
+
+  if (loading || (user && !restaurantChecked)) return <div className="p-8 text-center text-sm">Loading…</div>;
   if (!user) return null;
 
-  if (!isAdmin) {
-    return (
-      <div className="p-6 text-center">
-        <img src={logo} width={56} height={56} alt="" className="mx-auto h-14 w-14" />
-        <h1 className="mt-4 text-lg font-bold">Restaurant Admin</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Your account doesn't have admin access. Ask the owner to grant you the
-          <code className="mx-1 rounded bg-secondary px-1.5 py-0.5 text-xs">restaurant_admin</code> role.
-        </p>
-        <p className="mt-4 text-xs text-muted-foreground break-all">Your user ID: {user.id}</p>
-        <button onClick={signOut} className="mt-6 rounded-full bg-secondary px-4 py-2 text-sm">Sign out</button>
-      </div>
-    );
+  if (!isAdmin || !hasRestaurant) {
+    return <RestaurantSetup userId={user.id} onSignOut={signOut} />;
   }
 
   const isActive = (to: string, exact?: boolean) => exact ? pathname === to : pathname === to || pathname.startsWith(to + "/");
@@ -49,7 +56,7 @@ function AdminLayout() {
       {/* Sidebar (desktop) */}
       <aside className="hidden md:flex md:w-60 md:flex-col md:border-r md:bg-card">
         <div className="flex items-center gap-2 border-b px-4 py-4">
-          <img src={logo} width={32} height={32} alt="" className="h-8 w-8" />
+          <img src={khanaGharTakLogoUrl} width={36} height={36} alt="" className="h-9 w-9 rounded-lg object-contain" />
           <div>
             <p className="text-sm font-bold leading-tight">KhanaGharTak</p>
             <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Admin Panel</p>
@@ -75,7 +82,7 @@ function AdminLayout() {
         {/* Mobile top header */}
         <header className="sticky top-0 z-30 flex items-center justify-between border-b bg-background/95 px-4 py-3 backdrop-blur md:hidden">
           <div className="flex items-center gap-2">
-            <img src={logo} width={32} height={32} alt="" className="h-8 w-8" />
+            <img src={khanaGharTakLogoUrl} width={36} height={36} alt="" className="h-9 w-9 rounded-lg object-contain" />
             <div>
               <p className="text-sm font-bold leading-tight">Restaurant Admin</p>
               <p className="text-[11px] text-muted-foreground inline-flex items-center gap-1">
@@ -107,4 +114,65 @@ function AdminLayout() {
       </div>
     </div>
   );
+}
+
+function RestaurantSetup({ userId, onSignOut }: { userId: string; onSignOut: () => Promise<void> }) {
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({ name: "", tagline: "", phone: "", address: "" });
+
+  const createRestaurant = async (event: FormEvent) => {
+    event.preventDefault();
+    const name = form.name.trim();
+    if (name.length < 2) return toast.error("Restaurant name is required");
+    setSaving(true);
+    const { data, error } = await supabase.from("restaurants").insert({
+      owner_id: userId,
+      name,
+      tagline: form.tagline.trim() || null,
+      phone: form.phone.trim() || null,
+      address: form.address.trim() || null,
+      status: "active",
+      is_open: true,
+      delivery_time: "30-40 min",
+      delivery_charges: 25,
+      min_order_value: 0,
+    }).select("id").single();
+    if (error || !data) {
+      setSaving(false);
+      return toast.error(error?.message ?? "Could not add restaurant");
+    }
+    await supabase.from("categories").insert([
+      { restaurant_id: data.id, name: "Breakfast", priority: 0 },
+      { restaurant_id: data.id, name: "Main Course", priority: 1 },
+      { restaurant_id: data.id, name: "Snacks", priority: 2 },
+      { restaurant_id: data.id, name: "Beverages", priority: 3 },
+    ]);
+    toast.success("Restaurant added");
+    window.location.href = "/admin/settings";
+  };
+
+  return (
+    <div className="min-h-screen bg-secondary/30 px-4 py-8">
+      <div className="mx-auto max-w-md rounded-2xl border bg-card p-5 shadow-sm">
+        <img src={khanaGharTakLogoUrl} width={84} height={84} alt="KhanaGharTak" className="mx-auto h-20 w-20 rounded-2xl object-contain" />
+        <h1 className="mt-4 text-center text-xl font-extrabold tracking-tight">Add your restaurant</h1>
+        <p className="mt-1 text-center text-sm text-muted-foreground">Create your restaurant profile to open the owner dashboard.</p>
+        <form onSubmit={createRestaurant} className="mt-5 space-y-3">
+          <SetupField label="Restaurant name"><input className="setup-input" value={form.name} maxLength={80} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="KhanaGharTak Kitchen" /></SetupField>
+          <SetupField label="Tagline"><input className="setup-input" value={form.tagline} maxLength={120} onChange={(e) => setForm({ ...form, tagline: e.target.value })} placeholder="Fresh home-style meals" /></SetupField>
+          <SetupField label="Phone"><input className="setup-input" value={form.phone} maxLength={20} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+91 98765 43210" /></SetupField>
+          <SetupField label="Address"><textarea className="setup-input" rows={3} value={form.address} maxLength={300} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="Restaurant address" /></SetupField>
+          <button type="submit" disabled={saving} className="inline-flex h-12 w-full items-center justify-center rounded-xl bg-primary text-sm font-bold text-primary-foreground disabled:opacity-60">
+            {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Add restaurant
+          </button>
+        </form>
+        <button onClick={onSignOut} className="mt-4 w-full text-center text-xs font-medium text-muted-foreground underline">Sign out</button>
+      </div>
+      <style>{`.setup-input { width:100%; border-radius:12px; padding:11px 12px; background:var(--color-input); border:1px solid var(--color-border); font-size:14px; outline:none; } .setup-input:focus{ border-color:var(--color-ring); }`}</style>
+    </div>
+  );
+}
+
+function SetupField({ label, children }: { label: string; children: ReactNode }) {
+  return <label className="block"><span className="mb-1 block text-xs font-semibold text-muted-foreground">{label}</span>{children}</label>;
 }

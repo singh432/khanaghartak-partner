@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { khanaGharTakLogoUrl } from "@/assets/brand";
 import { Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/admin/settings")({ component: AdminSettings });
@@ -18,12 +19,21 @@ type Restaurant = {
 function AdminSettings() {
   const { user } = useAuth();
   const [r, setR] = useState<Restaurant | null>(null);
+  const [loadingRestaurant, setLoadingRestaurant] = useState(true);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!user) return;
-    supabase.from("restaurants").select("*").eq("owner_id", user.id).limit(1).maybeSingle()
-      .then(({ data }) => setR(data as Restaurant | null));
+    let active = true;
+    setLoadingRestaurant(true);
+    (async () => {
+      const { data } = await supabase.from("restaurants").select("*").eq("owner_id", user.id).limit(1).maybeSingle();
+      if (active) {
+        setR(data as Restaurant | null);
+        setLoadingRestaurant(false);
+      }
+    })();
+    return () => { active = false; };
   }, [user]);
 
   const save = async () => {
@@ -51,7 +61,17 @@ function AdminSettings() {
     toast.success("Logo updated");
   };
 
-  if (!r) return <div className="p-8 text-center text-sm text-muted-foreground">Loading…</div>;
+  if (loadingRestaurant) return <div className="p-8 text-center text-sm text-muted-foreground">Loading…</div>;
+  if (!r) {
+    return (
+      <div className="p-6 text-center">
+        <img src={khanaGharTakLogoUrl} alt="KhanaGharTak" width={72} height={72} className="mx-auto h-18 w-18 rounded-2xl object-contain" />
+        <h1 className="mt-4 text-lg font-bold">No restaurant added</h1>
+        <p className="mt-2 text-sm text-muted-foreground">Go back to Admin Dashboard and add your restaurant first.</p>
+        <a href="/admin" className="mt-5 inline-flex rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground">Add restaurant</a>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 p-4 md:p-6">
