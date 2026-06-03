@@ -11,6 +11,8 @@ export function BottomNav() {
   // Hide on auth/checkout/admin/order-detail and root
   if (
     HIDDEN_ON.includes(pathname) ||
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/super") ||
     pathname.startsWith("/order/")
   ) {
     return null;
