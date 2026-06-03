@@ -24,10 +24,16 @@ function AdminSettings() {
 
   useEffect(() => {
     if (!user) return;
+    let active = true;
     setLoadingRestaurant(true);
-    supabase.from("restaurants").select("*").eq("owner_id", user.id).limit(1).maybeSingle()
-      .then(({ data }) => setR(data as Restaurant | null))
-      .finally(() => setLoadingRestaurant(false));
+    (async () => {
+      const { data } = await supabase.from("restaurants").select("*").eq("owner_id", user.id).limit(1).maybeSingle();
+      if (active) {
+        setR(data as Restaurant | null);
+        setLoadingRestaurant(false);
+      }
+    })();
+    return () => { active = false; };
   }, [user]);
 
   const save = async () => {
