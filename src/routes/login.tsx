@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -231,7 +231,7 @@ function LoginPage() {
 
       <p className="mt-8 text-center text-xs text-muted-foreground">
         Are you a restaurant owner?{" "}
-        <a href="/admin" className="font-medium underline">Open admin panel</a>
+        <button type="button" onClick={() => { window.location.href = "/admin"; }} className="font-medium underline">Open admin panel</button>
       </p>
 
       <style>{`
