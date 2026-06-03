@@ -1,0 +1,1 @@
+DROP FUNCTION IF EXISTS public.create_my_restaurant(text, text, text, text, text, numeric, numeric);

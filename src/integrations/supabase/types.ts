@@ -339,18 +339,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      create_my_restaurant: {
-        Args: {
-          _address?: string
-          _delivery_charges?: number
-          _delivery_time?: string
-          _min_order_value?: number
-          _name: string
-          _phone?: string
-          _tagline?: string
-        }
-        Returns: string
-      }
       place_order: {
         Args: {
           _address: string
