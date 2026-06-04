@@ -126,12 +126,14 @@ function LoginPage() {
       if (!nRes.success) return toast.error(nRes.error.issues[0].message);
     }
     setBusy(true);
+    const asNow = getAsParam();
+    const landing = asNow === "user" ? "/home" : `/login?as=${asNow}`;
     try {
       const { error } = await supabase.auth.signInWithOtp({
         email: form.email,
         options: {
           shouldCreateUser: mode === "signup",
-          emailRedirectTo: `${window.location.origin}${getRedirectTarget()}`,
+          emailRedirectTo: `${window.location.origin}${landing}`,
           data: mode === "signup" ? { full_name: form.full_name, phone: form.phone } : undefined,
         },
       });
