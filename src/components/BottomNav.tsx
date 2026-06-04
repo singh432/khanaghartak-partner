@@ -13,6 +13,7 @@ export function BottomNav() {
     HIDDEN_ON.includes(pathname) ||
     pathname.startsWith("/admin") ||
     pathname.startsWith("/super") ||
+    pathname.startsWith("/rider") ||
     pathname.startsWith("/order/")
   ) {
     return null;

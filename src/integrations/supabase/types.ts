@@ -131,6 +131,7 @@ export type Database = {
           payment_method: string
           rejection_reason: string | null
           restaurant_id: string | null
+          rider_id: string | null
           status: string
           subtotal: number
           total: number
@@ -152,6 +153,7 @@ export type Database = {
           payment_method?: string
           rejection_reason?: string | null
           restaurant_id?: string | null
+          rider_id?: string | null
           status?: string
           subtotal: number
           total: number
@@ -173,6 +175,7 @@ export type Database = {
           payment_method?: string
           rejection_reason?: string | null
           restaurant_id?: string | null
+          rider_id?: string | null
           status?: string
           subtotal?: number
           total?: number
@@ -339,6 +342,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      become_rider: { Args: never; Returns: undefined }
       place_order: {
         Args: {
           _address: string
@@ -354,7 +358,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "customer" | "restaurant_admin" | "super_admin"
+      app_role: "customer" | "restaurant_admin" | "super_admin" | "rider"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -482,7 +486,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["customer", "restaurant_admin", "super_admin"],
+      app_role: ["customer", "restaurant_admin", "super_admin", "rider"],
     },
   },
 } as const

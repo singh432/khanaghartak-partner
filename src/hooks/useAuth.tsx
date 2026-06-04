@@ -9,11 +9,12 @@ type AuthCtx = {
   loading: boolean;
   isAdmin: boolean;
   isSuperAdmin: boolean;
+  isRider: boolean;
   signOut: () => Promise<void>;
 };
 
 const Ctx = createContext<AuthCtx>({
-  user: null, session: null, loading: true, isAdmin: false, isSuperAdmin: false, signOut: async () => {},
+  user: null, session: null, loading: true, isAdmin: false, isSuperAdmin: false, isRider: false, signOut: async () => {},
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -22,6 +23,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [isRider, setIsRider] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -36,9 +38,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (active) {
           setIsAdmin(roles.includes("restaurant_admin") || roles.includes("super_admin") || !!ownedRestaurant);
           setIsSuperAdmin(roles.includes("super_admin"));
+          setIsRider(roles.includes("rider"));
         }
       } catch {
-        if (active) { setIsAdmin(false); setIsSuperAdmin(false); }
+        if (active) { setIsAdmin(false); setIsSuperAdmin(false); setIsRider(false); }
       }
     };
 
@@ -52,7 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (active) setLoading(false);
         }, 0);
       } else {
-        setIsAdmin(false); setIsSuperAdmin(false); setLoading(false);
+        setIsAdmin(false); setIsSuperAdmin(false); setIsRider(false); setLoading(false);
       }
     });
 
@@ -62,11 +65,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(data.session);
         setUser(data.session?.user ?? null);
         if (data.session?.user) await loadRoles(data.session.user.id);
-        else { setIsAdmin(false); setIsSuperAdmin(false); }
+        else { setIsAdmin(false); setIsSuperAdmin(false); setIsRider(false); }
       })
       .catch(() => {
         if (!active) return;
-        setSession(null); setUser(null); setIsAdmin(false); setIsSuperAdmin(false);
+        setSession(null); setUser(null); setIsAdmin(false); setIsSuperAdmin(false); setIsRider(false);
       })
       .finally(() => { if (active) setLoading(false); });
 
@@ -76,7 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => { await supabase.auth.signOut(); };
 
   return (
-    <Ctx.Provider value={{ user, session, loading, isAdmin, isSuperAdmin, signOut }}>
+    <Ctx.Provider value={{ user, session, loading, isAdmin, isSuperAdmin, isRider, signOut }}>
       {children}
     </Ctx.Provider>
   );

@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SuperRouteImport } from './routes/super'
+import { Route as RiderRouteImport } from './routes/rider'
 import { Route as OrdersRouteImport } from './routes/orders'
 import { Route as MenuRouteImport } from './routes/menu'
 import { Route as LoginRouteImport } from './routes/login'
@@ -35,6 +36,11 @@ import { Route as AdminAnalyticsRouteImport } from './routes/admin.analytics'
 const SuperRoute = SuperRouteImport.update({
   id: '/super',
   path: '/super',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RiderRoute = RiderRouteImport.update({
+  id: '/rider',
+  path: '/rider',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OrdersRoute = OrdersRouteImport.update({
@@ -153,6 +159,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/menu': typeof MenuRoute
   '/orders': typeof OrdersRoute
+  '/rider': typeof RiderRoute
   '/super': typeof SuperRouteWithChildren
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/menu': typeof AdminMenuRoute
@@ -176,6 +183,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/menu': typeof MenuRoute
   '/orders': typeof OrdersRoute
+  '/rider': typeof RiderRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/menu': typeof AdminMenuRoute
   '/admin/orders': typeof AdminOrdersRoute
@@ -200,6 +208,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/menu': typeof MenuRoute
   '/orders': typeof OrdersRoute
+  '/rider': typeof RiderRoute
   '/super': typeof SuperRouteWithChildren
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/menu': typeof AdminMenuRoute
@@ -226,6 +235,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/menu'
     | '/orders'
+    | '/rider'
     | '/super'
     | '/admin/analytics'
     | '/admin/menu'
@@ -249,6 +259,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/menu'
     | '/orders'
+    | '/rider'
     | '/admin/analytics'
     | '/admin/menu'
     | '/admin/orders'
@@ -272,6 +283,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/menu'
     | '/orders'
+    | '/rider'
     | '/super'
     | '/admin/analytics'
     | '/admin/menu'
@@ -297,6 +309,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   MenuRoute: typeof MenuRoute
   OrdersRoute: typeof OrdersRoute
+  RiderRoute: typeof RiderRoute
   SuperRoute: typeof SuperRouteWithChildren
   OrderIdRoute: typeof OrderIdRoute
 }
@@ -308,6 +321,13 @@ declare module '@tanstack/react-router' {
       path: '/super'
       fullPath: '/super'
       preLoaderRoute: typeof SuperRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rider': {
+      id: '/rider'
+      path: '/rider'
+      fullPath: '/rider'
+      preLoaderRoute: typeof RiderRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/orders': {
@@ -508,6 +528,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   MenuRoute: MenuRoute,
   OrdersRoute: OrdersRoute,
+  RiderRoute: RiderRoute,
   SuperRoute: SuperRouteWithChildren,
   OrderIdRoute: OrderIdRoute,
 }
