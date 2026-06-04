@@ -33,7 +33,7 @@ type Mode = "signin" | "signup";
 
 function LoginPage() {
   const navigate = useNavigate();
-  const { user, loading: authLoading, isAdmin, isSuperAdmin } = useAuth();
+  const { user, loading: authLoading, isAdmin, isSuperAdmin, isRider } = useAuth();
   const [method, setMethod] = useState<Method>("password");
   const [mode, setMode] = useState<Mode>("signin");
   const [busy, setBusy] = useState(false);
@@ -47,13 +47,14 @@ function LoginPage() {
     if (redirect && redirect.startsWith("/")) return redirect;
     if (isSuperAdmin) return "/super";
     if (isAdmin) return "/admin";
+    if (isRider) return "/rider";
     return "/home";
   };
 
   useEffect(() => {
     if (!user || authLoading) return;
     navigate({ to: getRedirectTarget() as "/home" });
-  }, [user, authLoading, isAdmin, isSuperAdmin, navigate]);
+  }, [user, authLoading, isAdmin, isSuperAdmin, isRider, navigate]);
 
   const onSubmitPassword = async (e: React.FormEvent) => {
     e.preventDefault();
