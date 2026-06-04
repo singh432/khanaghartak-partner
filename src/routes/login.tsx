@@ -92,12 +92,14 @@ function LoginPage() {
       if (!phRes.success) return toast.error(phRes.error.issues[0].message);
     }
     setBusy(true);
+    const asNow = getAsParam();
+    const landing = asNow === "user" ? "/home" : `/login?as=${asNow}`;
     try {
       if (mode === "signup") {
         const { error } = await supabase.auth.signUp({
           email: form.email, password: form.password,
           options: {
-            emailRedirectTo: `${window.location.origin}${getRedirectTarget()}`,
+            emailRedirectTo: `${window.location.origin}${landing}`,
             data: { full_name: form.full_name, phone: form.phone },
           },
         });
