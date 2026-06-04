@@ -181,9 +181,17 @@ function LoginPage() {
       <div className="text-center">
         <img src={khanaGharTakLogoUrl} alt="KhanaGharTak" width={112} height={112} className="mx-auto h-24 w-24 rounded-2xl object-contain" />
         <h1 className="mt-3 text-2xl font-extrabold tracking-tight">
-          {mode === "signin" ? "Welcome back" : "Create your account"}
+          {getAsParam() === "admin" ? "Restaurant Admin Login" : getAsParam() === "rider" ? "Rider Login" : (mode === "signin" ? "Welcome back" : "Create your account")}
         </h1>
-        <p className="mt-1 text-sm text-muted-foreground">Ghar jaisa khana, seedha aapke ghar tak.</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {getAsParam() === "admin" ? "Sign in to manage your restaurant." : getAsParam() === "rider" ? "Sign in with your rider account." : "Ghar jaisa khana, seedha aapke ghar tak."}
+        </p>
+        {getAsParam() !== "user" && (
+          <button type="button" onClick={() => { window.location.href = "/login"; }}
+            className="mt-2 text-xs font-medium text-primary underline">
+            ← Back to customer login
+          </button>
+        )}
       </div>
 
       <div className="mt-6 grid grid-cols-2 gap-1 rounded-xl bg-muted p-1 text-sm font-semibold">
