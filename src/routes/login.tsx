@@ -41,19 +41,42 @@ function LoginPage() {
   const [otpSent, setOtpSent] = useState(false);
   const [otpCode, setOtpCode] = useState("");
 
+  const getAsParam = (): "admin" | "rider" | "user" => {
+    if (typeof window === "undefined") return "user";
+    const as = new URLSearchParams(window.location.search).get("as");
+    if (as === "admin" || as === "rider") return as;
+    return "user";
+  };
+
   const getRedirectTarget = () => {
-    const params = new URLSearchParams(window.location.search);
-    const redirect = params.get("redirect");
-    if (redirect && redirect.startsWith("/")) return redirect;
-    if (isSuperAdmin) return "/super";
-    if (isAdmin) return "/admin";
-    if (isRider) return "/rider";
+    const as = getAsParam();
+    if (as === "admin") {
+      if (isSuperAdmin) return "/super";
+      if (isAdmin) return "/admin";
+      return "__deny_admin";
+    }
+    if (as === "rider") {
+      if (isRider) return "/rider";
+      return "__deny_rider";
+    }
+    // default customer login
     return "/home";
   };
 
   useEffect(() => {
     if (!user || authLoading) return;
-    navigate({ to: getRedirectTarget() as "/home" });
+    const target = getRedirectTarget();
+    if (target === "__deny_admin") {
+      toast.error("This account isn't a restaurant/admin account.");
+      navigate({ to: "/home" });
+      return;
+    }
+    if (target === "__deny_rider") {
+      toast.error("This account isn't a rider account.");
+      navigate({ to: "/home" });
+      return;
+    }
+    navigate({ to: target as "/home" });
   }, [user, authLoading, isAdmin, isSuperAdmin, isRider, navigate]);
 
   const onSubmitPassword = async (e: React.FormEvent) => {
