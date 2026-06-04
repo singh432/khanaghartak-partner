@@ -9,11 +9,12 @@ type AuthCtx = {
   loading: boolean;
   isAdmin: boolean;
   isSuperAdmin: boolean;
+  isRider: boolean;
   signOut: () => Promise<void>;
 };
 
 const Ctx = createContext<AuthCtx>({
-  user: null, session: null, loading: true, isAdmin: false, isSuperAdmin: false, signOut: async () => {},
+  user: null, session: null, loading: true, isAdmin: false, isSuperAdmin: false, isRider: false, signOut: async () => {},
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
