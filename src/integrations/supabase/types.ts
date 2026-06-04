@@ -131,6 +131,7 @@ export type Database = {
           payment_method: string
           rejection_reason: string | null
           restaurant_id: string | null
+          rider_id: string | null
           status: string
           subtotal: number
           total: number
@@ -152,6 +153,7 @@ export type Database = {
           payment_method?: string
           rejection_reason?: string | null
           restaurant_id?: string | null
+          rider_id?: string | null
           status?: string
           subtotal: number
           total: number
@@ -173,6 +175,7 @@ export type Database = {
           payment_method?: string
           rejection_reason?: string | null
           restaurant_id?: string | null
+          rider_id?: string | null
           status?: string
           subtotal?: number
           total?: number
