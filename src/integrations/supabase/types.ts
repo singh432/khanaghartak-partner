@@ -342,6 +342,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      become_rider: { Args: never; Returns: undefined }
       place_order: {
         Args: {
           _address: string
