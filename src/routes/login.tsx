@@ -267,14 +267,18 @@ function LoginPage() {
           className="font-semibold text-primary">{mode === "signin" ? "Create account" : "Sign in"}</button>
       </p>
 
-      <p className="mt-8 text-center text-xs text-muted-foreground">
-        Are you a restaurant owner?{" "}
-        <button type="button" onClick={() => { window.location.href = "/admin"; }} className="font-medium underline">Open admin panel</button>
-      </p>
-      <p className="mt-2 text-center text-xs text-muted-foreground">
-        Delivery rider?{" "}
-        <button type="button" onClick={() => { window.location.href = "/rider"; }} className="font-medium underline">Open rider panel</button>
-      </p>
+      {getAsParam() === "user" && (
+        <>
+          <p className="mt-8 text-center text-xs text-muted-foreground">
+            Are you a restaurant owner?{" "}
+            <button type="button" onClick={() => { window.location.href = "/login?as=admin"; }} className="font-medium underline">Open admin panel</button>
+          </p>
+          <p className="mt-2 text-center text-xs text-muted-foreground">
+            Delivery rider?{" "}
+            <button type="button" onClick={() => { window.location.href = "/login?as=rider"; }} className="font-medium underline">Open rider panel</button>
+          </p>
+        </>
+      )}
 
       <style>{`
         .input { width:100%; height:48px; border-radius: 12px; padding: 0 14px; background: var(--color-input); border: 1px solid var(--color-border); font-size: 15px; outline: none; }
