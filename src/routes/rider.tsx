@@ -71,7 +71,6 @@ function RiderDashboard({ riderId, onSignOut }: { riderId: string; onSignOut: ()
     const { data, error } = await supabase
       .from("orders")
       .select("*")
-      .or(`and(status.eq.out_for_delivery,rider_id.is.null),rider_id.eq.${riderId}`)
       .order("created_at", { ascending: false })
       .limit(100);
     if (error) { toast.error(error.message); return; }
