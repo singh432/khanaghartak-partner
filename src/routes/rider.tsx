@@ -29,7 +29,7 @@ function RiderPanel() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!loading && !user) navigate({ to: "/login", search: { redirect: "/rider" } as any });
+    if (!loading && !user) navigate({ to: "/login", search: { as: "rider" } as any });
   }, [user, loading, navigate]);
 
   if (loading) return <Center><Loader2 className="h-6 w-6 animate-spin text-primary" /></Center>;

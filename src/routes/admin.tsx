@@ -25,7 +25,7 @@ function AdminLayout() {
   const [hasRestaurant, setHasRestaurant] = useState(false);
 
   useEffect(() => {
-    if (!loading && !user) navigate({ to: "/login", search: { redirect: "/admin" } as never });
+    if (!loading && !user) navigate({ to: "/login", search: { as: "admin" } as never });
   }, [user, loading, navigate]);
 
   useEffect(() => {

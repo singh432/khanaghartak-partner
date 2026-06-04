@@ -41,19 +41,42 @@ function LoginPage() {
   const [otpSent, setOtpSent] = useState(false);
   const [otpCode, setOtpCode] = useState("");
 
+  const getAsParam = (): "admin" | "rider" | "user" => {
+    if (typeof window === "undefined") return "user";
+    const as = new URLSearchParams(window.location.search).get("as");
+    if (as === "admin" || as === "rider") return as;
+    return "user";
+  };
+
   const getRedirectTarget = () => {
-    const params = new URLSearchParams(window.location.search);
-    const redirect = params.get("redirect");
-    if (redirect && redirect.startsWith("/")) return redirect;
-    if (isSuperAdmin) return "/super";
-    if (isAdmin) return "/admin";
-    if (isRider) return "/rider";
+    const as = getAsParam();
+    if (as === "admin") {
+      if (isSuperAdmin) return "/super";
+      if (isAdmin) return "/admin";
+      return "__deny_admin";
+    }
+    if (as === "rider") {
+      if (isRider) return "/rider";
+      return "__deny_rider";
+    }
+    // default customer login
     return "/home";
   };
 
   useEffect(() => {
     if (!user || authLoading) return;
-    navigate({ to: getRedirectTarget() as "/home" });
+    const target = getRedirectTarget();
+    if (target === "__deny_admin") {
+      toast.error("This account isn't a restaurant/admin account.");
+      navigate({ to: "/home" });
+      return;
+    }
+    if (target === "__deny_rider") {
+      toast.error("This account isn't a rider account.");
+      navigate({ to: "/home" });
+      return;
+    }
+    navigate({ to: target as "/home" });
   }, [user, authLoading, isAdmin, isSuperAdmin, isRider, navigate]);
 
   const onSubmitPassword = async (e: React.FormEvent) => {
@@ -69,12 +92,14 @@ function LoginPage() {
       if (!phRes.success) return toast.error(phRes.error.issues[0].message);
     }
     setBusy(true);
+    const asNow = getAsParam();
+    const landing = asNow === "user" ? "/home" : `/login?as=${asNow}`;
     try {
       if (mode === "signup") {
         const { error } = await supabase.auth.signUp({
           email: form.email, password: form.password,
           options: {
-            emailRedirectTo: `${window.location.origin}${getRedirectTarget()}`,
+            emailRedirectTo: `${window.location.origin}${landing}`,
             data: { full_name: form.full_name, phone: form.phone },
           },
         });
@@ -101,12 +126,14 @@ function LoginPage() {
       if (!nRes.success) return toast.error(nRes.error.issues[0].message);
     }
     setBusy(true);
+    const asNow = getAsParam();
+    const landing = asNow === "user" ? "/home" : `/login?as=${asNow}`;
     try {
       const { error } = await supabase.auth.signInWithOtp({
         email: form.email,
         options: {
           shouldCreateUser: mode === "signup",
-          emailRedirectTo: `${window.location.origin}${getRedirectTarget()}`,
+          emailRedirectTo: `${window.location.origin}${landing}`,
           data: mode === "signup" ? { full_name: form.full_name, phone: form.phone } : undefined,
         },
       });
@@ -136,8 +163,10 @@ function LoginPage() {
 
   const onGoogle = async () => {
     setBusy(true);
+    const as = getAsParam();
+    const landing = as === "user" ? "/home" : `/login?as=${as}`;
     const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: `${window.location.origin}${getRedirectTarget()}`,
+      redirect_uri: `${window.location.origin}${landing}`,
     });
     if (result.error) {
       toast.error(result.error.message ?? "Google sign-in failed");
@@ -152,9 +181,17 @@ function LoginPage() {
       <div className="text-center">
         <img src={khanaGharTakLogoUrl} alt="KhanaGharTak" width={112} height={112} className="mx-auto h-24 w-24 rounded-2xl object-contain" />
         <h1 className="mt-3 text-2xl font-extrabold tracking-tight">
-          {mode === "signin" ? "Welcome back" : "Create your account"}
+          {getAsParam() === "admin" ? "Restaurant Admin Login" : getAsParam() === "rider" ? "Rider Login" : (mode === "signin" ? "Welcome back" : "Create your account")}
         </h1>
-        <p className="mt-1 text-sm text-muted-foreground">Ghar jaisa khana, seedha aapke ghar tak.</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {getAsParam() === "admin" ? "Sign in to manage your restaurant." : getAsParam() === "rider" ? "Sign in with your rider account." : "Ghar jaisa khana, seedha aapke ghar tak."}
+        </p>
+        {getAsParam() !== "user" && (
+          <button type="button" onClick={() => { window.location.href = "/login"; }}
+            className="mt-2 text-xs font-medium text-primary underline">
+            ← Back to customer login
+          </button>
+        )}
       </div>
 
       <div className="mt-6 grid grid-cols-2 gap-1 rounded-xl bg-muted p-1 text-sm font-semibold">
@@ -230,14 +267,18 @@ function LoginPage() {
           className="font-semibold text-primary">{mode === "signin" ? "Create account" : "Sign in"}</button>
       </p>
 
-      <p className="mt-8 text-center text-xs text-muted-foreground">
-        Are you a restaurant owner?{" "}
-        <button type="button" onClick={() => { window.location.href = "/admin"; }} className="font-medium underline">Open admin panel</button>
-      </p>
-      <p className="mt-2 text-center text-xs text-muted-foreground">
-        Delivery rider?{" "}
-        <button type="button" onClick={() => { window.location.href = "/rider"; }} className="font-medium underline">Open rider panel</button>
-      </p>
+      {getAsParam() === "user" && (
+        <>
+          <p className="mt-8 text-center text-xs text-muted-foreground">
+            Are you a restaurant owner?{" "}
+            <button type="button" onClick={() => { window.location.href = "/login?as=admin"; }} className="font-medium underline">Open admin panel</button>
+          </p>
+          <p className="mt-2 text-center text-xs text-muted-foreground">
+            Delivery rider?{" "}
+            <button type="button" onClick={() => { window.location.href = "/login?as=rider"; }} className="font-medium underline">Open rider panel</button>
+          </p>
+        </>
+      )}
 
       <style>{`
         .input { width:100%; height:48px; border-radius: 12px; padding: 0 14px; background: var(--color-input); border: 1px solid var(--color-border); font-size: 15px; outline: none; }
