@@ -98,7 +98,7 @@ function RiderDashboard({ riderId, onSignOut }: { riderId: string; onSignOut: ()
   const mine = useMemo(() => orders.filter((o) => o.rider_id === riderId && o.status !== "delivered"), [orders, riderId]);
 
   const accept = async (id: string) => {
-    const { error } = await supabase.from("orders").update({ rider_id: riderId }).eq("id", id).is("rider_id", null);
+    const { error } = await (supabase.from("orders") as any).update({ rider_id: riderId }).eq("id", id).is("rider_id", null);
     if (error) toast.error(error.message); else toast.success("Order accepted!");
   };
   const markDelivered = async (id: string) => {
