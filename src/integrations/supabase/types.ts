@@ -356,6 +356,8 @@ export type Database = {
         }
         Returns: string
       }
+      rider_accept_order: { Args: { _order_id: string }; Returns: undefined }
+      rider_mark_delivered: { Args: { _order_id: string }; Returns: undefined }
     }
     Enums: {
       app_role: "customer" | "restaurant_admin" | "super_admin" | "rider"
