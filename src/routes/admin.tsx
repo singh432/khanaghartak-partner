@@ -151,8 +151,8 @@ function RestaurantSetup({ userId, onSignOut }: { userId: string; onSignOut: () 
       { restaurant_id: data.id, name: "Snacks", priority: 2 },
       { restaurant_id: data.id, name: "Beverages", priority: 3 },
     ]);
-    toast.success("Restaurant added");
-    window.location.href = "/admin/settings";
+    toast.success("Restaurant submitted for approval");
+    window.location.href = "/admin";
   };
 
   return (
