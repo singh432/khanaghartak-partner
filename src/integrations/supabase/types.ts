@@ -316,6 +316,39 @@ export type Database = {
         }
         Relationships: []
       }
+      rider_profiles: {
+        Row: {
+          created_at: string
+          full_name: string | null
+          id: string
+          phone: string | null
+          status: string
+          updated_at: string
+          user_id: string
+          vehicle: string | null
+        }
+        Insert: {
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+          vehicle?: string | null
+        }
+        Update: {
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+          vehicle?: string | null
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -342,7 +375,12 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      become_rider: { Args: never; Returns: undefined }
+      become_rider:
+        | { Args: never; Returns: undefined }
+        | {
+            Args: { _full_name?: string; _phone?: string; _vehicle?: string }
+            Returns: undefined
+          }
       place_order: {
         Args: {
           _address: string
@@ -358,6 +396,10 @@ export type Database = {
       }
       rider_accept_order: { Args: { _order_id: string }; Returns: undefined }
       rider_mark_delivered: { Args: { _order_id: string }; Returns: undefined }
+      set_rider_status: {
+        Args: { _status: string; _user_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "customer" | "restaurant_admin" | "super_admin" | "rider"
