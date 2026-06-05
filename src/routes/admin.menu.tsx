@@ -63,10 +63,11 @@ function AdminMenu() {
 
   const onUpload = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]; if (!file || !editing) return;
+    if (!restaurantId) return toast.error("Restaurant not found");
     if (file.size > 5 * 1024 * 1024) return toast.error("Image must be under 5 MB");
     setUploading(true);
     const ext = file.name.split(".").pop() ?? "jpg";
-    const path = `${crypto.randomUUID()}.${ext}`;
+    const path = `${restaurantId}/${crypto.randomUUID()}.${ext}`;
     const { error } = await supabase.storage.from("menu-images").upload(path, file, { upsert: false, contentType: file.type });
     if (error) { toast.error(error.message); setUploading(false); return; }
     const { data } = supabase.storage.from("menu-images").getPublicUrl(path);
