@@ -135,7 +135,7 @@ function RestaurantSetup({ userId, onSignOut }: { userId: string; onSignOut: () 
       tagline: form.tagline.trim() || null,
       phone: form.phone.trim() || null,
       address: form.address.trim() || null,
-      status: "active",
+      status: "pending",
       is_open: true,
       delivery_time: "30-40 min",
       delivery_charges: 25,
