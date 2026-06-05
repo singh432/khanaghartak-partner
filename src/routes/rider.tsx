@@ -1,10 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { khanaGharTakLogoUrl } from "@/assets/brand";
-import { Bike, MapPin, Phone, Package, LogOut, CheckCircle2, Loader2 } from "lucide-react";
+import { Bike, MapPin, Phone, Package, LogOut, CheckCircle2, Loader2, Clock } from "lucide-react";
 
 export const Route = createFileRoute("/rider")({
   component: RiderPanel,
@@ -23,43 +23,119 @@ type Order = {
 };
 
 type Restaurant = { id: string; name: string; address: string | null; phone: string | null };
+type RiderProfile = { status: "pending" | "approved" | "rejected" | "suspended"; full_name: string | null; phone: string | null; vehicle: string | null };
 
 function RiderPanel() {
   const { user, loading, isRider, signOut } = useAuth();
   const navigate = useNavigate();
+  const [profile, setProfile] = useState<RiderProfile | null>(null);
+  const [profileChecked, setProfileChecked] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/login", search: { as: "rider" } as any });
   }, [user, loading, navigate]);
 
-  if (loading) return <Center><Loader2 className="h-6 w-6 animate-spin text-primary" /></Center>;
+  useEffect(() => {
+    if (!user) return;
+    let active = true;
+    setProfileChecked(false);
+    (async () => {
+      const { data } = await (supabase.from("rider_profiles") as any)
+        .select("status, full_name, phone, vehicle")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (active) {
+        setProfile((data as RiderProfile | null) ?? null);
+        setProfileChecked(true);
+      }
+    })();
+    return () => { active = false; };
+  }, [user, isRider]);
+
+  if (loading || (user && !profileChecked)) return <Center><Loader2 className="h-6 w-6 animate-spin text-primary" /></Center>;
   if (!user) return null;
-  if (!isRider) return <BecomeRider />;
+  if (!isRider || !profile) return <BecomeRider />;
+  if (profile.status !== "approved") return <RiderPending profile={profile} onSignOut={signOut} />;
   return <RiderDashboard riderId={user.id} onSignOut={signOut} />;
 }
 
 function BecomeRider() {
   const [busy, setBusy] = useState(false);
-  const enroll = async () => {
+  const [form, setForm] = useState({ full_name: "", phone: "", vehicle: "" });
+
+  const enroll = async (e: FormEvent) => {
+    e.preventDefault();
+    if (form.full_name.trim().length < 2) return toast.error("Enter your full name");
+    if (form.phone.trim().length < 7) return toast.error("Enter a valid phone");
     setBusy(true);
-    const { error } = await supabase.rpc("become_rider" as any);
+    const { error } = await supabase.rpc("become_rider" as any, {
+      _full_name: form.full_name.trim(),
+      _phone: form.phone.trim(),
+      _vehicle: form.vehicle.trim() || null,
+    });
     if (error) { toast.error(error.message); setBusy(false); return; }
-    toast.success("You're enrolled as a rider!");
+    toast.success("Submitted! Awaiting admin approval.");
     window.location.reload();
   };
+
   return (
-    <div className="mx-auto flex min-h-[100dvh] max-w-md flex-col items-center justify-center p-6 text-center">
-      <img src={khanaGharTakLogoUrl} alt="" className="h-20 w-20 rounded-2xl object-contain" />
-      <h1 className="mt-4 text-2xl font-extrabold">Join as a Rider</h1>
-      <p className="mt-2 text-sm text-muted-foreground">
-        Accept delivery orders, view pinned customer locations, and earn on every drop.
-      </p>
-      <button onClick={enroll} disabled={busy}
-        className="mt-6 inline-flex h-12 items-center justify-center rounded-xl bg-primary px-6 font-bold text-primary-foreground disabled:opacity-60">
-        {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Become a Rider
-      </button>
+    <div className="mx-auto flex min-h-[100dvh] max-w-md flex-col items-center justify-center p-6">
+      <img src={khanaGharTakLogoUrl} alt="" className="h-16 w-16 rounded-2xl object-contain" />
+      <h1 className="mt-4 text-2xl font-extrabold text-center">Join as a Rider</h1>
+      <p className="mt-2 text-center text-sm text-muted-foreground">Submit your details. Once a super admin approves, you can start accepting deliveries.</p>
+      <form onSubmit={enroll} className="mt-5 w-full space-y-3">
+        <input className="w-full rounded-xl border bg-card px-3 py-3 text-sm" placeholder="Full name" value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} maxLength={80} />
+        <input className="w-full rounded-xl border bg-card px-3 py-3 text-sm" placeholder="Phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} maxLength={20} />
+        <input className="w-full rounded-xl border bg-card px-3 py-3 text-sm" placeholder="Vehicle (e.g. Bike — DL 1A 1234)" value={form.vehicle} onChange={(e) => setForm({ ...form, vehicle: e.target.value })} maxLength={80} />
+        <button type="submit" disabled={busy} className="inline-flex h-12 w-full items-center justify-center rounded-xl bg-primary px-6 font-bold text-primary-foreground disabled:opacity-60">
+          {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Submit application
+        </button>
+      </form>
     </div>
   );
+}
+
+function RiderPending({ profile, onSignOut }: { profile: RiderProfile; onSignOut: () => Promise<void> }) {
+  const map: Record<string, { title: string; body: string; tone: string }> = {
+    pending: { title: "Waiting for approval", body: "Your rider application is under review. You can't accept deliveries yet.", tone: "text-amber-600 bg-amber-500/10" },
+    rejected: { title: "Application not approved", body: "Your rider application was rejected. Please contact support.", tone: "text-destructive bg-destructive/10" },
+    suspended: { title: "Account suspended", body: "Your rider account has been suspended by KhanaGharTak.", tone: "text-destructive bg-destructive/10" },
+  };
+  const info = map[profile.status] ?? map.pending;
+  return (
+    <div className="mx-auto flex min-h-[100dvh] max-w-md flex-col items-center justify-center p-6 text-center">
+      <img src={khanaGharTakLogoUrl} alt="" className="h-16 w-16 rounded-2xl object-contain" />
+      <h1 className="mt-4 text-xl font-extrabold tracking-tight">{info.title}</h1>
+      <p className="mt-2 text-sm text-muted-foreground">{info.body}</p>
+      <div className={`mt-4 inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold capitalize ${info.tone}`}>
+        <Clock className="h-3 w-3" /> {profile.status}
+      </div>
+      {profile.full_name && (
+        <div className="mt-5 w-full rounded-2xl border bg-card p-4 text-left text-sm">
+          <p className="font-bold">{profile.full_name}</p>
+          {profile.phone && <p className="text-muted-foreground">{profile.phone}</p>}
+          {profile.vehicle && <p className="text-muted-foreground">{profile.vehicle}</p>}
+        </div>
+      )}
+      <button onClick={onSignOut} className="mt-6 w-full rounded-xl border py-2.5 text-sm font-semibold">Sign out</button>
+    </div>
+  );
+}
+
+function buildMapsUrl(o: Order) {
+  if (o.latitude && o.longitude && !(o.latitude === 0 && o.longitude === 0)) {
+    return `https://www.google.com/maps/dir/?api=1&destination=${o.latitude},${o.longitude}`;
+  }
+  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(o.address)}`;
+}
+
+function openMaps(o: Order) {
+  const url = buildMapsUrl(o);
+  const win = window.open(url, "_blank", "noopener,noreferrer");
+  if (!win) {
+    // popup blocked — fall back to top-level navigation
+    window.location.href = url;
+  }
 }
 
 function RiderDashboard({ riderId, onSignOut }: { riderId: string; onSignOut: () => Promise<void> }) {
@@ -139,9 +215,6 @@ function RiderDashboard({ riderId, onSignOut }: { riderId: string; onSignOut: ()
         )}
         {list.map((o) => {
           const r = o.restaurant_id ? restaurants[o.restaurant_id] : undefined;
-          const mapHref = o.latitude && o.longitude
-            ? `https://www.google.com/maps?q=${o.latitude},${o.longitude}`
-            : `https://www.google.com/maps/search/${encodeURIComponent(o.address)}`;
           return (
             <article key={o.id} className="rounded-2xl border bg-card p-4 shadow-sm">
               <div className="flex items-start justify-between gap-2">
@@ -170,10 +243,10 @@ function RiderDashboard({ riderId, onSignOut }: { riderId: string; onSignOut: ()
                   <a href={`tel:${o.customer_phone}`} className="inline-flex items-center gap-1 rounded-full bg-card px-3 py-1.5 text-xs font-bold">
                     <Phone className="h-3 w-3" /> {o.customer_phone}
                   </a>
-                  <a href={mapHref} target="_blank" rel="noreferrer"
+                  <button type="button" onClick={() => openMaps(o)}
                     className="inline-flex items-center gap-1 rounded-full bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground">
                     <MapPin className="h-3 w-3" /> Open in Maps
-                  </a>
+                  </button>
                 </div>
               </div>
 
