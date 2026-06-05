@@ -180,3 +180,26 @@ function RestaurantSetup({ userId, onSignOut }: { userId: string; onSignOut: () 
 function SetupField({ label, children }: { label: string; children: ReactNode }) {
   return <label className="block"><span className="mb-1 block text-xs font-semibold text-muted-foreground">{label}</span>{children}</label>;
 }
+
+function PendingApproval({ restaurant, onSignOut }: { restaurant: { name: string; status: string }; onSignOut: () => Promise<void> }) {
+  const isRejected = restaurant.status === "rejected";
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-secondary/30 px-4 py-10">
+      <div className="mx-auto w-full max-w-md rounded-2xl border bg-card p-6 text-center shadow-sm">
+        <img src={khanaGharTakLogoUrl} alt="" className="mx-auto h-16 w-16 rounded-2xl object-contain" />
+        <h1 className="mt-4 text-xl font-extrabold tracking-tight">
+          {isRejected ? "Application not approved" : "Waiting for approval"}
+        </h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          {isRejected
+            ? `Your restaurant "${restaurant.name}" was not approved by our team. Please contact support for next steps.`
+            : `Your restaurant "${restaurant.name}" is under review by KhanaGharTak. You'll be able to manage menu and orders as soon as it's approved.`}
+        </p>
+        <div className="mt-5 inline-flex items-center gap-2 rounded-full bg-amber-500/10 px-3 py-1 text-xs font-bold text-amber-600 capitalize">
+          {restaurant.status}
+        </div>
+        <button onClick={onSignOut} className="mt-6 w-full rounded-xl border bg-card py-2.5 text-sm font-semibold">Sign out</button>
+      </div>
+    </div>
+  );
+}
