@@ -22,7 +22,7 @@ function AdminLayout() {
   const { user, loading, isAdmin, signOut } = useAuth();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [restaurantChecked, setRestaurantChecked] = useState(false);
-  const [hasRestaurant, setHasRestaurant] = useState(false);
+  const [restaurant, setRestaurant] = useState<{ id: string; name: string; status: string } | null>(null);
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/login", search: { as: "admin" } as never });
@@ -33,9 +33,9 @@ function AdminLayout() {
     let active = true;
     setRestaurantChecked(false);
     (async () => {
-      const { data } = await supabase.from("restaurants").select("id").eq("owner_id", user.id).limit(1).maybeSingle();
+      const { data } = await supabase.from("restaurants").select("id, name, status").eq("owner_id", user.id).limit(1).maybeSingle();
       if (active) {
-        setHasRestaurant(!!data);
+        setRestaurant((data as any) ?? null);
         setRestaurantChecked(true);
       }
     })();
@@ -45,8 +45,12 @@ function AdminLayout() {
   if (loading || (user && !restaurantChecked)) return <div className="p-8 text-center text-sm">Loading…</div>;
   if (!user) return null;
 
-  if (!isAdmin || !hasRestaurant) {
+  if (!isAdmin || !restaurant) {
     return <RestaurantSetup userId={user.id} onSignOut={signOut} />;
+  }
+
+  if (restaurant.status !== "active") {
+    return <PendingApproval restaurant={restaurant} onSignOut={signOut} />;
   }
 
   const isActive = (to: string, exact?: boolean) => exact ? pathname === to : pathname === to || pathname.startsWith(to + "/");
