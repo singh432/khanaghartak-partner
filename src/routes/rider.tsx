@@ -210,8 +210,6 @@ function RiderDashboard({ riderId, onSignOut }: { riderId: string; onSignOut: ()
   };
 
 
-  const list = tab === "available" ? available : mine;
-
   return (
     <div className="mx-auto max-w-md pb-10">
       <header className="sticky top-0 z-10 flex items-center justify-between border-b bg-background/95 px-4 py-3 backdrop-blur">
@@ -228,20 +226,55 @@ function RiderDashboard({ riderId, onSignOut }: { riderId: string; onSignOut: ()
       </header>
 
       <div className="grid grid-cols-2 gap-1 p-3">
-        <Tab on={tab === "available"} onClick={() => setTab("available")} label={`Available (${available.length})`} />
-        <Tab on={tab === "mine"} onClick={() => setTab("mine")} label={`My Deliveries (${mine.length})`} />
+        <Tab on={tab === "available"} onClick={() => setTab("available")} label={`Available (${availableOrders.length})`} />
+        <Tab on={tab === "mine"} onClick={() => setTab("mine")} label={`My Deliveries (${mineOrders.length})`} />
       </div>
 
       <div className="space-y-3 px-3">
-        {list.length === 0 && (
-          <div className="rounded-2xl border bg-card p-8 text-center">
-            <Package className="mx-auto h-10 w-10 text-muted-foreground/60" />
-            <p className="mt-3 text-sm text-muted-foreground">
-              {tab === "available" ? "No orders waiting for pickup right now." : "You haven't accepted any deliveries yet."}
-            </p>
-          </div>
+        {tab === "available" && availableOrders.length === 0 && (
+          <EmptyState text="No orders waiting for pickup right now." />
         )}
-        {list.map((o) => {
+        {tab === "mine" && mineOrders.length === 0 && (
+          <EmptyState text="You haven't accepted any deliveries yet." />
+        )}
+
+        {tab === "available" && availableOrders.map((o) => {
+          const r = o.restaurant_id ? restaurants[o.restaurant_id] : undefined;
+          return (
+            <article key={o.id} className="rounded-2xl border bg-card p-4 shadow-sm">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <p className="font-mono text-[11px] font-bold text-muted-foreground">#{o.id.slice(0, 8).toUpperCase()}</p>
+                  <p className="text-base font-bold leading-tight">{o.item_count} item{o.item_count === 1 ? "" : "s"}</p>
+                </div>
+                <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-bold text-primary">
+                  ₹{Number(o.total).toFixed(0)} COD
+                </span>
+              </div>
+
+              {r && (
+                <div className="mt-3 rounded-xl bg-accent/40 p-3 text-xs">
+                  <p className="font-bold text-foreground">Pickup: {r.name}</p>
+                  {r.address && <p className="text-muted-foreground">{r.address}</p>}
+                </div>
+              )}
+
+              <div className="mt-3 rounded-xl bg-secondary p-3 text-xs">
+                <p className="font-bold text-foreground">Drop area: {o.drop_area ?? "—"}</p>
+                <p className="mt-1 text-muted-foreground italic">Customer contact and exact address unlock after you accept.</p>
+              </div>
+
+              <div className="mt-3">
+                <button onClick={() => accept(o.id)}
+                  className="w-full rounded-xl bg-primary py-3 text-sm font-bold text-primary-foreground">
+                  Accept this Delivery
+                </button>
+              </div>
+            </article>
+          );
+        })}
+
+        {tab === "mine" && mineOrders.map((o) => {
           const r = o.restaurant_id ? restaurants[o.restaurant_id] : undefined;
           return (
             <article key={o.id} className="rounded-2xl border bg-card p-4 shadow-sm">
@@ -289,17 +322,10 @@ function RiderDashboard({ riderId, onSignOut }: { riderId: string; onSignOut: ()
               </div>
 
               <div className="mt-3">
-                {o.rider_id === null ? (
-                  <button onClick={() => accept(o.id)}
-                    className="w-full rounded-xl bg-primary py-3 text-sm font-bold text-primary-foreground">
-                    Accept this Delivery
-                  </button>
-                ) : (
-                  <button onClick={() => markDelivered(o.id)}
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-success py-3 text-sm font-bold text-success-foreground">
-                    <CheckCircle2 className="h-4 w-4" /> Mark Delivered
-                  </button>
-                )}
+                <button onClick={() => markDelivered(o.id)}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-success py-3 text-sm font-bold text-success-foreground">
+                  <CheckCircle2 className="h-4 w-4" /> Mark Delivered
+                </button>
               </div>
             </article>
           );
@@ -308,6 +334,16 @@ function RiderDashboard({ riderId, onSignOut }: { riderId: string; onSignOut: ()
     </div>
   );
 }
+
+function EmptyState({ text }: { text: string }) {
+  return (
+    <div className="rounded-2xl border bg-card p-8 text-center">
+      <Package className="mx-auto h-10 w-10 text-muted-foreground/60" />
+      <p className="mt-3 text-sm text-muted-foreground">{text}</p>
+    </div>
+  );
+}
+
 
 function Tab({ on, onClick, label }: { on: boolean; onClick: () => void; label: string }) {
   return (
