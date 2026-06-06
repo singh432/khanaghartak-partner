@@ -117,13 +117,21 @@ function RootShell({ children }: { children: React.ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const fullWidth = pathname === "/";
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <CartProvider>
-          <main className="app-shell pb-16">
-            <Outlet />
-          </main>
+          {fullWidth ? (
+            <main className="min-h-[100dvh] bg-background">
+              <Outlet />
+            </main>
+          ) : (
+            <main className="app-shell pb-16">
+              <Outlet />
+            </main>
+          )}
           <BottomNav />
           <Toaster position="top-center" richColors />
         </CartProvider>
