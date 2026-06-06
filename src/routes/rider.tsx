@@ -22,6 +22,17 @@ type Order = {
   created_at: string;
 };
 
+type AvailableOrder = {
+  id: string;
+  restaurant_id: string | null;
+  restaurant_name: string | null;
+  restaurant_address: string | null;
+  drop_area: string | null;
+  total: number;
+  item_count: number;
+  created_at: string;
+};
+
 type Restaurant = { id: string; name: string; address: string | null; phone: string | null };
 type RiderProfile = { status: "pending" | "approved" | "rejected" | "suspended"; full_name: string | null; phone: string | null; vehicle: string | null };
 
