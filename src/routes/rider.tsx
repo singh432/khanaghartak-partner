@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -19,6 +19,17 @@ type Order = {
   items: { name: string; qty: number; price: number }[];
   rider_id: string | null;
   restaurant_id: string | null;
+  created_at: string;
+};
+
+type AvailableOrder = {
+  id: string;
+  restaurant_id: string | null;
+  restaurant_name: string | null;
+  restaurant_address: string | null;
+  drop_area: string | null;
+  total: number;
+  item_count: number;
   created_at: string;
 };
 
@@ -139,20 +150,36 @@ function openMaps(o: Order) {
 }
 
 function RiderDashboard({ riderId, onSignOut }: { riderId: string; onSignOut: () => Promise<void> }) {
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [mineOrders, setMineOrders] = useState<Order[]>([]);
+  const [availableOrders, setAvailableOrders] = useState<AvailableOrder[]>([]);
   const [restaurants, setRestaurants] = useState<Record<string, Restaurant>>({});
   const [tab, setTab] = useState<"available" | "mine">("available");
 
   const load = async () => {
-    const { data, error } = await supabase
+    // "Mine" orders: full details visible via RLS only for orders assigned to this rider
+    const { data: mine, error: mineErr } = await supabase
       .from("orders")
       .select("*")
+      .eq("rider_id", riderId)
+      .neq("status", "delivered")
       .order("created_at", { ascending: false })
       .limit(100);
-    if (error) { toast.error(error.message); return; }
-    const list = (data ?? []) as unknown as Order[];
-    setOrders(list);
-    const rIds = [...new Set(list.map((o) => o.restaurant_id).filter(Boolean))] as string[];
+    if (mineErr) { toast.error(mineErr.message); return; }
+    const mineList = (mine ?? []) as unknown as Order[];
+    setMineOrders(mineList);
+
+    // Available orders: safe summary only — no customer PII until accepted
+    const { data: avail, error: availErr } = await supabase.rpc("rider_list_available_orders" as any);
+    if (availErr) { toast.error(availErr.message); return; }
+    const availList = (avail ?? []) as unknown as AvailableOrder[];
+    setAvailableOrders(availList);
+
+    const rIds = [
+      ...new Set([
+        ...mineList.map((o) => o.restaurant_id).filter(Boolean),
+        ...availList.map((o) => o.restaurant_id).filter(Boolean),
+      ]),
+    ] as string[];
     if (rIds.length) {
       const { data: rs } = await supabase.from("restaurants").select("id,name,address,phone").in("id", rIds);
       const map: Record<string, Restaurant> = {};
@@ -163,26 +190,25 @@ function RiderDashboard({ riderId, onSignOut }: { riderId: string; onSignOut: ()
 
   useEffect(() => {
     load();
-    const ch = supabase.channel("rider-orders")
-      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => load())
-      .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    const t = setInterval(load, 15000);
+    return () => clearInterval(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [riderId]);
 
-  const available = useMemo(() => orders.filter((o) => o.rider_id === null && o.status === "out_for_delivery"), [orders]);
-  const mine = useMemo(() => orders.filter((o) => o.rider_id === riderId && o.status !== "delivered"), [orders, riderId]);
-
   const accept = async (id: string) => {
     const { error } = await supabase.rpc("rider_accept_order" as any, { _order_id: id });
-    if (error) toast.error(error.message); else toast.success("Order accepted!");
+    if (error) { toast.error(error.message); return; }
+    toast.success("Order accepted!");
+    setTab("mine");
+    await load();
   };
   const markDelivered = async (id: string) => {
     const { error } = await supabase.rpc("rider_mark_delivered" as any, { _order_id: id });
-    if (error) toast.error(error.message); else toast.success("Marked delivered");
+    if (error) { toast.error(error.message); return; }
+    toast.success("Marked delivered");
+    await load();
   };
 
-  const list = tab === "available" ? available : mine;
 
   return (
     <div className="mx-auto max-w-md pb-10">
@@ -200,20 +226,55 @@ function RiderDashboard({ riderId, onSignOut }: { riderId: string; onSignOut: ()
       </header>
 
       <div className="grid grid-cols-2 gap-1 p-3">
-        <Tab on={tab === "available"} onClick={() => setTab("available")} label={`Available (${available.length})`} />
-        <Tab on={tab === "mine"} onClick={() => setTab("mine")} label={`My Deliveries (${mine.length})`} />
+        <Tab on={tab === "available"} onClick={() => setTab("available")} label={`Available (${availableOrders.length})`} />
+        <Tab on={tab === "mine"} onClick={() => setTab("mine")} label={`My Deliveries (${mineOrders.length})`} />
       </div>
 
       <div className="space-y-3 px-3">
-        {list.length === 0 && (
-          <div className="rounded-2xl border bg-card p-8 text-center">
-            <Package className="mx-auto h-10 w-10 text-muted-foreground/60" />
-            <p className="mt-3 text-sm text-muted-foreground">
-              {tab === "available" ? "No orders waiting for pickup right now." : "You haven't accepted any deliveries yet."}
-            </p>
-          </div>
+        {tab === "available" && availableOrders.length === 0 && (
+          <EmptyState text="No orders waiting for pickup right now." />
         )}
-        {list.map((o) => {
+        {tab === "mine" && mineOrders.length === 0 && (
+          <EmptyState text="You haven't accepted any deliveries yet." />
+        )}
+
+        {tab === "available" && availableOrders.map((o) => {
+          const r = o.restaurant_id ? restaurants[o.restaurant_id] : undefined;
+          return (
+            <article key={o.id} className="rounded-2xl border bg-card p-4 shadow-sm">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <p className="font-mono text-[11px] font-bold text-muted-foreground">#{o.id.slice(0, 8).toUpperCase()}</p>
+                  <p className="text-base font-bold leading-tight">{o.item_count} item{o.item_count === 1 ? "" : "s"}</p>
+                </div>
+                <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-bold text-primary">
+                  ₹{Number(o.total).toFixed(0)} COD
+                </span>
+              </div>
+
+              {r && (
+                <div className="mt-3 rounded-xl bg-accent/40 p-3 text-xs">
+                  <p className="font-bold text-foreground">Pickup: {r.name}</p>
+                  {r.address && <p className="text-muted-foreground">{r.address}</p>}
+                </div>
+              )}
+
+              <div className="mt-3 rounded-xl bg-secondary p-3 text-xs">
+                <p className="font-bold text-foreground">Drop area: {o.drop_area ?? "—"}</p>
+                <p className="mt-1 text-muted-foreground italic">Customer contact and exact address unlock after you accept.</p>
+              </div>
+
+              <div className="mt-3">
+                <button onClick={() => accept(o.id)}
+                  className="w-full rounded-xl bg-primary py-3 text-sm font-bold text-primary-foreground">
+                  Accept this Delivery
+                </button>
+              </div>
+            </article>
+          );
+        })}
+
+        {tab === "mine" && mineOrders.map((o) => {
           const r = o.restaurant_id ? restaurants[o.restaurant_id] : undefined;
           return (
             <article key={o.id} className="rounded-2xl border bg-card p-4 shadow-sm">
@@ -261,17 +322,10 @@ function RiderDashboard({ riderId, onSignOut }: { riderId: string; onSignOut: ()
               </div>
 
               <div className="mt-3">
-                {o.rider_id === null ? (
-                  <button onClick={() => accept(o.id)}
-                    className="w-full rounded-xl bg-primary py-3 text-sm font-bold text-primary-foreground">
-                    Accept this Delivery
-                  </button>
-                ) : (
-                  <button onClick={() => markDelivered(o.id)}
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-success py-3 text-sm font-bold text-success-foreground">
-                    <CheckCircle2 className="h-4 w-4" /> Mark Delivered
-                  </button>
-                )}
+                <button onClick={() => markDelivered(o.id)}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-success py-3 text-sm font-bold text-success-foreground">
+                  <CheckCircle2 className="h-4 w-4" /> Mark Delivered
+                </button>
               </div>
             </article>
           );
@@ -280,6 +334,16 @@ function RiderDashboard({ riderId, onSignOut }: { riderId: string; onSignOut: ()
     </div>
   );
 }
+
+function EmptyState({ text }: { text: string }) {
+  return (
+    <div className="rounded-2xl border bg-card p-8 text-center">
+      <Package className="mx-auto h-10 w-10 text-muted-foreground/60" />
+      <p className="mt-3 text-sm text-muted-foreground">{text}</p>
+    </div>
+  );
+}
+
 
 function Tab({ on, onClick, label }: { on: boolean; onClick: () => void; label: string }) {
   return (

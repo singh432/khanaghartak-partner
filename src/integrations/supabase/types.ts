@@ -395,6 +395,19 @@ export type Database = {
         Returns: string
       }
       rider_accept_order: { Args: { _order_id: string }; Returns: undefined }
+      rider_list_available_orders: {
+        Args: never
+        Returns: {
+          created_at: string
+          drop_area: string
+          id: string
+          item_count: number
+          restaurant_address: string
+          restaurant_id: string
+          restaurant_name: string
+          total: number
+        }[]
+      }
       rider_mark_delivered: { Args: { _order_id: string }; Returns: undefined }
       set_rider_status: {
         Args: { _status: string; _user_id: string }
