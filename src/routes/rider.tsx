@@ -150,20 +150,36 @@ function openMaps(o: Order) {
 }
 
 function RiderDashboard({ riderId, onSignOut }: { riderId: string; onSignOut: () => Promise<void> }) {
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [mineOrders, setMineOrders] = useState<Order[]>([]);
+  const [availableOrders, setAvailableOrders] = useState<AvailableOrder[]>([]);
   const [restaurants, setRestaurants] = useState<Record<string, Restaurant>>({});
   const [tab, setTab] = useState<"available" | "mine">("available");
 
   const load = async () => {
-    const { data, error } = await supabase
+    // "Mine" orders: full details visible via RLS only for orders assigned to this rider
+    const { data: mine, error: mineErr } = await supabase
       .from("orders")
       .select("*")
+      .eq("rider_id", riderId)
+      .neq("status", "delivered")
       .order("created_at", { ascending: false })
       .limit(100);
-    if (error) { toast.error(error.message); return; }
-    const list = (data ?? []) as unknown as Order[];
-    setOrders(list);
-    const rIds = [...new Set(list.map((o) => o.restaurant_id).filter(Boolean))] as string[];
+    if (mineErr) { toast.error(mineErr.message); return; }
+    const mineList = (mine ?? []) as unknown as Order[];
+    setMineOrders(mineList);
+
+    // Available orders: safe summary only — no customer PII until accepted
+    const { data: avail, error: availErr } = await supabase.rpc("rider_list_available_orders" as any);
+    if (availErr) { toast.error(availErr.message); return; }
+    const availList = (avail ?? []) as unknown as AvailableOrder[];
+    setAvailableOrders(availList);
+
+    const rIds = [
+      ...new Set([
+        ...mineList.map((o) => o.restaurant_id).filter(Boolean),
+        ...availList.map((o) => o.restaurant_id).filter(Boolean),
+      ]),
+    ] as string[];
     if (rIds.length) {
       const { data: rs } = await supabase.from("restaurants").select("id,name,address,phone").in("id", rIds);
       const map: Record<string, Restaurant> = {};
@@ -174,24 +190,25 @@ function RiderDashboard({ riderId, onSignOut }: { riderId: string; onSignOut: ()
 
   useEffect(() => {
     load();
-    const ch = supabase.channel("rider-orders")
-      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => load())
-      .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    const t = setInterval(load, 15000);
+    return () => clearInterval(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [riderId]);
 
-  const available = useMemo(() => orders.filter((o) => o.rider_id === null && o.status === "out_for_delivery"), [orders]);
-  const mine = useMemo(() => orders.filter((o) => o.rider_id === riderId && o.status !== "delivered"), [orders, riderId]);
-
   const accept = async (id: string) => {
     const { error } = await supabase.rpc("rider_accept_order" as any, { _order_id: id });
-    if (error) toast.error(error.message); else toast.success("Order accepted!");
+    if (error) { toast.error(error.message); return; }
+    toast.success("Order accepted!");
+    setTab("mine");
+    await load();
   };
   const markDelivered = async (id: string) => {
     const { error } = await supabase.rpc("rider_mark_delivered" as any, { _order_id: id });
-    if (error) toast.error(error.message); else toast.success("Marked delivered");
+    if (error) { toast.error(error.message); return; }
+    toast.success("Marked delivered");
+    await load();
   };
+
 
   const list = tab === "available" ? available : mine;
 
