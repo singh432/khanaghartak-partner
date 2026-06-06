@@ -39,6 +39,8 @@
   --color-ring: var(--ring);
   --shadow-soft: 0 4px 16px -2px oklch(0.65 0.18 35 / 0.18);
   --shadow-card: 0 2px 12px -3px oklch(0.2 0.04 30 / 0.08);
+  --font-display: "Archivo Black", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Hind", ui-sans-serif, system-ui, sans-serif;
 }
 
 :root {
@@ -93,9 +95,11 @@
 * { border-color: var(--color-border); }
 html, body { background: var(--color-background); color: var(--color-foreground); }
 body {
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: "Hind", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   -webkit-tap-highlight-color: transparent;
 }
+
+.font-display { font-family: "Archivo Black", ui-sans-serif, system-ui, sans-serif; letter-spacing: -0.02em; }
 
 /* Mobile-app shell: center on desktop, full-width on phone */
 .app-shell {

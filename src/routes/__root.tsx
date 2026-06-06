@@ -5,6 +5,7 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
@@ -68,7 +69,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:card", content: "summary_large_image" },
       { property: "og:type", content: "website" },
     ],
-    links: [{ rel: "stylesheet", href: appCss }],
+    links: [
+      { rel: "stylesheet", href: appCss },
+      { rel: "preconnect", href: "https://fonts.googleapis.com" },
+      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
+      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Archivo+Black&family=Hind:wght@400;500;600;700&display=swap" },
+    ],
     scripts: [
       {
         type: "application/ld+json",
@@ -111,13 +117,21 @@ function RootShell({ children }: { children: React.ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const fullWidth = pathname === "/";
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <CartProvider>
-          <main className="app-shell pb-16">
-            <Outlet />
-          </main>
+          {fullWidth ? (
+            <main className="min-h-[100dvh] bg-background">
+              <Outlet />
+            </main>
+          ) : (
+            <main className="app-shell pb-16">
+              <Outlet />
+            </main>
+          )}
           <BottomNav />
           <Toaster position="top-center" richColors />
         </CartProvider>
