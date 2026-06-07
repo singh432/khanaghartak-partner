@@ -7,7 +7,7 @@ export function BrandHeader({ subtitle }: { subtitle?: string }) {
   const { totalQty } = useCart();
   return (
     <header className="sticky top-0 z-30 flex items-center justify-between gap-3 bg-background/80 px-4 py-3 backdrop-blur border-b">
-      <Link to="/home" className="flex items-center gap-2">
+      <Link to="/" className="flex items-center gap-2">
         <img src={khanaGharTakLogoUrl} alt="KhanaGharTak" width={40} height={40} className="h-10 w-10 rounded-lg object-contain" />
         <div className="leading-tight">
           <div className="text-base font-bold tracking-tight">KhanaGharTak</div>
