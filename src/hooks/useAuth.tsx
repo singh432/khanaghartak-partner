@@ -76,7 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => { active = false; sub.subscription.unsubscribe(); };
   }, []);
 
-  const signOut = async () => { await supabase.auth.signOut(); };
+  const signOut = async () => { await supabase.auth.signOut(); if (typeof window !== "undefined") window.location.assign("/"); };
 
   return (
     <Ctx.Provider value={{ user, session, loading, isAdmin, isSuperAdmin, isRider, signOut }}>
