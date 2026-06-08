@@ -4,6 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { BrandHeader } from "@/components/BrandHeader";
 import { useCart } from "@/hooks/useCart";
 import { useAuth } from "@/hooks/useAuth";
+import { useLocationGate } from "@/hooks/useLocationGate";
+import { distanceKm as haversineKm, SERVICE_RADIUS_KM } from "@/lib/geo";
 import { PageError, PageSpinner } from "@/components/PageState";
 import { withTimeout } from "@/lib/supabase-query";
 import { Plus, Minus, Search, Star, Clock } from "lucide-react";
@@ -24,14 +26,18 @@ export const Route = createFileRoute("/menu")({
 
 type Category = { id: string; name: string; priority: number };
 type MenuItem = {
-  id: string; category_id: string; name: string; description: string | null;
+  id: string; restaurant_id: string; category_id: string; name: string; description: string | null;
   price: number; image_url: string | null; veg_type: "veg" | "nonveg"; is_available: boolean;
 };
-type Restaurant = { name: string; rating: number; delivery_time: string };
+type Restaurant = {
+  id: string; name: string; rating: number; delivery_time: string;
+  latitude: number | null; longitude: number | null; status: string | null;
+};
 
 function MenuPage() {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
+  const { coords } = useLocationGate();
   const { items: cart, add, inc, dec, totalQty, subtotal } = useCart();
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -51,16 +57,25 @@ function MenuPage() {
       setDataLoading(true);
       setDataError(null);
       try {
-        const [{ data: r, error: rError }, { data: c, error: cError }, { data: m, error: mError }] = await Promise.all([
-          withTimeout(supabase.from("restaurants").select("name, rating, delivery_time").limit(1).maybeSingle()),
+        const [{ data: rs, error: rError }, { data: c, error: cError }, { data: m, error: mError }] = await Promise.all([
+          withTimeout(supabase.from("restaurants").select("id, name, rating, delivery_time, latitude, longitude, status").eq("status", "active")),
           withTimeout(supabase.from("categories").select("*").order("priority")),
           withTimeout(supabase.from("menu_items").select("*").order("name")),
         ]);
         if (rError || cError || mError) throw rError ?? cError ?? mError;
         if (!active) return;
-        setRestaurant(r as Restaurant | null);
+        const allRestaurants = (rs ?? []) as Restaurant[];
+        const nearbyIds = new Set(
+          allRestaurants.filter((r) => {
+            if (!coords || r.latitude == null || r.longitude == null) return false;
+            return haversineKm(coords, { lat: r.latitude, lng: r.longitude }) <= SERVICE_RADIUS_KM;
+          }).map((r) => r.id),
+        );
+        const nearbyRestaurants = allRestaurants.filter((r) => nearbyIds.has(r.id));
+        setRestaurant(nearbyRestaurants[0] ?? null);
         setCategories((c ?? []) as Category[]);
-        setMenu((m ?? []) as MenuItem[]);
+        const allItems = (m ?? []) as MenuItem[];
+        setMenu(allItems.filter((it) => nearbyIds.has(it.restaurant_id)));
         if (c && c.length) setActiveCat(c[0].id);
       } catch (err) {
         if (active) setDataError(err instanceof Error ? err.message : "Could not load menu");
@@ -69,7 +84,7 @@ function MenuPage() {
       }
     })();
     return () => { active = false; };
-  }, []);
+  }, [coords]);
 
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
