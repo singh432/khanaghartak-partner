@@ -12,6 +12,8 @@ import {
 import { Toaster } from "sonner";
 import { AuthProvider } from "@/hooks/useAuth";
 import { CartProvider } from "@/hooks/useCart";
+import { LocationGateProvider } from "@/hooks/useLocationGate";
+import { LocationGate } from "@/components/LocationGate";
 import { BottomNav } from "@/components/BottomNav";
 
 import appCss from "../styles.css?url";
@@ -128,17 +130,21 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <CartProvider>
-          {fullWidth ? (
-            <main className="min-h-[100dvh] bg-background">
-              <Outlet />
-            </main>
-          ) : (
-            <main className="app-shell pb-16">
-              <Outlet />
-            </main>
-          )}
-          <BottomNav />
-          <Toaster position="top-center" richColors />
+          <LocationGateProvider>
+            <LocationGate>
+              {fullWidth ? (
+                <main className="min-h-[100dvh] bg-background">
+                  <Outlet />
+                </main>
+              ) : (
+                <main className="app-shell pb-16">
+                  <Outlet />
+                </main>
+              )}
+              <BottomNav />
+            </LocationGate>
+            <Toaster position="top-center" richColors />
+          </LocationGateProvider>
         </CartProvider>
       </AuthProvider>
     </QueryClientProvider>
