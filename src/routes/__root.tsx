@@ -15,6 +15,7 @@ import { CartProvider } from "@/hooks/useCart";
 import { BottomNav } from "@/components/BottomNav";
 
 import appCss from "../styles.css?url";
+import { khanaGharTakLogoUrl } from "@/assets/brand";
 
 function NotFoundComponent() {
   return (
