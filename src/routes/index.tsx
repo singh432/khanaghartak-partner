@@ -34,14 +34,14 @@ function loginHref(as: CtaTarget) {
 }
 
 function Landing() {
-  const { user, isAdmin, isSuperAdmin, isRider } = useAuth();
+  const { user, isAdmin, isRider } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
 
   const navLinks: Array<{ label: string; href: string; primary?: boolean }> = [
     { label: "Order Food", href: user ? "/home" : loginHref("user"), primary: true },
     { label: "Restaurant Login", href: isAdmin ? "/admin" : loginHref("admin") },
     { label: "Rider Login", href: isRider ? "/rider" : loginHref("rider") },
-    { label: "Admin Login", href: isSuperAdmin ? "/super" : loginHref("admin") },
+    { label: "Help", href: "#help" },
   ];
 
   return (
