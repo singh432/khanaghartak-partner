@@ -16,6 +16,8 @@ const NAV = [
   { to: "/super/settings", label: "Platform", icon: SettingsIcon },
 ] as const;
 
+const SUPER_ADMIN_EMAIL = "singhsuryapratap432@gmail.com";
+
 function SuperLayout() {
   const navigate = useNavigate();
   const { user, loading, isSuperAdmin, signOut } = useAuth();
@@ -28,15 +30,16 @@ function SuperLayout() {
   if (loading) return <div className="p-8 text-center text-sm">Loading…</div>;
   if (!user) return null;
 
-  if (!isSuperAdmin) {
+  const emailAllowed = (user.email ?? "").toLowerCase() === SUPER_ADMIN_EMAIL;
+
+  if (!isSuperAdmin || !emailAllowed) {
     return (
       <div className="p-6 text-center">
         <ShieldAlert className="mx-auto h-12 w-12 text-destructive" />
         <h1 className="mt-4 text-lg font-bold">Super Admin Only</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Your account doesn't have platform-owner access.
+          This account doesn't have platform-owner access.
         </p>
-        <p className="mt-4 text-xs text-muted-foreground break-all">Your user ID: {user.id}</p>
         <button onClick={signOut} className="mt-6 rounded-full bg-secondary px-4 py-2 text-sm">Sign out</button>
       </div>
     );
