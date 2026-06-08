@@ -52,12 +52,12 @@ function LoginPage() {
     const as = getAsParam();
     if (as === "admin") {
       if (isSuperAdmin) return "/super";
-      if (isAdmin) return "/admin";
-      return "__deny_admin";
+      // allow any signed-in user to reach /admin; route will show setup form if no restaurant yet
+      return "/admin";
     }
     if (as === "rider") {
-      if (isRider) return "/rider";
-      return "__deny_rider";
+      // allow any signed-in user to reach /rider; route will show "become rider" form if needed
+      return "/rider";
     }
     // default customer login
     return "/home";
@@ -66,18 +66,9 @@ function LoginPage() {
   useEffect(() => {
     if (!user || authLoading) return;
     const target = getRedirectTarget();
-    if (target === "__deny_admin") {
-      toast.error("This account isn't a restaurant/admin account.");
-      navigate({ to: "/home" });
-      return;
-    }
-    if (target === "__deny_rider") {
-      toast.error("This account isn't a rider account.");
-      navigate({ to: "/home" });
-      return;
-    }
     navigate({ to: target as "/home" });
   }, [user, authLoading, isAdmin, isSuperAdmin, isRider, navigate]);
+
 
   const onSubmitPassword = async (e: React.FormEvent) => {
     e.preventDefault();
