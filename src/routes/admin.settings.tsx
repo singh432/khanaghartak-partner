@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { khanaGharTakLogoUrl } from "@/assets/brand";
-import { Loader2 } from "lucide-react";
+import { Loader2, Navigation } from "lucide-react";
 
 export const Route = createFileRoute("/admin/settings")({ component: AdminSettings });
 
@@ -14,6 +14,7 @@ type Restaurant = {
   opening_time: string | null; closing_time: string | null;
   min_order_value: number; delivery_charges: number;
   image_url: string | null;
+  latitude: number | null; longitude: number | null;
 };
 
 function AdminSettings() {
@@ -44,6 +45,7 @@ function AdminSettings() {
       opening_time: r.opening_time, closing_time: r.closing_time,
       min_order_value: r.min_order_value, delivery_charges: r.delivery_charges,
       delivery_time: r.delivery_time, is_open: r.is_open,
+      latitude: r.latitude, longitude: r.longitude,
     }).eq("id", r.id);
     setSaving(false);
     if (error) toast.error(error.message); else toast.success("Saved");
@@ -101,6 +103,42 @@ function AdminSettings() {
         </div>
 
         <Field label="Address"><textarea className="ai" rows={2} value={r.address ?? ""} maxLength={300} onChange={(e) => setR({ ...r, address: e.target.value })} /></Field>
+
+        <div className="rounded-xl border bg-secondary/40 p-3">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold">Kitchen coordinates</p>
+              <p className="text-[11px] text-muted-foreground">Used to serve customers within 10 km.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                if (!navigator.geolocation) return toast.error("Geolocation not supported");
+                navigator.geolocation.getCurrentPosition(
+                  (pos) => {
+                    setR({ ...r, latitude: pos.coords.latitude, longitude: pos.coords.longitude });
+                    toast.success("Pinned current location");
+                  },
+                  (err) => toast.error(err.message || "Could not get location"),
+                  { enableHighAccuracy: true, timeout: 10000 },
+                );
+              }}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-bold text-primary-foreground"
+            >
+              <Navigation className="h-3.5 w-3.5" /> Use my location
+            </button>
+          </div>
+          <div className="mt-3 grid gap-3 md:grid-cols-2">
+            <Field label="Latitude">
+              <input type="number" step="0.000001" className="ai" value={r.latitude ?? ""}
+                onChange={(e) => setR({ ...r, latitude: e.target.value === "" ? null : Number(e.target.value) })} />
+            </Field>
+            <Field label="Longitude">
+              <input type="number" step="0.000001" className="ai" value={r.longitude ?? ""}
+                onChange={(e) => setR({ ...r, longitude: e.target.value === "" ? null : Number(e.target.value) })} />
+            </Field>
+          </div>
+        </div>
 
         <label className="flex items-center justify-between rounded-xl bg-secondary px-3 py-3">
           <div>

@@ -264,6 +264,8 @@ export type Database = {
           id: string
           image_url: string | null
           is_open: boolean | null
+          latitude: number | null
+          longitude: number | null
           min_order_value: number
           name: string
           opening_time: string | null
@@ -284,6 +286,8 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_open?: boolean | null
+          latitude?: number | null
+          longitude?: number | null
           min_order_value?: number
           name: string
           opening_time?: string | null
@@ -304,6 +308,8 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_open?: boolean | null
+          latitude?: number | null
+          longitude?: number | null
           min_order_value?: number
           name?: string
           opening_time?: string | null
