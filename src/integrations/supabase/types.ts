@@ -381,6 +381,13 @@ export type Database = {
             Args: { _full_name?: string; _phone?: string; _vehicle?: string }
             Returns: undefined
           }
+      owner_order_update_safe: {
+        Args: {
+          _new: Database["public"]["Tables"]["orders"]["Row"]
+          _old: Database["public"]["Tables"]["orders"]["Row"]
+        }
+        Returns: boolean
+      }
       place_order: {
         Args: {
           _address: string
