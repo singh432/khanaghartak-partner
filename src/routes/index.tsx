@@ -34,14 +34,14 @@ function loginHref(as: CtaTarget) {
 }
 
 function Landing() {
-  const { user, isAdmin, isSuperAdmin, isRider } = useAuth();
+  const { user, isAdmin, isRider } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
 
   const navLinks: Array<{ label: string; href: string; primary?: boolean }> = [
     { label: "Order Food", href: user ? "/home" : loginHref("user"), primary: true },
     { label: "Restaurant Login", href: isAdmin ? "/admin" : loginHref("admin") },
     { label: "Rider Login", href: isRider ? "/rider" : loginHref("rider") },
-    { label: "Admin Login", href: isSuperAdmin ? "/super" : loginHref("admin") },
+    { label: "Help", href: "#help" },
   ];
 
   return (
@@ -254,6 +254,35 @@ function Landing() {
         </div>
       </section>
 
+      {/* ============ HELP ============ */}
+      <section id="help" className="border-t border-border/60 bg-secondary/40">
+        <div className="mx-auto max-w-7xl px-4 py-16 md:px-8 md:py-20">
+          <div className="grid gap-8 md:grid-cols-[1fr_1.2fr] md:items-center">
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary">Need a hand?</p>
+              <h2 className="font-display mt-3 text-4xl leading-tight tracking-tight md:text-5xl">
+                We're here to help.
+              </h2>
+              <p className="mt-4 max-w-md text-base text-muted-foreground">
+                Have a question about your order, kitchen onboarding, or rider partnership? Reach out — a real human will get back to you.
+              </p>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <a href="mailto:singhsuryapratap432@gmail.com" className="group rounded-2xl border bg-card p-6 transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft)]">
+                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground">Email us</p>
+                <p className="font-display mt-2 text-lg break-all">singhsuryapratap432@gmail.com</p>
+                <p className="mt-1 text-xs text-muted-foreground">Replies within 24 hours</p>
+              </a>
+              <a href="tel:+918009253547" className="group rounded-2xl border bg-card p-6 transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft)]">
+                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground">Call us</p>
+                <p className="font-display mt-2 text-lg">+91 80092 53547</p>
+                <p className="mt-1 text-xs text-muted-foreground">Mon – Sun · 9am to 10pm</p>
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ============ FOOTER ============ */}
       <footer className="border-t bg-foreground text-background">
         <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-10 md:flex-row md:items-center md:justify-between md:px-8">
@@ -269,7 +298,7 @@ function Landing() {
             <a href={user ? "/home" : loginHref("user")} className="rounded-full bg-background/10 px-4 py-2 font-semibold hover:bg-background/20">Order food</a>
             <a href={isAdmin ? "/admin" : loginHref("admin")} className="rounded-full bg-background/10 px-4 py-2 font-semibold hover:bg-background/20">Restaurant</a>
             <a href={isRider ? "/rider" : loginHref("rider")} className="rounded-full bg-background/10 px-4 py-2 font-semibold hover:bg-background/20">Rider</a>
-            <a href={isSuperAdmin ? "/super" : loginHref("admin")} className="rounded-full bg-primary px-4 py-2 font-bold text-primary-foreground">Admin</a>
+            <a href="#help" className="rounded-full bg-primary px-4 py-2 font-bold text-primary-foreground">Help</a>
           </div>
         </div>
         <div className="border-t border-background/10">
