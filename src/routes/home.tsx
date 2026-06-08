@@ -139,7 +139,7 @@ function HomePage() {
                   <p className="truncate px-4 pb-2 text-xs text-muted-foreground">{restaurant.address}</p>
                 )}
                 <div className="px-4 pb-4">
-                  <Link to="/menu" search={{ r: restaurant.id }} className="block w-full rounded-2xl bg-primary py-3 text-center text-sm font-bold text-primary-foreground shadow-[var(--shadow-soft)]">
+                  <Link to="/menu" className="block w-full rounded-2xl bg-primary py-3 text-center text-sm font-bold text-primary-foreground shadow-[var(--shadow-soft)]">
                     View Menu
                   </Link>
                 </div>
