@@ -15,6 +15,7 @@ import { CartProvider } from "@/hooks/useCart";
 import { BottomNav } from "@/components/BottomNav";
 
 import appCss from "../styles.css?url";
+import { khanaGharTakLogoUrl } from "@/assets/brand";
 
 function NotFoundComponent() {
   return (
@@ -71,6 +72,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
     links: [
       { rel: "stylesheet", href: appCss },
+      { rel: "icon", type: "image/png", href: khanaGharTakLogoUrl },
+      { rel: "shortcut icon", type: "image/png", href: khanaGharTakLogoUrl },
+      { rel: "apple-touch-icon", href: khanaGharTakLogoUrl },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Archivo+Black&family=Hind:wght@400;500;600;700&display=swap" },
