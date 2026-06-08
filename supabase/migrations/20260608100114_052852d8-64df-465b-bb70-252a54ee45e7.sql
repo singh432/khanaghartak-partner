@@ -1,0 +1,1 @@
+ALTER FUNCTION public.owner_order_update_safe(public.orders, public.orders) SET search_path = public;
