@@ -268,9 +268,9 @@ function Landing() {
               </p>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
-              <a href="mailto:singhsuryapratap432@gmail.com" className="group rounded-2xl border bg-card p-6 transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft)]">
+              <a href="mailto:help@khanaghartak.in" className="group rounded-2xl border bg-card p-6 transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft)]">
                 <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground">Email us</p>
-                <p className="font-display mt-2 text-lg break-all">singhsuryapratap432@gmail.com</p>
+                <p className="font-display mt-2 text-lg break-all">help@khanaghartak.in</p>
                 <p className="mt-1 text-xs text-muted-foreground">Replies within 24 hours</p>
               </a>
               <a href="tel:+918009253547" className="group rounded-2xl border bg-card p-6 transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft)]">
