@@ -18,7 +18,7 @@ import { BottomNav } from "@/components/BottomNav";
 
 import appCss from "../styles.css?url";
 import { khanaGharTakLogoUrl } from "@/assets/brand";
-import faviconUrl from "@/assets/logo.png?url";
+import { khanaGharTakLogoUrl } from "@/assets/brand";
 
 function NotFoundComponent() {
   return (
