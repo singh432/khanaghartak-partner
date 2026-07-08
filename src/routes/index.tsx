@@ -389,6 +389,26 @@ function Step({
   );
 }
 
+function Feature({
+  icon: Icon,
+  title,
+  body,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  body: string;
+}) {
+  return (
+    <div className="group rounded-3xl border bg-card p-6 transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft)]">
+      <span className="grid h-11 w-11 place-items-center rounded-2xl bg-primary/10 text-primary">
+        <Icon className="h-5 w-5" />
+      </span>
+      <h3 className="font-display mt-5 text-xl leading-tight">{title}</h3>
+      <p className="mt-2 text-sm text-muted-foreground">{body}</p>
+    </div>
+  );
+}
+
 function JoinCard({
   badge,
   title,
