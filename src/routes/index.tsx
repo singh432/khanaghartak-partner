@@ -152,7 +152,7 @@ function Landing() {
             <dl className="mt-10 grid max-w-md grid-cols-3 gap-6">
               <Stat k="35 min" v="Avg delivery" />
               <Stat k="100%" v="COD ready" />
-              <Stat k="10 km" v="Service radius" />
+              <Stat k="₹0" v="Hidden charges" />
             </dl>
           </div>
 
