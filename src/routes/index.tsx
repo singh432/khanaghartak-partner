@@ -13,6 +13,12 @@ import {
   ArrowRight,
   Menu as MenuIcon,
   X,
+  Flame,
+  Leaf,
+  BadgePercent,
+  HeartHandshake,
+  Phone,
+  Sparkles,
 } from "lucide-react";
 
 export const Route = createFileRoute("/")({
@@ -146,7 +152,7 @@ function Landing() {
             <dl className="mt-10 grid max-w-md grid-cols-3 gap-6">
               <Stat k="35 min" v="Avg delivery" />
               <Stat k="100%" v="COD ready" />
-              <Stat k="10 km" v="Service radius" />
+              <Stat k="₹0" v="Hidden charges" />
             </dl>
           </div>
 
@@ -179,6 +185,52 @@ function Landing() {
           </div>
         </div>
       </section>
+
+      {/* ============ WHY US ============ */}
+      <section className="mx-auto max-w-7xl px-4 py-16 md:px-8 md:py-24">
+        <div className="max-w-2xl">
+          <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary">Why KhanaGharTak</p>
+          <h2 className="font-display mt-3 text-4xl leading-tight tracking-tight md:text-5xl">
+            Built for hungry people, not hype.
+          </h2>
+          <p className="mt-4 text-base text-muted-foreground md:text-lg">
+            Everything we do is designed around one thing — getting you a great meal, fast, without the usual delivery-app tricks.
+          </p>
+        </div>
+
+        <div className="mt-10 grid gap-4 md:mt-14 md:grid-cols-3 md:gap-6">
+          <Feature icon={Flame} title="Hot & fresh guarantee" body="Riders carry insulated bags so your biryani, rotis, and gravies land steaming — not lukewarm." />
+          <Feature icon={BadgePercent} title="Honest, upfront prices" body="No surge pricing, no sneaky packaging fees. What you see at checkout is what you pay at the door." />
+          <Feature icon={Wallet} title="Cash, UPI, or online" body="Pay however you like — Cash on Delivery, UPI, or card. Refunds land back in the same account in 24 hours." />
+          <Feature icon={Leaf} title="Pure-veg & Jain filters" body="Strict veg households can lock the whole app to pure-veg kitchens. Jain-friendly menus flagged clearly." />
+          <Feature icon={HeartHandshake} title="Support local kitchens" body="Every order feeds a small kitchen or home chef in your own neighbourhood — not a faceless cloud brand." />
+          <Feature icon={Phone} title="Real human support" body="Stuck? Missing item? WhatsApp or call a real person, not a bot. Replies in minutes, not days." />
+        </div>
+
+        <div className="mt-12 overflow-hidden rounded-3xl border bg-gradient-to-br from-primary/10 via-card to-accent/40 p-6 md:mt-16 md:p-10">
+          <div className="flex flex-col items-start gap-6 md:flex-row md:items-center md:justify-between">
+            <div className="max-w-xl">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/15 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-primary">
+                <Sparkles className="h-3.5 w-3.5" /> First order offer
+              </span>
+              <h3 className="font-display mt-4 text-3xl leading-tight md:text-4xl">
+                ₹75 off your first order.
+              </h3>
+              <p className="mt-2 text-sm text-muted-foreground md:text-base">
+                Use code <span className="rounded-md bg-foreground/90 px-2 py-0.5 font-mono text-xs font-bold text-background">FIRST75</span> at checkout. No minimum order, works on every kitchen.
+              </p>
+            </div>
+            <a
+              href={user ? "/home" : loginHref("user")}
+              className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3.5 text-sm font-bold text-primary-foreground shadow-[0_12px_28px_-10px_oklch(0.66_0.21_35/0.6)] transition hover:translate-y-[-1px]"
+            >
+              Claim my ₹75 <ArrowRight className="h-4 w-4" />
+            </a>
+          </div>
+        </div>
+      </section>
+
+
 
       {/* ============ HOW IT WORKS ============ */}
       <section id="how-it-works" className="border-y border-border/60 bg-secondary/40">
@@ -334,6 +386,26 @@ function Step({
       <h3 className="font-display mt-6 text-2xl leading-tight">{title}</h3>
       <p className="mt-3 text-sm text-muted-foreground">{body}</p>
     </li>
+  );
+}
+
+function Feature({
+  icon: Icon,
+  title,
+  body,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  body: string;
+}) {
+  return (
+    <div className="group rounded-3xl border bg-card p-6 transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft)]">
+      <span className="grid h-11 w-11 place-items-center rounded-2xl bg-primary/10 text-primary">
+        <Icon className="h-5 w-5" />
+      </span>
+      <h3 className="font-display mt-5 text-xl leading-tight">{title}</h3>
+      <p className="mt-2 text-sm text-muted-foreground">{body}</p>
+    </div>
   );
 }
 
