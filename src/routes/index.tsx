@@ -144,42 +144,26 @@ function Landing() {
             </div>
 
             <dl className="mt-10 grid max-w-md grid-cols-3 gap-6">
-              <Stat k="30+" v="Home kitchens" />
-              <Stat k="20 min" v="Avg delivery" />
+              <Stat k="35 min" v="Avg delivery" />
               <Stat k="100%" v="COD ready" />
+              <Stat k="10 km" v="Service radius" />
             </dl>
           </div>
 
-          {/* Hero card stack */}
+          {/* Hero visual — clean brand card */}
           <div className="relative mx-auto w-full max-w-md md:max-w-none">
             <div className="absolute inset-0 -z-10 translate-x-6 translate-y-6 rounded-3xl bg-primary/15" />
-            <div className="rounded-3xl border bg-card p-6 shadow-[var(--shadow-card)]">
-              <div className="flex items-center gap-4">
-                <img src={khanaGharTakLogoUrl} alt="" className="h-16 w-16 rounded-2xl object-contain" />
-                <div>
-                  <p className="font-display text-xl">Today's Thali</p>
-                  <p className="text-xs text-muted-foreground">From Sharma Kitchen · 1.2 km</p>
-                </div>
-                <span className="ml-auto rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary">₹149</span>
+            <div className="rounded-3xl border bg-card p-8 shadow-[var(--shadow-card)]">
+              <div className="flex flex-col items-center text-center">
+                <img src={khanaGharTakLogoUrl} alt="" className="h-24 w-24 rounded-3xl object-contain" />
+                <p className="font-display mt-5 text-2xl leading-tight">Fresh. Local. Hot.</p>
+                <p className="mt-2 max-w-xs text-sm text-muted-foreground">
+                  Meals cooked to order by kitchens in your neighbourhood — never reheated, never rushed.
+                </p>
               </div>
 
-              <ul className="mt-5 divide-y">
-                {[
-                  ["Dal Tadka", "2 ladle"],
-                  ["Mix Veg Sabzi", "1 katori"],
-                  ["Tawa Roti", "4 pcs"],
-                  ["Jeera Rice", "1 plate"],
-                  ["Salad + Achar", "Side"],
-                ].map(([n, d]) => (
-                  <li key={n} className="flex items-center justify-between py-2.5 text-sm">
-                    <span className="font-semibold">{n}</span>
-                    <span className="text-xs text-muted-foreground">{d}</span>
-                  </li>
-                ))}
-              </ul>
-
-              <div className="mt-5 grid grid-cols-3 gap-2 text-center text-[11px] font-semibold text-muted-foreground">
-                <Pill icon={Clock} label="20 min" />
+              <div className="mt-7 grid grid-cols-3 gap-2 text-center text-[11px] font-semibold text-muted-foreground">
+                <Pill icon={Clock} label="35 min" />
                 <Pill icon={Wallet} label="COD" />
                 <Pill icon={MapPin} label="Local" />
               </div>
@@ -205,7 +189,7 @@ function Landing() {
               Three steps. One hot meal.
             </h2>
             <p className="mt-4 text-base text-muted-foreground md:text-lg">
-              From your phone to your plate in twenty minutes flat. No phone calls, no awkward menus, no surprises at the door.
+              From your phone to your plate in about thirty-five minutes. No phone calls, no awkward menus, no surprises at the door.
             </p>
           </div>
 
