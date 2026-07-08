@@ -18,7 +18,7 @@ import {
   BadgePercent,
   HeartHandshake,
   Phone,
-  Sparkles,
+
 } from "lucide-react";
 
 export const Route = createFileRoute("/")({
