@@ -13,6 +13,12 @@ import {
   ArrowRight,
   Menu as MenuIcon,
   X,
+  Flame,
+  Leaf,
+  BadgePercent,
+  HeartHandshake,
+  Phone,
+  Sparkles,
 } from "lucide-react";
 
 export const Route = createFileRoute("/")({
