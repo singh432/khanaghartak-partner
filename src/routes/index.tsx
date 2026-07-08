@@ -53,7 +53,7 @@ function Landing() {
             <img src={khanaGharTakLogoUrl} alt="KhanaGharTak" className="h-10 w-10 rounded-xl object-contain md:h-11 md:w-11" />
             <div className="leading-tight">
               <p className="font-display text-base md:text-lg">KhanaGharTak</p>
-              <p className="hidden text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground md:block">Ghar Ka Khana, Ghar Tak</p>
+              <p className="hidden text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground md:block">Jo Dil Chahe, Wahi Order Karo</p>
             </div>
           </Link>
 
