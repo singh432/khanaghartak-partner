@@ -189,7 +189,7 @@ function Landing() {
               Three steps. One hot meal.
             </h2>
             <p className="mt-4 text-base text-muted-foreground md:text-lg">
-              From your phone to your plate in twenty minutes flat. No phone calls, no awkward menus, no surprises at the door.
+              From your phone to your plate in about thirty-five minutes. No phone calls, no awkward menus, no surprises at the door.
             </p>
           </div>
 
