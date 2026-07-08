@@ -117,9 +117,9 @@ function Landing() {
               <span className="h-1.5 w-1.5 rounded-full bg-success" /> Now serving your neighbourhood
             </span>
 
-            <h1 className="font-display mt-5 text-5xl leading-[0.95] tracking-tight md:text-7xl lg:text-[88px]">
-              Ghar jaisa <span className="text-primary">khana</span>,<br />
-              seedha aapke <span className="underline decoration-primary decoration-[6px] underline-offset-4">ghar tak</span>.
+            <h1 className="font-display mt-5 text-4xl leading-[1] tracking-tight md:text-5xl lg:text-6xl">
+              Jo Dil Chahe,<br />
+              <span className="text-primary">Wahi Order Karo.</span>
             </h1>
 
             <p className="mt-6 max-w-xl text-base text-muted-foreground md:text-lg">
