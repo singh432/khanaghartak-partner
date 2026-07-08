@@ -175,7 +175,7 @@ function LoginPage() {
           {getAsParam() === "admin" ? "Restaurant Admin Login" : getAsParam() === "rider" ? "Rider Login" : (mode === "signin" ? "Welcome back" : "Create your account")}
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          {getAsParam() === "admin" ? "Sign in to manage your restaurant." : getAsParam() === "rider" ? "Sign in with your rider account." : "Ghar jaisa khana, seedha aapke ghar tak."}
+          {getAsParam() === "admin" ? "Sign in to manage your restaurant." : getAsParam() === "rider" ? "Sign in with your rider account." : "Jo dil chahe, wahi order karo."}
         </p>
         {getAsParam() !== "user" && (
           <button type="button" onClick={() => { window.location.href = "/login"; }}

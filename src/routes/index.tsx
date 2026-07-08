@@ -19,9 +19,9 @@ export const Route = createFileRoute("/")({
   component: Landing,
   head: () => ({
     meta: [
-      { title: "KhanaGharTak — Ghar Jaisa Khana, Seedha Aapke Ghar Tak" },
+      { title: "KhanaGharTak — Jo Dil Chahe, Wahi Order Karo" },
       { name: "description", content: "Order home-style food from trusted local kitchens. Fast delivery, Cash on Delivery, hot and fresh — every single meal." },
-      { property: "og:title", content: "KhanaGharTak — Home food, delivered hot" },
+      { property: "og:title", content: "KhanaGharTak — Jo Dil Chahe, Wahi Order Karo" },
       { property: "og:description", content: "Order home-style food from trusted local kitchens. Fast delivery, Cash on Delivery." },
     ],
   }),
@@ -53,7 +53,7 @@ function Landing() {
             <img src={khanaGharTakLogoUrl} alt="KhanaGharTak" className="h-10 w-10 rounded-xl object-contain md:h-11 md:w-11" />
             <div className="leading-tight">
               <p className="font-display text-base md:text-lg">KhanaGharTak</p>
-              <p className="hidden text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground md:block">Ghar Ka Khana, Ghar Tak</p>
+              <p className="hidden text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground md:block">Jo Dil Chahe, Wahi Order Karo</p>
             </div>
           </Link>
 
@@ -117,9 +117,9 @@ function Landing() {
               <span className="h-1.5 w-1.5 rounded-full bg-success" /> Now serving your neighbourhood
             </span>
 
-            <h1 className="font-display mt-5 text-5xl leading-[0.95] tracking-tight md:text-7xl lg:text-[88px]">
-              Ghar jaisa <span className="text-primary">khana</span>,<br />
-              seedha aapke <span className="underline decoration-primary decoration-[6px] underline-offset-4">ghar tak</span>.
+            <h1 className="font-display mt-5 text-4xl leading-[1] tracking-tight md:text-5xl lg:text-6xl">
+              Jo Dil Chahe,<br />
+              <span className="text-primary">Wahi Order Karo.</span>
             </h1>
 
             <p className="mt-6 max-w-xl text-base text-muted-foreground md:text-lg">
@@ -274,7 +274,7 @@ function Landing() {
             <img src={khanaGharTakLogoUrl} alt="" className="h-10 w-10 rounded-xl bg-background object-contain p-1" />
             <div>
               <p className="font-display text-lg">KhanaGharTak</p>
-              <p className="text-xs text-background/60">Ghar jaisa khana, seedha aapke ghar tak.</p>
+              <p className="text-xs text-background/60">Jo dil chahe, wahi order karo.</p>
             </div>
           </div>
 
