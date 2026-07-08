@@ -274,7 +274,7 @@ function Landing() {
             <img src={khanaGharTakLogoUrl} alt="" className="h-10 w-10 rounded-xl bg-background object-contain p-1" />
             <div>
               <p className="font-display text-lg">KhanaGharTak</p>
-              <p className="text-xs text-background/60">Ghar jaisa khana, seedha aapke ghar tak.</p>
+              <p className="text-xs text-background/60">Jo dil chahe, wahi order karo.</p>
             </div>
           </div>
 
