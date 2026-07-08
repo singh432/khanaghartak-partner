@@ -19,9 +19,9 @@ export const Route = createFileRoute("/")({
   component: Landing,
   head: () => ({
     meta: [
-      { title: "KhanaGharTak — Ghar Jaisa Khana, Seedha Aapke Ghar Tak" },
+      { title: "KhanaGharTak — Jo Dil Chahe, Wahi Order Karo" },
       { name: "description", content: "Order home-style food from trusted local kitchens. Fast delivery, Cash on Delivery, hot and fresh — every single meal." },
-      { property: "og:title", content: "KhanaGharTak — Home food, delivered hot" },
+      { property: "og:title", content: "KhanaGharTak — Jo Dil Chahe, Wahi Order Karo" },
       { property: "og:description", content: "Order home-style food from trusted local kitchens. Fast delivery, Cash on Delivery." },
     ],
   }),
