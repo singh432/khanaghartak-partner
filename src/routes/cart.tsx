@@ -24,7 +24,7 @@ function CartPage() {
   const { items, ready, inc, dec, remove, subtotal, totalQty } = useCart();
   const pricing = usePricingSettings();
 
-  const grand = subtotal + (subtotal > 0 ? PLATFORM_FEE : 0);
+  const grand = subtotal + (subtotal > 0 ? pricing.platform_fee : 0);
 
   if (!ready) return <PageSpinner label="Loading your cart…" />;
 
