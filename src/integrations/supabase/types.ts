@@ -253,6 +253,27 @@ export type Database = {
         }
         Relationships: []
       }
+      qr_settings: {
+        Row: {
+          id: string
+          label: string
+          target_url: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          label?: string
+          target_url?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          label?: string
+          target_url?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       restaurants: {
         Row: {
           address: string | null
