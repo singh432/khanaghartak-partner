@@ -17,15 +17,16 @@ const DEFAULTS: PricingSettings = {
 let cache: PricingSettings | null = null;
 let inflight: Promise<PricingSettings> | null = null;
 
-export function fetchPricingSettings(): Promise<PricingSettings> {
-  if (cache) return Promise.resolve(cache);
+export async function fetchPricingSettings(): Promise<PricingSettings> {
+  if (cache) return cache;
   if (inflight) return inflight;
-  inflight = supabase
-    .from("platform_settings")
-    .select("platform_fee, delivery_per_km, max_delivery_radius_km")
-    .limit(1)
-    .maybeSingle()
-    .then(({ data }) => {
+  inflight = (async () => {
+    try {
+      const { data } = await supabase
+        .from("platform_settings")
+        .select("platform_fee, delivery_per_km, max_delivery_radius_km")
+        .limit(1)
+        .maybeSingle();
       const v: PricingSettings = {
         platform_fee: Number(data?.platform_fee ?? DEFAULTS.platform_fee),
         delivery_per_km: Number(data?.delivery_per_km ?? DEFAULTS.delivery_per_km),
@@ -34,13 +35,13 @@ export function fetchPricingSettings(): Promise<PricingSettings> {
         ),
       };
       cache = v;
-      inflight = null;
       return v;
-    })
-    .catch(() => {
-      inflight = null;
+    } catch {
       return DEFAULTS;
-    });
+    } finally {
+      inflight = null;
+    }
+  })();
   return inflight;
 }
 
