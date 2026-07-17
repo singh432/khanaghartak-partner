@@ -7,7 +7,8 @@ import { Search, Bell, X } from "lucide-react";
 export const Route = createFileRoute("/admin/orders")({ component: AdminOrders });
 
 type Order = {
-  id: string; status: string; total: number; subtotal: number; delivery_fee: number;
+  id: string; status: string; total: number; subtotal: number;
+  delivery_fee: number; platform_fee: number; distance_km: number | null;
   customer_name: string; customer_phone: string; address: string;
   landmark: string | null; notes: string | null;
   latitude: number | null; longitude: number | null;
