@@ -1,8 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2 } from "lucide-react";
+import { Loader2, QrCode } from "lucide-react";
 
 export const Route = createFileRoute("/super/settings")({ component: SuperSettings });
 
@@ -12,12 +12,19 @@ type S = {
   terms: string | null; privacy: string | null;
 };
 
+type QR = {
+  id: string; target_url: string; label: string; updated_at: string;
+};
+
 function SuperSettings() {
   const [s, setS] = useState<S | null>(null);
+  const [qr, setQr] = useState<QR | null>(null);
   const [saving, setSaving] = useState(false);
+  const [savingQr, setSavingQr] = useState(false);
 
   useEffect(() => {
     supabase.from("platform_settings").select("*").limit(1).maybeSingle().then(({ data }) => setS(data as S | null));
+    supabase.from("qr_settings").select("*").limit(1).maybeSingle().then(({ data }) => setQr(data as QR | null));
   }, []);
 
   const save = async () => {
@@ -32,13 +39,23 @@ function SuperSettings() {
     if (error) toast.error(error.message); else toast.success("Saved");
   };
 
-  if (!s) return <div className="p-8 text-center text-sm text-muted-foreground">Loading…</div>;
+  const saveQr = async () => {
+    if (!qr) return;
+    setSavingQr(true);
+    const { error } = await supabase.from("qr_settings").update({
+      target_url: qr.target_url, label: qr.label, updated_at: new Date().toISOString(),
+    }).eq("id", qr.id);
+    setSavingQr(false);
+    if (error) toast.error(error.message); else toast.success("QR settings saved");
+  };
+
+  if (!s || !qr) return <div className="p-8 text-center text-sm text-muted-foreground">Loading…</div>;
 
   return (
     <div className="space-y-4 p-4 md:p-6">
       <header>
         <h1 className="text-2xl font-extrabold tracking-tight">Platform Settings</h1>
-        <p className="text-sm text-muted-foreground">Fees, delivery, support, and policies</p>
+        <p className="text-sm text-muted-foreground">Fees, delivery, support, QR code, and policies</p>
       </header>
 
       <div className="space-y-3 rounded-2xl border bg-card p-5 shadow-sm">
@@ -66,7 +83,28 @@ function SuperSettings() {
         </Field>
 
         <button onClick={save} disabled={saving} className="inline-flex w-full items-center justify-center rounded-xl bg-primary py-3 text-sm font-bold text-primary-foreground disabled:opacity-60">
-          {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save settings
+          {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save platform settings
+        </button>
+      </div>
+
+      <div className="space-y-3 rounded-2xl border bg-card p-5 shadow-sm">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-bold">QR Code</h2>
+            <p className="text-sm text-muted-foreground">Change where the public /qr page sends scanners.</p>
+          </div>
+          <Link to="/qr" target="_blank" className="inline-flex items-center gap-1.5 rounded-xl bg-secondary px-3 py-2 text-xs font-bold">
+            <QrCode className="h-4 w-4" /> Preview /qr
+          </Link>
+        </div>
+        <Field label="QR Target URL">
+          <input className="ai" value={qr.target_url} onChange={(e) => setQr({ ...qr, target_url: e.target.value })} placeholder="https://khanaghartak.lovable.app" />
+        </Field>
+        <Field label="QR Label">
+          <input className="ai" value={qr.label} onChange={(e) => setQr({ ...qr, label: e.target.value })} placeholder="Scan to order" />
+        </Field>
+        <button onClick={saveQr} disabled={savingQr} className="inline-flex w-full items-center justify-center rounded-xl bg-primary py-3 text-sm font-bold text-primary-foreground disabled:opacity-60">
+          {savingQr && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save QR settings
         </button>
       </div>
 
