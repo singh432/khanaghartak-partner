@@ -33,6 +33,7 @@ function SuperSettings() {
     setSaving(true);
     const { error } = await supabase.from("platform_settings").update({
       platform_fee: s.platform_fee, default_delivery_charges: s.default_delivery_charges,
+      delivery_per_km: s.delivery_per_km, max_delivery_radius_km: s.max_delivery_radius_km,
       support_phone: s.support_phone, support_email: s.support_email,
       terms: s.terms, privacy: s.privacy,
     }).eq("id", s.id);
