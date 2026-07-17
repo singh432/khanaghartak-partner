@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { BrandHeader } from "@/components/BrandHeader";
 import { useCart } from "@/hooks/useCart";
+import { usePricingSettings } from "@/hooks/usePricingSettings";
 import { PageSpinner } from "@/components/PageState";
 import { Plus, Minus, Trash2, ShoppingBag } from "lucide-react";
 
@@ -18,11 +19,11 @@ export const Route = createFileRoute("/cart")({
   }),
 });
 
-const PLATFORM_FEE = 5;
-
 function CartPage() {
   const navigate = useNavigate();
   const { items, ready, inc, dec, remove, subtotal, totalQty } = useCart();
+  const pricing = usePricingSettings();
+
   const grand = subtotal + (subtotal > 0 ? PLATFORM_FEE : 0);
 
   if (!ready) return <PageSpinner label="Loading your cart…" />;
