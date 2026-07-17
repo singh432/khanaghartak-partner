@@ -66,7 +66,15 @@ function SuperSettings() {
             <input type="number" min={0} step="1" className="ai" value={s.platform_fee}
               onChange={(e) => setS({ ...s, platform_fee: Number(e.target.value) })} />
           </Field>
-          <Field label="Default Delivery Charges (₹)">
+          <Field label="Delivery Charge per KM (₹)">
+            <input type="number" min={0} step="1" className="ai" value={s.delivery_per_km}
+              onChange={(e) => setS({ ...s, delivery_per_km: Number(e.target.value) })} />
+          </Field>
+          <Field label="Maximum Delivery Radius (km)">
+            <input type="number" min={0} step="0.5" className="ai" value={s.max_delivery_radius_km}
+              onChange={(e) => setS({ ...s, max_delivery_radius_km: Number(e.target.value) })} />
+          </Field>
+          <Field label="Default Delivery Charges (₹, legacy)">
             <input type="number" min={0} step="1" className="ai" value={s.default_delivery_charges}
               onChange={(e) => setS({ ...s, default_delivery_charges: Number(e.target.value) })} />
           </Field>
