@@ -122,6 +122,7 @@ export type Database = {
           customer_name: string
           customer_phone: string
           delivery_fee: number
+          distance_km: number | null
           id: string
           items: Json
           landmark: string | null
@@ -129,6 +130,7 @@ export type Database = {
           longitude: number | null
           notes: string | null
           payment_method: string
+          platform_fee: number
           rejection_reason: string | null
           restaurant_id: string | null
           rider_id: string | null
@@ -144,6 +146,7 @@ export type Database = {
           customer_name: string
           customer_phone: string
           delivery_fee?: number
+          distance_km?: number | null
           id?: string
           items: Json
           landmark?: string | null
@@ -151,6 +154,7 @@ export type Database = {
           longitude?: number | null
           notes?: string | null
           payment_method?: string
+          platform_fee?: number
           rejection_reason?: string | null
           restaurant_id?: string | null
           rider_id?: string | null
@@ -166,6 +170,7 @@ export type Database = {
           customer_name?: string
           customer_phone?: string
           delivery_fee?: number
+          distance_km?: number | null
           id?: string
           items?: Json
           landmark?: string | null
@@ -173,6 +178,7 @@ export type Database = {
           longitude?: number | null
           notes?: string | null
           payment_method?: string
+          platform_fee?: number
           rejection_reason?: string | null
           restaurant_id?: string | null
           rider_id?: string | null
@@ -187,7 +193,9 @@ export type Database = {
       platform_settings: {
         Row: {
           default_delivery_charges: number
+          delivery_per_km: number
           id: string
+          max_delivery_radius_km: number
           platform_fee: number
           privacy: string | null
           support_email: string | null
@@ -197,7 +205,9 @@ export type Database = {
         }
         Insert: {
           default_delivery_charges?: number
+          delivery_per_km?: number
           id?: string
+          max_delivery_radius_km?: number
           platform_fee?: number
           privacy?: string | null
           support_email?: string | null
@@ -207,7 +217,9 @@ export type Database = {
         }
         Update: {
           default_delivery_charges?: number
+          delivery_per_km?: number
           id?: string
+          max_delivery_radius_km?: number
           platform_fee?: number
           privacy?: string | null
           support_email?: string | null
