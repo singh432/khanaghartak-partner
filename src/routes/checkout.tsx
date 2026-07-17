@@ -1,14 +1,16 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useCart } from "@/hooks/useCart";
+import { usePricingSettings, computeDeliveryFee, ROAD_FACTOR } from "@/hooks/usePricingSettings";
+import { distanceKm as haversineKm } from "@/lib/geo";
 import { BrandHeader } from "@/components/BrandHeader";
 import { PageSpinner } from "@/components/PageState";
 import { withTimeout } from "@/lib/supabase-query";
-import { MapPin, Navigation, Loader2, Wallet } from "lucide-react";
+import { MapPin, Navigation, Loader2, Wallet, AlertTriangle } from "lucide-react";
 
 export const Route = createFileRoute("/checkout")({
   component: CheckoutPage,
@@ -24,8 +26,6 @@ export const Route = createFileRoute("/checkout")({
   }),
 });
 
-const DELIVERY_FEE = 5;
-
 const schema = z.object({
   name: z.string().trim().min(2).max(80),
   phone: z.string().trim().regex(/^[0-9+\-\s]{7,15}$/, "Enter a valid phone"),
@@ -38,13 +38,16 @@ function CheckoutPage() {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
   const { items, ready, subtotal, clear } = useCart();
+  const pricing = usePricingSettings();
   const [form, setForm] = useState({ name: "", phone: "", address: "", landmark: "", notes: "" });
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [restaurantCoords, setRestaurantCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [placing, setPlacing] = useState(false);
 
   useEffect(() => { if (!loading && !user) navigate({ to: "/login" }); }, [user, loading, navigate]);
   useEffect(() => { if (!loading && ready && items.length === 0) navigate({ to: "/menu" }); }, [items, loading, ready, navigate]);
 
+  // Load saved profile
   useEffect(() => {
     if (!user) return;
     withTimeout(supabase.from("profiles").select("full_name, phone, address, landmark, latitude, longitude")
@@ -59,6 +62,34 @@ function CheckoutPage() {
       })).catch(() => {});
   }, [user]);
 
+  // Fetch restaurant coords from first cart item
+  useEffect(() => {
+    if (!ready || items.length === 0) return;
+    let active = true;
+    (async () => {
+      const { data } = await supabase
+        .from("menu_items")
+        .select("restaurants:restaurant_id(latitude, longitude)")
+        .eq("id", items[0].id)
+        .maybeSingle();
+      if (!active) return;
+      const r = (data as { restaurants: { latitude: number | null; longitude: number | null } | null } | null)?.restaurants;
+      if (r?.latitude != null && r?.longitude != null) {
+        setRestaurantCoords({ lat: r.latitude, lng: r.longitude });
+      }
+    })();
+    return () => { active = false; };
+  }, [ready, items]);
+
+  const distanceKm = useMemo(() => {
+    if (!coords || !restaurantCoords) return null;
+    return haversineKm(restaurantCoords, coords) * ROAD_FACTOR;
+  }, [coords, restaurantCoords]);
+
+  const deliveryFee = distanceKm != null ? computeDeliveryFee(distanceKm, pricing.delivery_per_km) : 0;
+  const outOfRange = distanceKm != null && distanceKm > pricing.max_delivery_radius_km;
+  const grand = subtotal + (distanceKm != null && !outOfRange ? deliveryFee : 0) + pricing.platform_fee;
+
   if (loading || !ready) return <PageSpinner label="Preparing checkout…" />;
   if (!user) return <PageSpinner label="Opening sign in…" />;
 
@@ -71,11 +102,11 @@ function CheckoutPage() {
     );
   };
 
-  const grand = subtotal + DELIVERY_FEE;
-
   const placeOrder = async () => {
     const parsed = schema.safeParse(form);
     if (!parsed.success) return toast.error(parsed.error.issues[0].message);
+    if (!coords) return toast.error("Please pin your delivery location");
+    if (outOfRange) return toast.error("Sorry, this restaurant does not deliver to your selected location.");
     if (!user) return;
     setPlacing(true);
     const { data, error } = await supabase.rpc("place_order", {
@@ -85,15 +116,15 @@ function CheckoutPage() {
       _address: form.address,
       _landmark: form.landmark || undefined,
       _notes: form.notes || undefined,
-      _latitude: coords?.lat,
-      _longitude: coords?.lng,
+      _latitude: coords.lat,
+      _longitude: coords.lng,
     });
     setPlacing(false);
     if (error || !data) return toast.error(error?.message ?? "Could not place order");
     await supabase.from("profiles").upsert({
       id: user.id, full_name: form.name, phone: form.phone,
       address: form.address, landmark: form.landmark || null,
-      latitude: coords?.lat ?? null, longitude: coords?.lng ?? null,
+      latitude: coords.lat, longitude: coords.lng,
     }, { onConflict: "id" });
     clear();
     navigate({ to: "/order/$id", params: { id: data as unknown as string } });
@@ -132,9 +163,15 @@ function CheckoutPage() {
             <Navigation className="h-4 w-4" />
             {coords ? `Re-pin location (${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)})` : "Pin exact delivery location"}
           </button>
-          {coords && (
+          {coords && distanceKm != null && !outOfRange && (
             <div className="flex items-center gap-1 text-xs text-success">
-              <MapPin className="h-3.5 w-3.5" /> Location pinned
+              <MapPin className="h-3.5 w-3.5" /> Location pinned · ~{distanceKm.toFixed(1)} km from kitchen
+            </div>
+          )}
+          {outOfRange && (
+            <div className="flex items-start gap-2 rounded-xl border-2 border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>Sorry, this restaurant does not deliver to your selected location. (~{distanceKm!.toFixed(1)} km, max {pricing.max_delivery_radius_km} km)</span>
             </div>
           )}
         </Section>
@@ -147,9 +184,14 @@ function CheckoutPage() {
             </div>
           ))}
           <div className="my-2 h-px bg-border" />
-          <Row label="Item total" value={`₹${subtotal.toFixed(0)}`} />
-          <Row label="Platform fee" value={`₹${DELIVERY_FEE.toFixed(0)}`} />
-          <Row label="Grand total" value={`₹${grand.toFixed(0)}`} bold />
+          <Row label="Items total" value={`₹${subtotal.toFixed(0)}`} />
+          <Row
+            label={distanceKm != null ? `Delivery charge (${distanceKm.toFixed(1)} km × ₹${pricing.delivery_per_km})` : "Delivery charge"}
+            value={distanceKm != null ? (outOfRange ? "—" : `₹${deliveryFee.toFixed(0)}`) : "Pin location"}
+          />
+          <Row label="Platform fee" value={`₹${pricing.platform_fee.toFixed(0)}`} />
+          <div className="my-2 h-px bg-border" />
+          <Row label="Grand total" value={outOfRange ? "—" : `₹${grand.toFixed(0)}`} bold />
         </Section>
 
         <Section title="Payment">
@@ -157,7 +199,7 @@ function CheckoutPage() {
             <Wallet className="h-5 w-5 text-primary" />
             <div className="flex-1">
               <p className="text-sm font-semibold">Cash on Delivery</p>
-              <p className="text-[11px] text-muted-foreground">Pay ₹{grand.toFixed(0)} when your order arrives</p>
+              <p className="text-[11px] text-muted-foreground">Pay ₹{outOfRange ? "—" : grand.toFixed(0)} when your order arrives</p>
             </div>
             <span className="h-4 w-4 rounded-full border-4 border-primary" />
           </div>
@@ -165,10 +207,10 @@ function CheckoutPage() {
       </div>
 
       <div className="fixed bottom-0 left-1/2 z-30 w-full max-w-[480px] -translate-x-1/2 border-t bg-background p-4">
-        <button onClick={placeOrder} disabled={placing}
-          className="flex h-12 w-full items-center justify-center rounded-2xl bg-primary text-sm font-bold text-primary-foreground shadow-[var(--shadow-soft)]">
+        <button onClick={placeOrder} disabled={placing || !coords || outOfRange}
+          className="flex h-12 w-full items-center justify-center rounded-2xl bg-primary text-sm font-bold text-primary-foreground shadow-[var(--shadow-soft)] disabled:opacity-60">
           {placing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Place Order · ₹{grand.toFixed(0)}
+          {!coords ? "Pin location to continue" : outOfRange ? "Outside delivery area" : `Place Order · ₹${grand.toFixed(0)}`}
         </button>
       </div>
 
