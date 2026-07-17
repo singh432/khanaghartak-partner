@@ -7,7 +7,8 @@ import { Search, Bell, X } from "lucide-react";
 export const Route = createFileRoute("/admin/orders")({ component: AdminOrders });
 
 type Order = {
-  id: string; status: string; total: number; subtotal: number; delivery_fee: number;
+  id: string; status: string; total: number; subtotal: number;
+  delivery_fee: number; platform_fee: number; distance_km: number | null;
   customer_name: string; customer_phone: string; address: string;
   landmark: string | null; notes: string | null;
   latitude: number | null; longitude: number | null;
@@ -146,8 +147,9 @@ function AdminOrders() {
                   </div>
                 ))}
                 <div className="my-2 h-px bg-border" />
-                <div className="flex justify-between text-xs"><span className="text-muted-foreground">Subtotal</span><span>₹{Number(o.subtotal).toFixed(0)}</span></div>
-                <div className="flex justify-between text-xs"><span className="text-muted-foreground">Platform fee</span><span>₹{Number(o.delivery_fee).toFixed(0)}</span></div>
+                <div className="flex justify-between text-xs"><span className="text-muted-foreground">Items total</span><span>₹{Number(o.subtotal).toFixed(0)}</span></div>
+                <div className="flex justify-between text-xs"><span className="text-muted-foreground">Delivery{o.distance_km != null ? ` (${Number(o.distance_km).toFixed(1)} km)` : ""}</span><span>₹{Number(o.delivery_fee).toFixed(0)}</span></div>
+                <div className="flex justify-between text-xs"><span className="text-muted-foreground">Platform fee</span><span>₹{Number(o.platform_fee ?? 0).toFixed(0)}</span></div>
                 <div className="mt-1 flex justify-between text-sm font-bold"><span>COD total</span><span>₹{Number(o.total).toFixed(0)}</span></div>
               </div>
 

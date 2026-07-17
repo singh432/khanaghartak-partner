@@ -8,6 +8,7 @@ export const Route = createFileRoute("/super/settings")({ component: SuperSettin
 
 type S = {
   id: string; platform_fee: number; default_delivery_charges: number;
+  delivery_per_km: number; max_delivery_radius_km: number;
   support_phone: string | null; support_email: string | null;
   terms: string | null; privacy: string | null;
 };
@@ -32,6 +33,7 @@ function SuperSettings() {
     setSaving(true);
     const { error } = await supabase.from("platform_settings").update({
       platform_fee: s.platform_fee, default_delivery_charges: s.default_delivery_charges,
+      delivery_per_km: s.delivery_per_km, max_delivery_radius_km: s.max_delivery_radius_km,
       support_phone: s.support_phone, support_email: s.support_email,
       terms: s.terms, privacy: s.privacy,
     }).eq("id", s.id);
@@ -64,7 +66,15 @@ function SuperSettings() {
             <input type="number" min={0} step="1" className="ai" value={s.platform_fee}
               onChange={(e) => setS({ ...s, platform_fee: Number(e.target.value) })} />
           </Field>
-          <Field label="Default Delivery Charges (₹)">
+          <Field label="Delivery Charge per KM (₹)">
+            <input type="number" min={0} step="1" className="ai" value={s.delivery_per_km}
+              onChange={(e) => setS({ ...s, delivery_per_km: Number(e.target.value) })} />
+          </Field>
+          <Field label="Maximum Delivery Radius (km)">
+            <input type="number" min={0} step="0.5" className="ai" value={s.max_delivery_radius_km}
+              onChange={(e) => setS({ ...s, max_delivery_radius_km: Number(e.target.value) })} />
+          </Field>
+          <Field label="Default Delivery Charges (₹, legacy)">
             <input type="number" min={0} step="1" className="ai" value={s.default_delivery_charges}
               onChange={(e) => setS({ ...s, default_delivery_charges: Number(e.target.value) })} />
           </Field>

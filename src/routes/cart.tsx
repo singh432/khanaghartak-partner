@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { BrandHeader } from "@/components/BrandHeader";
 import { useCart } from "@/hooks/useCart";
+import { usePricingSettings } from "@/hooks/usePricingSettings";
 import { PageSpinner } from "@/components/PageState";
 import { Plus, Minus, Trash2, ShoppingBag } from "lucide-react";
 
@@ -18,12 +19,12 @@ export const Route = createFileRoute("/cart")({
   }),
 });
 
-const PLATFORM_FEE = 5;
-
 function CartPage() {
   const navigate = useNavigate();
   const { items, ready, inc, dec, remove, subtotal, totalQty } = useCart();
-  const grand = subtotal + (subtotal > 0 ? PLATFORM_FEE : 0);
+  const pricing = usePricingSettings();
+
+  const grand = subtotal + (subtotal > 0 ? pricing.platform_fee : 0);
 
   if (!ready) return <PageSpinner label="Loading your cart…" />;
 
@@ -70,10 +71,12 @@ function CartPage() {
         ))}
 
         <div className="mt-4 rounded-2xl border bg-card p-4 text-sm shadow-[var(--shadow-card)]">
-          <Row label="Item total" value={`₹${subtotal.toFixed(0)}`} />
-          <Row label="Platform fee" value={`₹${PLATFORM_FEE.toFixed(0)}`} />
+          <Row label="Items total" value={`₹${subtotal.toFixed(0)}`} />
+          <Row label="Platform fee" value={`₹${pricing.platform_fee.toFixed(0)}`} />
+          <Row label="Delivery charge" value="Calculated at checkout" />
           <div className="my-2 h-px bg-border" />
-          <Row label="Grand total" value={`₹${grand.toFixed(0)}`} bold />
+          <Row label="Subtotal + fees" value={`₹${grand.toFixed(0)}+`} bold />
+          <p className="mt-2 text-[11px] text-muted-foreground">Delivery is charged by distance from the kitchen to your pinned address.</p>
           <span className="mt-3 inline-block rounded-full bg-accent px-2.5 py-1 text-[11px] font-semibold text-accent-foreground">
             Cash on Delivery
           </span>

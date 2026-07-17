@@ -8,8 +8,9 @@ import { CheckCircle2, Clock } from "lucide-react";
 export const Route = createFileRoute("/order/$id")({ component: OrderSuccess });
 
 type Order = {
-  id: string; status: string; total: number; customer_name: string;
-  created_at: string; address: string;
+  id: string; status: string; total: number; subtotal: number;
+  delivery_fee: number; platform_fee: number; distance_km: number | null;
+  customer_name: string; created_at: string; address: string;
 };
 
 function OrderSuccess() {
@@ -22,7 +23,8 @@ function OrderSuccess() {
     let active = true;
     setLoading(true);
     setError(null);
-    withTimeout(supabase.from("orders").select("id,status,total,customer_name,created_at,address")
+    withTimeout(supabase.from("orders")
+      .select("id,status,total,subtotal,delivery_fee,platform_fee,distance_km,customer_name,created_at,address")
       .eq("id", id).maybeSingle()).then(({ data, error }) => {
         if (!active) return;
         if (error) throw error;
@@ -60,7 +62,13 @@ function OrderSuccess() {
             <div className="my-3 h-px bg-border" />
             <p className="text-sm"><span className="text-muted-foreground">Name: </span>{order.customer_name}</p>
             <p className="mt-1 text-sm"><span className="text-muted-foreground">Address: </span>{order.address}</p>
-            <p className="mt-1 text-sm"><span className="text-muted-foreground">Amount to pay (COD): </span><span className="font-bold">₹{Number(order.total).toFixed(0)}</span></p>
+            <div className="mt-3 space-y-1 text-sm">
+              <Row label="Items total" value={`₹${Number(order.subtotal ?? 0).toFixed(0)}`} />
+              <Row label={`Delivery${order.distance_km != null ? ` (${Number(order.distance_km).toFixed(1)} km)` : ""}`} value={`₹${Number(order.delivery_fee ?? 0).toFixed(0)}`} />
+              <Row label="Platform fee" value={`₹${Number(order.platform_fee ?? 0).toFixed(0)}`} />
+              <div className="my-1 h-px bg-border" />
+              <Row label="Grand total (COD)" value={`₹${Number(order.total).toFixed(0)}`} bold />
+            </div>
             <p className="mt-3 inline-flex items-center gap-2 rounded-full bg-accent px-3 py-1 text-xs font-semibold">
               <span className="capitalize">{order.status.replace(/_/g, " ")}</span>
               <span className="pulse-dot" />
@@ -76,6 +84,15 @@ function OrderSuccess() {
         Back to home
       </Link>
       <Link to="/orders" className="mt-3 text-sm font-medium text-primary underline">Track all my orders</Link>
+    </div>
+  );
+}
+
+function Row({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
+  return (
+    <div className={`flex justify-between ${bold ? "text-base font-bold" : "text-sm"}`}>
+      <span className={bold ? "" : "text-muted-foreground"}>{label}</span>
+      <span>{value}</span>
     </div>
   );
 }
