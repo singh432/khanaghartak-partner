@@ -8,8 +8,9 @@ import { CheckCircle2, Clock } from "lucide-react";
 export const Route = createFileRoute("/order/$id")({ component: OrderSuccess });
 
 type Order = {
-  id: string; status: string; total: number; customer_name: string;
-  created_at: string; address: string;
+  id: string; status: string; total: number; subtotal: number;
+  delivery_fee: number; platform_fee: number; distance_km: number | null;
+  customer_name: string; created_at: string; address: string;
 };
 
 function OrderSuccess() {
@@ -22,7 +23,8 @@ function OrderSuccess() {
     let active = true;
     setLoading(true);
     setError(null);
-    withTimeout(supabase.from("orders").select("id,status,total,customer_name,created_at,address")
+    withTimeout(supabase.from("orders")
+      .select("id,status,total,subtotal,delivery_fee,platform_fee,distance_km,customer_name,created_at,address")
       .eq("id", id).maybeSingle()).then(({ data, error }) => {
         if (!active) return;
         if (error) throw error;
