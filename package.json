@@ -92,5 +92,9 @@
   "sideEffects": [
     "src/lib/ssr-storage-polyfill.ts"
   ],
-  "type": "module"
+  "type": "module",
+  "overrides": {
+    "seroval": "1.5.6",
+    "seroval-plugins": "1.5.6"
+  }
 }
