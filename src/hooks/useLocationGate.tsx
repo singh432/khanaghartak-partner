@@ -1,7 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { distanceFromServiceCenterKm, SERVICE_RADIUS_KM, type LatLng } from "@/lib/geo";
+import { useAuth } from "@/hooks/useAuth";
 
-type GateStatus = "checking" | "allowed" | "denied" | "out_of_range" | "unsupported";
+type GateStatus = "idle" | "checking" | "allowed" | "denied" | "out_of_range" | "unsupported";
 
 type Ctx = {
   status: GateStatus;
@@ -38,7 +39,8 @@ function writeCached(p: LatLng) {
 
 export function LocationGateProvider({ children }: { children: React.ReactNode }) {
   const [coords, setCoords] = useState<LatLng | null>(null);
-  const [status, setStatus] = useState<GateStatus>("checking");
+  const [status, setStatus] = useState<GateStatus>("idle");
+  const { user, loading: authLoading } = useAuth();
 
   const evaluate = useCallback((p: LatLng) => {
     const d = distanceFromServiceCenterKm(p);
@@ -65,13 +67,18 @@ export function LocationGateProvider({ children }: { children: React.ReactNode }
   }, [evaluate]);
 
   useEffect(() => {
+    // Only check location AFTER the user is signed in.
+    if (authLoading || !user) {
+      setStatus("idle");
+      return;
+    }
     const cached = readCached();
     if (cached) {
       evaluate(cached);
       return;
     }
     request();
-  }, [evaluate, request]);
+  }, [authLoading, user, evaluate, request]);
 
   const distanceKm = coords ? distanceFromServiceCenterKm(coords) : null;
 
