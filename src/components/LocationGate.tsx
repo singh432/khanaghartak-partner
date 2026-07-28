@@ -1,6 +1,7 @@
 import { useRouterState } from "@tanstack/react-router";
 import { Loader2, MapPin } from "lucide-react";
 import { useLocationGate } from "@/hooks/useLocationGate";
+import { useAuth } from "@/hooks/useAuth";
 import { SERVICE_RADIUS_KM } from "@/lib/geo";
 
 // Routes that the gate guards. Other routes (landing, login, admin, super, rider)
@@ -10,9 +11,12 @@ const GUARDED_PREFIXES = ["/home", "/menu", "/cart", "/checkout", "/orders", "/o
 export function LocationGate({ children }: { children: React.ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { status, distanceKm, request } = useLocationGate();
+  const { user, loading: authLoading } = useAuth();
 
   const guarded = GUARDED_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
   if (!guarded) return <>{children}</>;
+  // Logged-out visitors are never blocked; login comes first.
+  if (authLoading || !user || status === "idle") return <>{children}</>;
 
   if (status === "checking") {
     return (
