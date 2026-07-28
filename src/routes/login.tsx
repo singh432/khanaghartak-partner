@@ -1,45 +1,28 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { z } from "zod";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 import { useAuth } from "@/hooks/useAuth";
 import { khanaGharTakLogoUrl } from "@/assets/brand";
-import { Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
   head: () => ({
     meta: [
       { title: "Sign in — KhanaGharTak" },
-      { name: "description", content: "Sign in or create your KhanaGharTak account to order home-style food with Cash on Delivery." },
+      { name: "description", content: "Sign in to KhanaGharTak with Google and order home-style food with Cash on Delivery." },
       { property: "og:title", content: "Sign in — KhanaGharTak" },
-      { property: "og:description", content: "Sign in or create your KhanaGharTak account to order home-style food with Cash on Delivery." },
+      { property: "og:description", content: "Sign in to KhanaGharTak with Google and order home-style food with Cash on Delivery." },
       { property: "og:url", content: "https://khanaghartak.lovable.app/login" },
     ],
     links: [{ rel: "canonical", href: "https://khanaghartak.lovable.app/login" }],
   }),
 });
 
-const emailSchema = z.string().trim().email("Enter a valid email").max(255);
-const passwordSchema = z.string().min(6, "Password must be at least 6 characters").max(72);
-const nameSchema = z.string().trim().min(2, "Name is too short").max(80);
-const phoneSchema = z.string().trim().regex(/^[0-9+\-\s]{7,15}$/, "Enter a valid phone");
-const otpSchema = z.string().trim().regex(/^\d{6}$/, "Enter the 6-digit code");
-
-type Method = "password" | "otp";
-type Mode = "signin" | "signup";
-
 function LoginPage() {
   const navigate = useNavigate();
-  const { user, loading: authLoading, isAdmin, isSuperAdmin, isRider } = useAuth();
-  const [method, setMethod] = useState<Method>("password");
-  const [mode, setMode] = useState<Mode>("signin");
+  const { user, loading: authLoading, isSuperAdmin } = useAuth();
   const [busy, setBusy] = useState(false);
-  const [form, setForm] = useState({ email: "", password: "", full_name: "", phone: "" });
-  const [otpSent, setOtpSent] = useState(false);
-  const [otpCode, setOtpCode] = useState("");
 
   const getAsParam = (): "admin" | "rider" | "user" => {
     if (typeof window === "undefined") return "user";
@@ -50,107 +33,16 @@ function LoginPage() {
 
   const getRedirectTarget = () => {
     const as = getAsParam();
-    if (as === "admin") {
-      if (isSuperAdmin) return "/super";
-      // allow any signed-in user to reach /admin; route will show setup form if no restaurant yet
-      return "/admin";
-    }
-    if (as === "rider") {
-      // allow any signed-in user to reach /rider; route will show "become rider" form if needed
-      return "/rider";
-    }
-    // default customer login
+    if (as === "admin") return isSuperAdmin ? "/super" : "/admin";
+    if (as === "rider") return "/rider";
     return "/home";
   };
 
   useEffect(() => {
     if (!user || authLoading) return;
-    const target = getRedirectTarget();
-    navigate({ to: target as "/home" });
-  }, [user, authLoading, isAdmin, isSuperAdmin, isRider, navigate]);
-
-
-  const onSubmitPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const emailRes = emailSchema.safeParse(form.email);
-    if (!emailRes.success) return toast.error(emailRes.error.issues[0].message);
-    const passRes = passwordSchema.safeParse(form.password);
-    if (!passRes.success) return toast.error(passRes.error.issues[0].message);
-    if (mode === "signup") {
-      const nRes = nameSchema.safeParse(form.full_name);
-      if (!nRes.success) return toast.error(nRes.error.issues[0].message);
-      const phRes = phoneSchema.safeParse(form.phone);
-      if (!phRes.success) return toast.error(phRes.error.issues[0].message);
-    }
-    setBusy(true);
-    const asNow = getAsParam();
-    const landing = asNow === "user" ? "/home" : `/login?as=${asNow}`;
-    try {
-      if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
-          email: form.email, password: form.password,
-          options: {
-            emailRedirectTo: `${window.location.origin}${landing}`,
-            data: { full_name: form.full_name, phone: form.phone },
-          },
-        });
-        if (error) throw error;
-        toast.success("Account created! Check your email to confirm.");
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({
-          email: form.email, password: form.password,
-        });
-        if (error) throw error;
-        toast.success("Welcome back!");
-      }
-    } catch (err: any) {
-      toast.error(err?.message ?? "Authentication failed");
-    } finally { setBusy(false); }
-  };
-
-  const onSendOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const emailRes = emailSchema.safeParse(form.email);
-    if (!emailRes.success) return toast.error(emailRes.error.issues[0].message);
-    if (mode === "signup") {
-      const nRes = nameSchema.safeParse(form.full_name);
-      if (!nRes.success) return toast.error(nRes.error.issues[0].message);
-    }
-    setBusy(true);
-    const asNow = getAsParam();
-    const landing = asNow === "user" ? "/home" : `/login?as=${asNow}`;
-    try {
-      const { error } = await supabase.auth.signInWithOtp({
-        email: form.email,
-        options: {
-          shouldCreateUser: mode === "signup",
-          emailRedirectTo: `${window.location.origin}${landing}`,
-          data: mode === "signup" ? { full_name: form.full_name, phone: form.phone } : undefined,
-        },
-      });
-      if (error) throw error;
-      setOtpSent(true);
-      toast.success("OTP sent! Check your email for the 6-digit code.");
-    } catch (err: any) {
-      toast.error(err?.message ?? "Could not send OTP");
-    } finally { setBusy(false); }
-  };
-
-  const onVerifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const codeRes = otpSchema.safeParse(otpCode);
-    if (!codeRes.success) return toast.error(codeRes.error.issues[0].message);
-    setBusy(true);
-    try {
-      const { error } = await supabase.auth.verifyOtp({
-        email: form.email, token: otpCode, type: "email",
-      });
-      if (error) throw error;
-      toast.success("Logged in!");
-    } catch (err: any) {
-      toast.error(err?.message ?? "Invalid or expired code");
-    } finally { setBusy(false); }
-  };
+    navigate({ to: getRedirectTarget() as "/home" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, authLoading, isSuperAdmin, navigate]);
 
   const onGoogle = async () => {
     setBusy(true);
@@ -165,102 +57,41 @@ function LoginPage() {
     }
   };
 
-  const switchMethod = (next: Method) => { setMethod(next); setOtpSent(false); setOtpCode(""); };
+  const as = getAsParam();
 
   return (
-    <div className="flex min-h-[100dvh] flex-col px-6 py-10">
+    <div className="flex min-h-[100dvh] flex-col justify-center px-6 py-10">
       <div className="text-center">
         <img src={khanaGharTakLogoUrl} alt="KhanaGharTak" width={112} height={112} className="mx-auto h-24 w-24 rounded-2xl object-contain" />
-        <h1 className="mt-3 text-2xl font-extrabold tracking-tight">
-          {getAsParam() === "admin" ? "Restaurant Admin Login" : getAsParam() === "rider" ? "Rider Login" : (mode === "signin" ? "Welcome back" : "Create your account")}
+        <h1 className="mt-4 text-2xl font-extrabold tracking-tight">
+          {as === "admin" ? "Restaurant Admin Login" : as === "rider" ? "Rider Login" : "Welcome to KhanaGharTak"}
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          {getAsParam() === "admin" ? "Sign in to manage your restaurant." : getAsParam() === "rider" ? "Sign in with your rider account." : "Jo dil chahe, wahi order karo."}
+          {as === "admin" ? "Sign in to manage your restaurant." : as === "rider" ? "Sign in with your rider account." : "Jo Dil Chahe, Wahi Order Karo."}
         </p>
-        {getAsParam() !== "user" && (
-          <button type="button" onClick={() => { window.location.href = "/login"; }}
-            className="mt-2 text-xs font-medium text-primary underline">
-            ← Back to customer login
-          </button>
-        )}
       </div>
 
-      <div className="mt-6 grid grid-cols-2 gap-1 rounded-xl bg-muted p-1 text-sm font-semibold">
-        <button type="button" onClick={() => switchMethod("otp")}
-          className={`h-10 rounded-lg transition ${method === "otp" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground"}`}>
-          Email OTP
-        </button>
-        <button type="button" onClick={() => switchMethod("password")}
-          className={`h-10 rounded-lg transition ${method === "password" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground"}`}>
-          Password
-        </button>
-      </div>
-
-      {method === "password" ? (
-        <form onSubmit={onSubmitPassword} className="mt-5 space-y-3">
-          {mode === "signup" && (
-            <>
-              <Field label="Full name"><input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} className="input" placeholder="Surya Kumar" maxLength={80} /></Field>
-              <Field label="Phone (with country code)"><input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="input" placeholder="+91 98765 43210" maxLength={15} /></Field>
-            </>
-          )}
-          <Field label="Email"><input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="input" placeholder="you@example.com" autoComplete="email" maxLength={255} /></Field>
-          <Field label="Password"><input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} className="input" placeholder="••••••••" autoComplete={mode === "signin" ? "current-password" : "new-password"} maxLength={72} /></Field>
-          <button type="submit" disabled={busy} className="btn-primary w-full">
-            {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {mode === "signin" ? "Sign in" : "Create account"}
-          </button>
-        </form>
-      ) : !otpSent ? (
-        <form onSubmit={onSendOtp} className="mt-5 space-y-3">
-          {mode === "signup" && (
-            <>
-              <Field label="Full name"><input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} className="input" placeholder="Surya Kumar" maxLength={80} /></Field>
-              <Field label="Phone (with country code)"><input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="input" placeholder="+91 98765 43210" maxLength={15} /></Field>
-            </>
-          )}
-          <Field label="Email"><input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="input" placeholder="you@example.com" autoComplete="email" maxLength={255} /></Field>
-          <button type="submit" disabled={busy} className="btn-primary w-full">
-            {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Send OTP to email
-          </button>
-          <p className="text-center text-xs text-muted-foreground">We'll email you a 6-digit code. No password needed.</p>
-        </form>
-      ) : (
-        <form onSubmit={onVerifyOtp} className="mt-5 space-y-3">
-          <p className="text-sm text-muted-foreground">Enter the 6-digit code sent to <span className="font-semibold text-foreground">{form.email}</span></p>
-          <Field label="6-digit code">
-            <input inputMode="numeric" autoComplete="one-time-code" value={otpCode}
-              onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-              className="input text-center text-2xl tracking-[0.5em] font-bold" placeholder="••••••" maxLength={6} />
-          </Field>
-          <button type="submit" disabled={busy || otpCode.length !== 6} className="btn-primary w-full">
-            {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Verify & continue
-          </button>
-          <button type="button" onClick={() => { setOtpSent(false); setOtpCode(""); }}
-            className="block w-full text-center text-sm font-medium text-primary">Use a different email</button>
-        </form>
-      )}
-
-      <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground">
-        <span className="h-px flex-1 bg-border" /> or <span className="h-px flex-1 bg-border" />
-      </div>
-
-      <button onClick={onGoogle} disabled={busy} className="btn-secondary w-full">
-        <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24"><path fill="#EA4335" d="M12 11v2.7h6.4c-.3 1.6-2 4.6-6.4 4.6-3.9 0-7-3.2-7-7.2s3.1-7.2 7-7.2c2.2 0 3.7.9 4.6 1.7l3.1-3C17.7 1.4 15.1.3 12 .3 5.9.3 1 5.2 1 11.1S5.9 22 12 22c6.9 0 11.5-4.8 11.5-11.7 0-.8-.1-1.4-.2-2L12 11z"/></svg>
-        Continue with Google
+      <button
+        onClick={onGoogle}
+        disabled={busy}
+        className="mt-8 inline-flex h-[52px] w-full items-center justify-center rounded-2xl border border-border bg-card text-[15px] font-semibold shadow-sm disabled:opacity-70"
+      >
+        <svg className="mr-2 h-5 w-5" viewBox="0 0 24 24"><path fill="#EA4335" d="M12 11v2.7h6.4c-.3 1.6-2 4.6-6.4 4.6-3.9 0-7-3.2-7-7.2s3.1-7.2 7-7.2c2.2 0 3.7.9 4.6 1.7l3.1-3C17.7 1.4 15.1.3 12 .3 5.9.3 1 5.2 1 11.1S5.9 22 12 22c6.9 0 11.5-4.8 11.5-11.7 0-.8-.1-1.4-.2-2L12 11z"/></svg>
+        {busy ? "Connecting…" : "Continue with Google"}
       </button>
 
-      <p className="mt-6 text-center text-sm text-muted-foreground">
-        {mode === "signin" ? "New to KhanaGharTak?" : "Already have an account?"}{" "}
-        <button onClick={() => { setMode(mode === "signin" ? "signup" : "signin"); setOtpSent(false); setOtpCode(""); }}
-          className="font-semibold text-primary">{mode === "signin" ? "Create account" : "Sign in"}</button>
+      <p className="mt-4 text-center text-xs text-muted-foreground">
+        We only use your Google email to create your account. No password needed.
       </p>
 
-      {getAsParam() === "user" && (
+      {as !== "user" ? (
+        <button type="button" onClick={() => { window.location.href = "/login"; }}
+          className="mt-8 text-center text-xs font-medium text-primary underline">
+          ← Back to customer login
+        </button>
+      ) : (
         <>
-          <p className="mt-8 text-center text-xs text-muted-foreground">
+          <p className="mt-10 text-center text-xs text-muted-foreground">
             Are you a restaurant owner?{" "}
             <button type="button" onClick={() => { window.location.href = "/login?as=admin"; }} className="font-medium underline">Open admin panel</button>
           </p>
@@ -270,23 +101,6 @@ function LoginPage() {
           </p>
         </>
       )}
-
-      <style>{`
-        .input { width:100%; height:48px; border-radius: 12px; padding: 0 14px; background: var(--color-input); border: 1px solid var(--color-border); font-size: 15px; outline: none; }
-        .input:focus { border-color: var(--color-ring); box-shadow: 0 0 0 3px oklch(0.66 0.21 35 / 0.15); }
-        .btn-primary { display:inline-flex; align-items:center; justify-content:center; height: 50px; border-radius: 14px; background: var(--color-primary); color: var(--color-primary-foreground); font-weight: 700; font-size: 15px; box-shadow: var(--shadow-soft); }
-        .btn-primary:disabled { opacity: .7; }
-        .btn-secondary { display:inline-flex; align-items:center; justify-content:center; height: 48px; border-radius: 14px; background: var(--color-card); border: 1px solid var(--color-border); font-weight: 600; font-size: 14px; }
-      `}</style>
     </div>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="block">
-      <span className="mb-1 block text-xs font-medium text-muted-foreground">{label}</span>
-      {children}
-    </label>
   );
 }
