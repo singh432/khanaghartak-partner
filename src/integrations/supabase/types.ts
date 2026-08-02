@@ -115,6 +115,42 @@ export type Database = {
           },
         ]
       }
+      notification_log: {
+        Row: {
+          created_at: string
+          error: string | null
+          event: string
+          id: string
+          order_id: string | null
+          phone: string | null
+          provider_sid: string | null
+          recipient_type: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          error?: string | null
+          event: string
+          id?: string
+          order_id?: string | null
+          phone?: string | null
+          provider_sid?: string | null
+          recipient_type: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          error?: string | null
+          event?: string
+          id?: string
+          order_id?: string | null
+          phone?: string | null
+          provider_sid?: string | null
+          recipient_type?: string
+          status?: string
+        }
+        Relationships: []
+      }
       orders: {
         Row: {
           address: string
@@ -202,6 +238,8 @@ export type Database = {
           support_phone: string | null
           terms: string | null
           updated_at: string
+          whatsapp_enabled: boolean
+          whatsapp_from: string | null
         }
         Insert: {
           default_delivery_charges?: number
@@ -214,6 +252,8 @@ export type Database = {
           support_phone?: string | null
           terms?: string | null
           updated_at?: string
+          whatsapp_enabled?: boolean
+          whatsapp_from?: string | null
         }
         Update: {
           default_delivery_charges?: number
@@ -226,6 +266,8 @@ export type Database = {
           support_phone?: string | null
           terms?: string | null
           updated_at?: string
+          whatsapp_enabled?: boolean
+          whatsapp_from?: string | null
         }
         Relationships: []
       }
