@@ -127,7 +127,6 @@ export const Route = createFileRoute("/api/public/notify/whatsapp")({
         if (!order) return Response.json({ skipped: "order_not_found" });
         const cfg = settings as { whatsapp_from: string | null; whatsapp_enabled: boolean } | null;
         if (cfg && cfg.whatsapp_enabled === false) return Response.json({ skipped: "disabled" });
-        const from = cfg?.whatsapp_from ?? null;
 
         const { data: restaurant } = await supabaseAdmin
           .from("restaurants")
@@ -137,7 +136,7 @@ export const Route = createFileRoute("/api/public/notify/whatsapp")({
 
         const orderRef = shortId(order.id as string);
         const total = `₹${Number(order.total ?? 0).toFixed(0)}`;
-        const dropArea = (order.landmark as string | null) || (order.address as string);
+        const dropArea = clean((order.landmark as string | null) || (order.address as string));
         const recipients: Recipient[] = [];
 
         if (event === "order_placed") {
@@ -146,12 +145,8 @@ export const Route = createFileRoute("/api/public/notify/whatsapp")({
             recipients.push({
               type: "restaurant",
               phone,
-              body:
-                `🍽️ *New order #${orderRef}* on KhanaGharTak\n\n` +
-                `${itemLines(order.items)}\n\n` +
-                `Total (COD): ${total}\n` +
-                `Drop area: ${dropArea}\n\n` +
-                `Open your restaurant panel to accept: https://khanaghartak.in/admin/orders`,
+              template: "kgt_new_order",
+              params: [orderRef, itemLines(order.items), total, dropArea],
             });
           }
         } else if (event === "restaurant_accepted") {
@@ -160,9 +155,8 @@ export const Route = createFileRoute("/api/public/notify/whatsapp")({
             recipients.push({
               type: "customer",
               phone,
-              body:
-                `✅ Order #${orderRef} confirmed by ${restaurant?.name ?? "the kitchen"}.\n` +
-                `Your food is being prepared. We'll update you when a rider picks it up.`,
+              template: "kgt_order_accepted",
+              params: [orderRef, clean(restaurant?.name as string | null, "the kitchen")],
             });
           }
         } else if (event === "ready_for_pickup") {
@@ -170,19 +164,18 @@ export const Route = createFileRoute("/api/public/notify/whatsapp")({
             .from("rider_profiles")
             .select("phone, full_name")
             .eq("status", "approved");
+          const pickup = clean(
+            `${(restaurant?.name as string | null) ?? "Restaurant"}, ${(restaurant?.address as string | null) ?? ""}`,
+            "Restaurant",
+          );
           for (const r of riders ?? []) {
             const phone = toE164(r.phone as string | null);
             if (!phone) continue;
             recipients.push({
               type: "rider",
               phone,
-              body:
-                `🛵 *Delivery available — #${orderRef}*\n\n` +
-                `Pickup: ${restaurant?.name ?? "Restaurant"}, ${restaurant?.address ?? ""}\n` +
-                `Drop area: ${dropArea}\n` +
-                `Order value: ${total}` +
-                (order.distance_km != null ? `\nDistance: ~${Number(order.distance_km).toFixed(1)} km` : "") +
-                `\n\nFirst to accept gets it: https://khanaghartak.in/rider`,
+              template: "kgt_delivery_available",
+              params: [orderRef, pickup, dropArea, total],
             });
           }
         } else if (event === "rider_picked_up") {
@@ -200,7 +193,8 @@ export const Route = createFileRoute("/api/public/notify/whatsapp")({
             recipients.push({
               type: "customer",
               phone,
-              body: `🛵 ${riderName} has picked up your order #${orderRef} and is on the way. Keep ${total} ready for cash on delivery.`,
+              template: "kgt_order_picked_up",
+              params: [orderRef, clean(riderName, "Your rider"), total],
             });
           }
         } else if (event === "delivered") {
@@ -209,7 +203,8 @@ export const Route = createFileRoute("/api/public/notify/whatsapp")({
             recipients.push({
               type: "customer",
               phone,
-              body: `📦 Order #${orderRef} delivered. Thanks for ordering with KhanaGharTak — Jo Dil Chahe, Wahi Order Karo!`,
+              template: "kgt_order_delivered",
+              params: [orderRef],
             });
           }
         }
@@ -218,19 +213,8 @@ export const Route = createFileRoute("/api/public/notify/whatsapp")({
         const logRows: Record<string, unknown>[] = [];
 
         for (const r of recipients) {
-          if (!from) {
-            logRows.push({
-              order_id,
-              event,
-              recipient_type: r.type,
-              phone: r.phone,
-              status: "skipped",
-              error: "WhatsApp sender number not configured",
-            });
-            results.push({ type: r.type, ok: false, error: "no_sender" });
-            continue;
-          }
-          const sent = await sendWhatsApp(r.phone, from, r.body);
+          const sent = await sendWhatsApp(r.phone, r.template, r.params);
+
           logRows.push({
             order_id,
             event,
