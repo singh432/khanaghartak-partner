@@ -1,77 +1,46 @@
-## Goal
+# WhatsApp Order Notifications (Twilio)
 
-Expand the current single-restaurant admin into a full multi-tenant platform with two distinct dashboards: **Restaurant Owner** (manages one restaurant) and **Super Admin** (manages the entire KhanaGharTak platform).
+Send automatic WhatsApp messages at four moments in the order lifecycle.
 
-This is a large change. I'll build it in one go, but want your sign-off on the approach below before I touch the DB schema — because the schema needs to go from "1 restaurant" to "many restaurants".
+## Who gets notified, and when
 
----
+| Moment | Trigger | Recipient |
+|---|---|---|
+| Order placed | `place_order` creates order (status `placed`) | Restaurant kitchen phone |
+| Restaurant accepts / marks ready | status becomes `out_for_delivery` (order open for pickup) | All approved riders (broadcast) |
+| Rider picks up order | rider accepts the order (`rider_accept_order`) | Customer phone from checkout |
+| Delivered | `rider_mark_delivered` | Customer phone from checkout |
 
-## Database changes (biggest impact)
+Rider broadcast goes to every rider whose profile status is `approved` and who has a phone saved. First rider to accept in the app takes the order; a short "already assigned" note is not sent to the others (kept simple for phase 1).
 
-Today the schema assumes **one restaurant**. To support multi-tenant, I'll migrate to:
+Note on the accept step: today the restaurant flow is placed → accepted → preparing → out_for_delivery, and riders only see orders once they are `out_for_delivery`. So the rider alert fires at "Ready for Delivery", which is the first point a rider can actually accept. The customer also gets a short "Restaurant accepted your order" message at the `accepted` step.
 
-- **`restaurants`** (renamed from singular `restaurant`) — id, name, owner_id (FK auth.users), logo, address, phone, opening_time, closing_time, min_order_value, delivery_charges, status (`pending` | `active` | `inactive` | `rejected`), location, rating, is_open.
-- **`menu_items`** — add `restaurant_id`, `offer_price`, `is_out_of_stock`.
-- **`categories`** — add `restaurant_id` (categories become per-restaurant).
-- **`orders`** — add `restaurant_id`. Extend status enum: `placed` → `accepted` → `preparing` → `ready_for_pickup` → `out_for_delivery` → `delivered` / `cancelled`.
-- **`app_role` enum** — add `super_admin` (keep existing `customer`, `restaurant_admin`).
-- **`platform_settings`** — singleton row: platform_fee, default_delivery_charges, support_phone, support_email, terms, privacy.
-- **`customer_blocks`** — track blocked customers (super admin action).
-- **RLS** rewritten so restaurant owners only see THEIR restaurant's data; super admin sees everything; customers unchanged.
+## How it works
 
-Existing data (your current restaurant + menu) will be preserved and assigned to your owner account.
+1. **Twilio connection** — connect the Twilio connector so messages are sent through the secure gateway (no keys in app code). You will need a Twilio account with an approved WhatsApp sender (sandbox works for testing). I will also add a setting for the sender number.
+2. **Notification endpoint** — a server route `POST /api/public/notify/whatsapp` that builds the message text, resolves recipient phone numbers, and calls Twilio. It is protected by a shared secret header so only the database can call it.
+3. **Database hooks** — a trigger on `orders` (insert + status change) and additions inside `rider_accept_order` that call the endpoint asynchronously via `pg_net`. Order flow never blocks or fails if WhatsApp is down.
+4. **Delivery log** — a `notification_log` table records each send (order, recipient type, phone, status, provider id, error). Visible in the Super Admin panel so you can see what went out and what failed.
+5. **Phone normalisation** — Indian numbers stored as 10 digits are converted to `+91XXXXXXXXXX` E.164 before sending. Missing or invalid numbers are logged as skipped, not errors.
 
----
+## Message content (plain text, phase 1)
 
-## Routes
+- Restaurant: order id, items with quantity, total, customer area/landmark, "Open the KhanaGharTak restaurant panel to accept".
+- Riders: order id, restaurant name and address, drop area, payout-relevant total, link to `/rider`. No customer name/phone/full address until accepted (keeps the existing privacy rule).
+- Customer accepted: "Your order is confirmed by <restaurant>, preparing now."
+- Customer picked up: "<rider name> has picked up your order and is on the way."
+- Customer delivered: "Order delivered. Thanks for ordering with KhanaGharTak!"
 
-**Restaurant Owner** (`/admin/*`) — refactor existing pages:
-- `/admin` — dashboard with the new stat cards (today's orders, revenue, pending, preparing, delivered, out-of-stock count)
-- `/admin/orders` — live orders with the expanded status workflow
-- `/admin/menu` — add `offer_price` + `out_of_stock` toggle to existing CRUD
-- `/admin/analytics` — daily/weekly/monthly revenue charts (recharts), top items
-- `/admin/settings` — restaurant profile (logo, hours, min order, delivery charges)
+## Technical details
 
-**Super Admin** (new — `/super/*`):
-- `/super` — platform-wide stat cards
-- `/super/restaurants` — table with approve/reject/activate/deactivate/edit/delete
-- `/super/orders` — all orders, filterable by date range / restaurant / status
-- `/super/customers` — list, search, view order history, block
-- `/super/analytics` — revenue charts, top restaurants, top foods
-- `/super/settings` — platform fee, delivery charges, terms, privacy, support
+- New table `public.notification_log` with GRANTs, RLS (super admin read; service role full), no client writes.
+- New setting columns on `platform_settings`: `whatsapp_from` (Twilio WhatsApp sender, e.g. `whatsapp:+14155238886`) and `whatsapp_enabled` toggle, editable in `/super` settings.
+- Server route under `src/routes/api/public/notify/whatsapp.ts`; verifies `x-notify-secret` against a generated secret, validates payload with Zod, loads `supabaseAdmin` inside the handler, and posts form-encoded to `https://connector-gateway.lovable.dev/twilio/Messages.json` with `Authorization: Bearer LOVABLE_API_KEY` and `X-Connection-Api-Key: TWILIO_API_KEY`.
+- Migration: enable `pg_net`, add trigger function `notify_order_event()` on `orders` (AFTER INSERT, AFTER UPDATE OF status) plus a call inside `rider_accept_order`, each doing a fire-and-forget `net.http_post` with the order id and event name.
+- Endpoint returns 200 with a per-recipient result array; failures are logged, never retried in phase 1.
 
-Both share a sidebar layout (shadcn sidebar), mobile responsive, orange theme.
+## What I need from you
 
----
-
-## Auth & access
-
-- Login page already supports `?redirect=`. I'll add a "Super Admin" entry path too.
-- Role check: `customer` → `/home`, `restaurant_admin` → `/admin`, `super_admin` → `/super`.
-- You'll be granted `super_admin` role on your existing user so you can access `/super` immediately.
-
----
-
-## What I will NOT do in this pass
-
-- Onboarding/sign-up flow for new restaurant owners (super admin will add them manually for now — let me know if you want self-serve signup too).
-- Push notifications (in-app real-time updates only, via the existing Supabase channel).
-- Payment integration (cash-on-delivery only, as today).
-
----
-
-## Stack notes
-
-- Charts: `recharts` (already in shadcn ecosystem).
-- All queries through existing `supabase` client + RLS — no new server functions needed.
-- Real-time order updates via existing `supabase.channel` pattern.
-
----
-
-## Confirm before I start
-
-1. **OK to rename `restaurant` → `restaurants` and reassign your existing data?** (Required for multi-tenant.)
-2. **Grant `super_admin` role to your current user** (`b6a0cdbb-1da8-463b-b7ee-c339c839cd41`)?
-3. **Skip self-serve restaurant signup** for now (super admin adds restaurants manually)?
-
-If yes to all three, I'll ship the whole thing in the next turn.
+- Approve connecting Twilio (I will open the connect card).
+- Your Twilio WhatsApp sender number (sandbox number is fine to start).
+- Restaurant and rider phone numbers must be filled in their profiles, otherwise those alerts are skipped.
