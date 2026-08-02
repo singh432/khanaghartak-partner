@@ -11,6 +11,12 @@ type S = {
   delivery_per_km: number; max_delivery_radius_km: number;
   support_phone: string | null; support_email: string | null;
   terms: string | null; privacy: string | null;
+  whatsapp_from: string | null; whatsapp_enabled: boolean;
+};
+
+type LogRow = {
+  id: string; order_id: string | null; event: string; recipient_type: string;
+  phone: string | null; status: string; error: string | null; created_at: string;
 };
 
 type QR = {

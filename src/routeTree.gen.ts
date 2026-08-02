@@ -34,6 +34,7 @@ import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
 import { Route as AdminOrdersRouteImport } from './routes/admin.orders'
 import { Route as AdminMenuRouteImport } from './routes/admin.menu'
 import { Route as AdminAnalyticsRouteImport } from './routes/admin.analytics'
+import { Route as ApiPublicNotifyWhatsappRouteImport } from './routes/api/public/notify/whatsapp'
 
 const SuperRoute = SuperRouteImport.update({
   id: '/super',
@@ -160,6 +161,11 @@ const AdminAnalyticsRoute = AdminAnalyticsRouteImport.update({
   path: '/analytics',
   getParentRoute: () => AdminRoute,
 } as any)
+const ApiPublicNotifyWhatsappRoute = ApiPublicNotifyWhatsappRouteImport.update({
+  id: '/api/public/notify/whatsapp',
+  path: '/api/public/notify/whatsapp',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -187,6 +193,7 @@ export interface FileRoutesByFullPath {
   '/super/settings': typeof SuperSettingsRoute
   '/admin/': typeof AdminIndexRoute
   '/super/': typeof SuperIndexRoute
+  '/api/public/notify/whatsapp': typeof ApiPublicNotifyWhatsappRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -212,6 +219,7 @@ export interface FileRoutesByTo {
   '/super/settings': typeof SuperSettingsRoute
   '/admin': typeof AdminIndexRoute
   '/super': typeof SuperIndexRoute
+  '/api/public/notify/whatsapp': typeof ApiPublicNotifyWhatsappRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -240,6 +248,7 @@ export interface FileRoutesById {
   '/super/settings': typeof SuperSettingsRoute
   '/admin/': typeof AdminIndexRoute
   '/super/': typeof SuperIndexRoute
+  '/api/public/notify/whatsapp': typeof ApiPublicNotifyWhatsappRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -269,6 +278,7 @@ export interface FileRouteTypes {
     | '/super/settings'
     | '/admin/'
     | '/super/'
+    | '/api/public/notify/whatsapp'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -294,6 +304,7 @@ export interface FileRouteTypes {
     | '/super/settings'
     | '/admin'
     | '/super'
+    | '/api/public/notify/whatsapp'
   id:
     | '__root__'
     | '/'
@@ -321,6 +332,7 @@ export interface FileRouteTypes {
     | '/super/settings'
     | '/admin/'
     | '/super/'
+    | '/api/public/notify/whatsapp'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -337,6 +349,7 @@ export interface RootRouteChildren {
   RiderRoute: typeof RiderRoute
   SuperRoute: typeof SuperRouteWithChildren
   OrderIdRoute: typeof OrderIdRoute
+  ApiPublicNotifyWhatsappRoute: typeof ApiPublicNotifyWhatsappRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -516,6 +529,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAnalyticsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/api/public/notify/whatsapp': {
+      id: '/api/public/notify/whatsapp'
+      path: '/api/public/notify/whatsapp'
+      fullPath: '/api/public/notify/whatsapp'
+      preLoaderRoute: typeof ApiPublicNotifyWhatsappRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -573,17 +593,8 @@ const rootRouteChildren: RootRouteChildren = {
   RiderRoute: RiderRoute,
   SuperRoute: SuperRouteWithChildren,
   OrderIdRoute: OrderIdRoute,
+  ApiPublicNotifyWhatsappRoute: ApiPublicNotifyWhatsappRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
