@@ -110,6 +110,60 @@ function SuperSettings() {
       </div>
 
       <div className="space-y-3 rounded-2xl border bg-card p-5 shadow-sm">
+        <div>
+          <h2 className="text-lg font-bold">WhatsApp Notifications</h2>
+          <p className="text-sm text-muted-foreground">
+            Alerts to the kitchen on new orders, to riders when an order is ready, and to customers on pickup and delivery.
+          </p>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          <Field label="WhatsApp sender number (Twilio)">
+            <input className="ai" value={s.whatsapp_from ?? ""} placeholder="whatsapp:+14155238886"
+              onChange={(e) => setS({ ...s, whatsapp_from: e.target.value })} />
+          </Field>
+          <label className="flex items-center gap-3 self-end rounded-xl border bg-input px-3 py-2.5">
+            <input type="checkbox" checked={s.whatsapp_enabled}
+              onChange={(e) => setS({ ...s, whatsapp_enabled: e.target.checked })} />
+            <span className="text-sm font-semibold">WhatsApp notifications enabled</span>
+          </label>
+        </div>
+        <button onClick={save} disabled={saving} className="inline-flex w-full items-center justify-center rounded-xl bg-primary py-3 text-sm font-bold text-primary-foreground disabled:opacity-60">
+          {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save WhatsApp settings
+        </button>
+
+        <div className="pt-2">
+          <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">Recent messages</h3>
+          {logs.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No notifications sent yet.</p>
+          ) : (
+            <ul className="divide-y rounded-xl border">
+              {logs.map((l) => (
+                <li key={l.id} className="flex items-center justify-between gap-3 px-3 py-2 text-xs">
+                  <div className="min-w-0">
+                    <p className="font-semibold">
+                      {l.event.replace(/_/g, " ")} → {l.recipient_type}
+                    </p>
+                    <p className="truncate text-muted-foreground">
+                      {l.phone ?? "—"} · {new Date(l.created_at).toLocaleString()}
+                      {l.error ? ` · ${l.error}` : ""}
+                    </p>
+                  </div>
+                  <span className={`shrink-0 rounded-full px-2 py-0.5 font-bold ${
+                    l.status === "sent" ? "bg-success/15 text-success"
+                      : l.status === "failed" ? "bg-destructive/15 text-destructive"
+                      : "bg-secondary"}`}>
+                    {l.status}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+
+
+
+      <div className="space-y-3 rounded-2xl border bg-card p-5 shadow-sm">
         <div className="flex items-start justify-between gap-3">
           <div>
             <h2 className="text-lg font-bold">QR Code</h2>
