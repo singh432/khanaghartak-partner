@@ -113,12 +113,13 @@ function SuperSettings() {
         <div>
           <h2 className="text-lg font-bold">WhatsApp Notifications</h2>
           <p className="text-sm text-muted-foreground">
-            Alerts to the kitchen on new orders, to riders when an order is ready, and to customers on pickup and delivery.
+            Sent from your WhatsApp Business number via Meta Cloud API: kitchen alert on a new order,
+            rider broadcast when an order is ready, and customer updates on accept, pickup and delivery.
           </p>
         </div>
         <div className="grid gap-3 md:grid-cols-2">
-          <Field label="WhatsApp sender number (Twilio)">
-            <input className="ai" value={s.whatsapp_from ?? ""} placeholder="whatsapp:+14155238886"
+          <Field label="Sender number (display only)">
+            <input className="ai" value={s.whatsapp_from ?? ""} placeholder="+91 80092 53547"
               onChange={(e) => setS({ ...s, whatsapp_from: e.target.value })} />
           </Field>
           <label className="flex items-center gap-3 self-end rounded-xl border bg-input px-3 py-2.5">
@@ -127,6 +128,7 @@ function SuperSettings() {
             <span className="text-sm font-semibold">WhatsApp notifications enabled</span>
           </label>
         </div>
+
         <button onClick={save} disabled={saving} className="inline-flex w-full items-center justify-center rounded-xl bg-primary py-3 text-sm font-bold text-primary-foreground disabled:opacity-60">
           {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save WhatsApp settings
         </button>
