@@ -12,7 +12,7 @@ const payloadSchema = z.object({
   ]),
 });
 
-type Recipient = { type: string; phone: string; body: string };
+type Recipient = { type: string; phone: string; template: string; params: string[] };
 
 function toE164(raw: string | null | undefined): string | null {
   if (!raw) return null;
@@ -31,66 +31,67 @@ function shortId(id: string) {
 
 function itemLines(items: unknown): string {
   if (!Array.isArray(items)) return "";
-  return items
-    .map((i) => {
-      const it = i as { name?: string; qty?: number };
-      return `• ${it.name ?? "Item"} × ${it.qty ?? 1}`;
-    })
-    .join("\n");
+  const parts = items.map((i) => {
+    const it = i as { name?: string; qty?: number };
+    return `${it.name ?? "Item"} x${it.qty ?? 1}`;
+  });
+  // WhatsApp template params cannot contain newlines or tabs.
+  return parts.join(", ").slice(0, 900) || "items";
 }
 
-async function sendWhatsApp(to: string, from: string, body: string) {
-  const lovableKey = process.env["LOVABLE_API_KEY"];
-  const twilioConnKey = process.env["TWILIO_API_KEY"];
-  const accountSid = process.env["TWILIO_ACCOUNT_SID"];
-  const authToken = process.env["TWILIO_AUTH_TOKEN"];
+function clean(v: string | null | undefined, fallback = "-") {
+  const s = (v ?? "").replace(/[\n\r\t]+/g, " ").replace(/\s{2,}/g, " ").trim();
+  return s.length ? s.slice(0, 900) : fallback;
+}
 
-  const form = new URLSearchParams({
-    To: to.startsWith("whatsapp:") ? to : `whatsapp:${to}`,
-    From: from.startsWith("whatsapp:") ? from : `whatsapp:${from}`,
-    Body: body,
-  });
-
-  let res: Response;
-  if (lovableKey && twilioConnKey) {
-    res = await fetch("https://connector-gateway.lovable.dev/twilio/Messages.json", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${lovableKey}`,
-        "X-Connection-Api-Key": twilioConnKey,
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: form,
-    });
-  } else if (accountSid && authToken) {
-    res = await fetch(
-      `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Basic ${btoa(`${accountSid}:${authToken}`)}`,
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: form,
-      },
-    );
-  } else {
-    return { ok: false, sid: null, error: "Twilio is not configured" };
+async function sendWhatsApp(to: string, template: string, params: string[]) {
+  const token = process.env["WHATSAPP_ACCESS_TOKEN"];
+  const phoneNumberId = process.env["WHATSAPP_PHONE_NUMBER_ID"];
+  if (!token || !phoneNumberId) {
+    return { ok: false, sid: null, error: "WhatsApp Cloud API is not configured" };
   }
+
+  const res = await fetch(`https://graph.facebook.com/v21.0/${phoneNumberId}/messages`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      messaging_product: "whatsapp",
+      to: to.replace(/^\+/, ""),
+      type: "template",
+      template: {
+        name: template,
+        language: { code: "en" },
+        components: params.length
+          ? [{ type: "body", parameters: params.map((p) => ({ type: "text", text: p })) }]
+          : [],
+      },
+    }),
+  });
 
   const text = await res.text();
   if (!res.ok) {
-    console.error(`Twilio send failed [${res.status}]: ${text}`);
-    return { ok: false, sid: null, error: `[${res.status}] ${text.slice(0, 500)}` };
+    console.error(`WhatsApp send failed [${res.status}]: ${text}`);
+    let msg = text.slice(0, 500);
+    try {
+      const e = (JSON.parse(text) as { error?: { message?: string; code?: number } }).error;
+      if (e?.message) msg = `[${e.code ?? res.status}] ${e.message}`;
+    } catch {
+      /* ignore */
+    }
+    return { ok: false, sid: null, error: msg };
   }
   let sid: string | null = null;
   try {
-    sid = (JSON.parse(text) as { sid?: string }).sid ?? null;
+    sid = (JSON.parse(text) as { messages?: { id?: string }[] }).messages?.[0]?.id ?? null;
   } catch {
     /* ignore */
   }
   return { ok: true, sid, error: null };
 }
+
 
 export const Route = createFileRoute("/api/public/notify/whatsapp")({
   server: {
