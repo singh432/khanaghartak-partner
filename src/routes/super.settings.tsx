@@ -29,9 +29,13 @@ function SuperSettings() {
   const [saving, setSaving] = useState(false);
   const [savingQr, setSavingQr] = useState(false);
 
+  const [logs, setLogs] = useState<LogRow[]>([]);
+
   useEffect(() => {
     supabase.from("platform_settings").select("*").limit(1).maybeSingle().then(({ data }) => setS(data as S | null));
     supabase.from("qr_settings").select("*").limit(1).maybeSingle().then(({ data }) => setQr(data as QR | null));
+    supabase.from("notification_log").select("*").order("created_at", { ascending: false }).limit(25)
+      .then(({ data }) => setLogs((data ?? []) as LogRow[]));
   }, []);
 
   const save = async () => {
@@ -42,10 +46,12 @@ function SuperSettings() {
       delivery_per_km: s.delivery_per_km, max_delivery_radius_km: s.max_delivery_radius_km,
       support_phone: s.support_phone, support_email: s.support_email,
       terms: s.terms, privacy: s.privacy,
+      whatsapp_from: s.whatsapp_from, whatsapp_enabled: s.whatsapp_enabled,
     }).eq("id", s.id);
     setSaving(false);
     if (error) toast.error(error.message); else toast.success("Saved");
   };
+
 
   const saveQr = async () => {
     if (!qr) return;
