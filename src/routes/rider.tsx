@@ -353,6 +353,66 @@ function RiderDashboard({
   );
 }
 
+function Countdown({ expiresAt, onExpire }: { expiresAt: string; onExpire: () => void }) {
+  const [left, setLeft] = useState(() => Math.max(0, new Date(expiresAt).getTime() - Date.now()));
+  useEffect(() => {
+    const t = setInterval(() => {
+      const ms = Math.max(0, new Date(expiresAt).getTime() - Date.now());
+      setLeft(ms);
+      if (ms === 0) { clearInterval(t); onExpire(); }
+    }, 1000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expiresAt]);
+  const s = Math.ceil(left / 1000);
+  return <>{String(Math.floor(s / 60)).padStart(2, "0")}:{String(s % 60).padStart(2, "0")} left</>;
+}
+
+function BaseLocationCard({ hasBase, onSaved }: { hasBase: boolean; onSaved: () => void }) {
+  const [busy, setBusy] = useState(false);
+
+  const save = () => {
+    if (!navigator.geolocation) return toast.error("Location is not supported on this device");
+    setBusy(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { error } = await supabase.rpc("rider_set_base_location" as any, {
+          _lat: pos.coords.latitude,
+          _lng: pos.coords.longitude,
+        });
+        setBusy(false);
+        if (error) return toast.error(error.message);
+        toast.success("Base area saved");
+        onSaved();
+      },
+      () => { setBusy(false); toast.error("Could not get your location. Allow location access and retry."); },
+      { enableHighAccuracy: true, timeout: 15000 },
+    );
+  };
+
+  return (
+    <div className={`rounded-2xl border p-4 ${hasBase ? "bg-card" : "border-amber-500/50 bg-amber-500/10"}`}>
+      <div className="flex items-start gap-2">
+        <MapPin className="mt-0.5 h-4 w-4 text-primary" />
+        <div className="flex-1">
+          <p className="text-sm font-bold">{hasBase ? "Base area set" : "Set your base area"}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {hasBase
+              ? "Orders nearest to your base area are offered to you first."
+              : "Without a base pin you won't receive delivery offers."}
+          </p>
+        </div>
+      </div>
+      <button onClick={save} disabled={busy}
+        className="mt-3 inline-flex h-10 w-full items-center justify-center rounded-xl bg-foreground text-sm font-bold text-background disabled:opacity-60">
+        {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        {hasBase ? "Update to my current location" : "Use my current location"}
+      </button>
+    </div>
+  );
+}
+
+
 function EmptyState({ text }: { text: string }) {
   return (
     <div className="rounded-2xl border bg-card p-8 text-center">
