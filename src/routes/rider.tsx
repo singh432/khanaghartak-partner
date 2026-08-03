@@ -60,7 +60,7 @@ function RiderPanel() {
     setProfileChecked(false);
     (async () => {
       const { data } = await (supabase.from("rider_profiles") as any)
-        .select("status, full_name, phone, vehicle")
+        .select("status, full_name, phone, vehicle, base_latitude, base_longitude")
         .eq("user_id", user.id)
         .maybeSingle();
       if (active) {
