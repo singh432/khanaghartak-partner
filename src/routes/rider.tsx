@@ -75,7 +75,7 @@ function RiderPanel() {
   if (!user) return null;
   if (!isRider || !profile) return <BecomeRider />;
   if (profile.status !== "approved") return <RiderPending profile={profile} onSignOut={signOut} />;
-  return <RiderDashboard riderId={user.id} onSignOut={signOut} />;
+  return <RiderDashboard riderId={user.id} profile={profile} onSignOut={signOut} />;
 }
 
 function BecomeRider() {
