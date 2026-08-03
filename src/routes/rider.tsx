@@ -22,19 +22,27 @@ type Order = {
   created_at: string;
 };
 
-type AvailableOrder = {
-  id: string;
-  restaurant_id: string | null;
+type Offer = {
+  order_id: string;
   restaurant_name: string | null;
   restaurant_address: string | null;
   drop_area: string | null;
   total: number;
   item_count: number;
-  created_at: string;
+  distance_km: number | null;
+  expires_at: string;
 };
 
 type Restaurant = { id: string; name: string; address: string | null; phone: string | null };
-type RiderProfile = { status: "pending" | "approved" | "rejected" | "suspended"; full_name: string | null; phone: string | null; vehicle: string | null };
+type RiderProfile = {
+  status: "pending" | "approved" | "rejected" | "suspended";
+  full_name: string | null;
+  phone: string | null;
+  vehicle: string | null;
+  base_latitude: number | null;
+  base_longitude: number | null;
+};
+
 
 function RiderPanel() {
   const { user, loading, isRider, signOut } = useAuth();
@@ -52,7 +60,7 @@ function RiderPanel() {
     setProfileChecked(false);
     (async () => {
       const { data } = await (supabase.from("rider_profiles") as any)
-        .select("status, full_name, phone, vehicle")
+        .select("status, full_name, phone, vehicle, base_latitude, base_longitude")
         .eq("user_id", user.id)
         .maybeSingle();
       if (active) {
@@ -67,7 +75,7 @@ function RiderPanel() {
   if (!user) return null;
   if (!isRider || !profile) return <BecomeRider />;
   if (profile.status !== "approved") return <RiderPending profile={profile} onSignOut={signOut} />;
-  return <RiderDashboard riderId={user.id} onSignOut={signOut} />;
+  return <RiderDashboard riderId={user.id} profile={profile} onSignOut={signOut} />;
 }
 
 function BecomeRider() {
@@ -149,11 +157,18 @@ function openMaps(o: Order) {
   }
 }
 
-function RiderDashboard({ riderId, onSignOut }: { riderId: string; onSignOut: () => Promise<void> }) {
+function RiderDashboard({
+  riderId,
+  profile,
+  onSignOut,
+}: { riderId: string; profile: RiderProfile; onSignOut: () => Promise<void> }) {
   const [mineOrders, setMineOrders] = useState<Order[]>([]);
-  const [availableOrders, setAvailableOrders] = useState<AvailableOrder[]>([]);
+  const [offers, setOffers] = useState<Offer[]>([]);
   const [restaurants, setRestaurants] = useState<Record<string, Restaurant>>({});
   const [tab, setTab] = useState<"available" | "mine">("available");
+  const [hasBase, setHasBase] = useState(
+    profile.base_latitude != null && profile.base_longitude != null,
+  );
 
   const load = async () => {
     // "Mine" orders: full details visible via RLS only for orders assigned to this rider
@@ -168,18 +183,12 @@ function RiderDashboard({ riderId, onSignOut }: { riderId: string; onSignOut: ()
     const mineList = (mine ?? []) as unknown as Order[];
     setMineOrders(mineList);
 
-    // Available orders: safe summary only — no customer PII until accepted
-    const { data: avail, error: availErr } = await supabase.rpc("rider_list_available_orders" as any);
-    if (availErr) { toast.error(availErr.message); return; }
-    const availList = (avail ?? []) as unknown as AvailableOrder[];
-    setAvailableOrders(availList);
+    // Live offers made to this rider only — no customer PII until accepted
+    const { data: offerData, error: offerErr } = await supabase.rpc("rider_list_offers" as any);
+    if (offerErr) { toast.error(offerErr.message); return; }
+    setOffers((offerData ?? []) as unknown as Offer[]);
 
-    const rIds = [
-      ...new Set([
-        ...mineList.map((o) => o.restaurant_id).filter(Boolean),
-        ...availList.map((o) => o.restaurant_id).filter(Boolean),
-      ]),
-    ] as string[];
+    const rIds = [...new Set(mineList.map((o) => o.restaurant_id).filter(Boolean))] as string[];
     if (rIds.length) {
       const { data: rs } = await supabase.from("restaurants").select("id,name,address,phone").in("id", rIds);
       const map: Record<string, Restaurant> = {};
@@ -187,6 +196,7 @@ function RiderDashboard({ riderId, onSignOut }: { riderId: string; onSignOut: ()
       setRestaurants(map);
     }
   };
+
 
   useEffect(() => {
     load();
@@ -225,54 +235,62 @@ function RiderDashboard({ riderId, onSignOut }: { riderId: string; onSignOut: ()
         </button>
       </header>
 
+      <div className="px-3 pt-3">
+        <BaseLocationCard hasBase={hasBase} onSaved={() => { setHasBase(true); load(); }} />
+      </div>
+
       <div className="grid grid-cols-2 gap-1 p-3">
-        <Tab on={tab === "available"} onClick={() => setTab("available")} label={`Available (${availableOrders.length})`} />
+        <Tab on={tab === "available"} onClick={() => setTab("available")} label={`Offered to you (${offers.length})`} />
         <Tab on={tab === "mine"} onClick={() => setTab("mine")} label={`My Deliveries (${mineOrders.length})`} />
       </div>
 
       <div className="space-y-3 px-3">
-        {tab === "available" && availableOrders.length === 0 && (
-          <EmptyState text="No orders waiting for pickup right now." />
+        {tab === "available" && offers.length === 0 && (
+          <EmptyState text="No delivery offers right now. You'll get a WhatsApp message when an order is offered to you." />
         )}
         {tab === "mine" && mineOrders.length === 0 && (
           <EmptyState text="You haven't accepted any deliveries yet." />
         )}
 
-        {tab === "available" && availableOrders.map((o) => {
-          const r = o.restaurant_id ? restaurants[o.restaurant_id] : undefined;
-          return (
-            <article key={o.id} className="rounded-2xl border bg-card p-4 shadow-sm">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <p className="font-mono text-[11px] font-bold text-muted-foreground">#{o.id.slice(0, 8).toUpperCase()}</p>
-                  <p className="text-base font-bold leading-tight">{o.item_count} item{o.item_count === 1 ? "" : "s"}</p>
-                </div>
+        {tab === "available" && offers.map((o) => (
+          <article key={o.order_id} className="rounded-2xl border-2 border-primary/40 bg-card p-4 shadow-sm">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <p className="font-mono text-[11px] font-bold text-muted-foreground">#{o.order_id.slice(0, 8).toUpperCase()}</p>
+                <p className="text-base font-bold leading-tight">{o.item_count} item{o.item_count === 1 ? "" : "s"}</p>
+              </div>
+              <div className="text-right">
                 <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-bold text-primary">
                   ₹{Number(o.total).toFixed(0)} COD
                 </span>
+                <p className="mt-1 text-[11px] font-bold text-destructive">
+                  <Countdown expiresAt={o.expires_at} onExpire={load} />
+                </p>
               </div>
+            </div>
 
-              {r && (
-                <div className="mt-3 rounded-xl bg-accent/40 p-3 text-xs">
-                  <p className="font-bold text-foreground">Pickup: {r.name}</p>
-                  {r.address && <p className="text-muted-foreground">{r.address}</p>}
-                </div>
+            <div className="mt-3 rounded-xl bg-accent/40 p-3 text-xs">
+              <p className="font-bold text-foreground">Pickup: {o.restaurant_name ?? "Restaurant"}</p>
+              {o.restaurant_address && <p className="text-muted-foreground">{o.restaurant_address}</p>}
+              {o.distance_km != null && (
+                <p className="mt-1 font-semibold text-primary">~{Number(o.distance_km).toFixed(1)} km from your base area</p>
               )}
+            </div>
 
-              <div className="mt-3 rounded-xl bg-secondary p-3 text-xs">
-                <p className="font-bold text-foreground">Drop area: {o.drop_area ?? "—"}</p>
-                <p className="mt-1 text-muted-foreground italic">Customer contact and exact address unlock after you accept.</p>
-              </div>
+            <div className="mt-3 rounded-xl bg-secondary p-3 text-xs">
+              <p className="font-bold text-foreground">Drop area: {o.drop_area ?? "—"}</p>
+              <p className="mt-1 text-muted-foreground italic">Customer contact and exact address unlock after you accept.</p>
+            </div>
 
-              <div className="mt-3">
-                <button onClick={() => accept(o.id)}
-                  className="w-full rounded-xl bg-primary py-3 text-sm font-bold text-primary-foreground">
-                  Accept this Delivery
-                </button>
-              </div>
-            </article>
-          );
-        })}
+            <div className="mt-3">
+              <button onClick={() => accept(o.order_id)}
+                className="w-full rounded-xl bg-primary py-3 text-sm font-bold text-primary-foreground">
+                Accept this Delivery
+              </button>
+            </div>
+          </article>
+        ))}
+
 
         {tab === "mine" && mineOrders.map((o) => {
           const r = o.restaurant_id ? restaurants[o.restaurant_id] : undefined;
@@ -334,6 +352,66 @@ function RiderDashboard({ riderId, onSignOut }: { riderId: string; onSignOut: ()
     </div>
   );
 }
+
+function Countdown({ expiresAt, onExpire }: { expiresAt: string; onExpire: () => void }) {
+  const [left, setLeft] = useState(() => Math.max(0, new Date(expiresAt).getTime() - Date.now()));
+  useEffect(() => {
+    const t = setInterval(() => {
+      const ms = Math.max(0, new Date(expiresAt).getTime() - Date.now());
+      setLeft(ms);
+      if (ms === 0) { clearInterval(t); onExpire(); }
+    }, 1000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expiresAt]);
+  const s = Math.ceil(left / 1000);
+  return <>{String(Math.floor(s / 60)).padStart(2, "0")}:{String(s % 60).padStart(2, "0")} left</>;
+}
+
+function BaseLocationCard({ hasBase, onSaved }: { hasBase: boolean; onSaved: () => void }) {
+  const [busy, setBusy] = useState(false);
+
+  const save = () => {
+    if (!navigator.geolocation) return toast.error("Location is not supported on this device");
+    setBusy(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { error } = await supabase.rpc("rider_set_base_location" as any, {
+          _lat: pos.coords.latitude,
+          _lng: pos.coords.longitude,
+        });
+        setBusy(false);
+        if (error) return toast.error(error.message);
+        toast.success("Base area saved");
+        onSaved();
+      },
+      () => { setBusy(false); toast.error("Could not get your location. Allow location access and retry."); },
+      { enableHighAccuracy: true, timeout: 15000 },
+    );
+  };
+
+  return (
+    <div className={`rounded-2xl border p-4 ${hasBase ? "bg-card" : "border-amber-500/50 bg-amber-500/10"}`}>
+      <div className="flex items-start gap-2">
+        <MapPin className="mt-0.5 h-4 w-4 text-primary" />
+        <div className="flex-1">
+          <p className="text-sm font-bold">{hasBase ? "Base area set" : "Set your base area"}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {hasBase
+              ? "Orders nearest to your base area are offered to you first."
+              : "Without a base pin you won't receive delivery offers."}
+          </p>
+        </div>
+      </div>
+      <button onClick={save} disabled={busy}
+        className="mt-3 inline-flex h-10 w-full items-center justify-center rounded-xl bg-foreground text-sm font-bold text-background disabled:opacity-60">
+        {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        {hasBase ? "Update to my current location" : "Use my current location"}
+      </button>
+    </div>
+  );
+}
+
 
 function EmptyState({ text }: { text: string }) {
   return (

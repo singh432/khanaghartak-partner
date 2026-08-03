@@ -62,6 +62,45 @@ export type Database = {
         }
         Relationships: []
       }
+      delivery_offers: {
+        Row: {
+          created_at: string
+          distance_km: number | null
+          expires_at: string | null
+          id: string
+          offered_at: string | null
+          order_id: string
+          rank: number
+          responded_at: string | null
+          rider_id: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          distance_km?: number | null
+          expires_at?: string | null
+          id?: string
+          offered_at?: string | null
+          order_id: string
+          rank: number
+          responded_at?: string | null
+          rider_id: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          distance_km?: number | null
+          expires_at?: string | null
+          id?: string
+          offered_at?: string | null
+          order_id?: string
+          rank?: number
+          responded_at?: string | null
+          rider_id?: string
+          status?: string
+        }
+        Relationships: []
+      }
       menu_items: {
         Row: {
           category_id: string
@@ -399,6 +438,8 @@ export type Database = {
       }
       rider_profiles: {
         Row: {
+          base_latitude: number | null
+          base_longitude: number | null
           created_at: string
           full_name: string | null
           id: string
@@ -409,6 +450,8 @@ export type Database = {
           vehicle: string | null
         }
         Insert: {
+          base_latitude?: number | null
+          base_longitude?: number | null
           created_at?: string
           full_name?: string | null
           id?: string
@@ -419,6 +462,8 @@ export type Database = {
           vehicle?: string | null
         }
         Update: {
+          base_latitude?: number | null
+          base_longitude?: number | null
           created_at?: string
           full_name?: string | null
           id?: string
@@ -496,9 +541,30 @@ export type Database = {
           total: number
         }[]
       }
+      rider_list_offers: {
+        Args: never
+        Returns: {
+          distance_km: number
+          drop_area: string
+          expires_at: string
+          item_count: number
+          order_id: string
+          restaurant_address: string
+          restaurant_name: string
+          total: number
+        }[]
+      }
       rider_mark_delivered: { Args: { _order_id: string }; Returns: undefined }
+      rider_set_base_location: {
+        Args: { _lat: number; _lng: number }
+        Returns: undefined
+      }
       set_rider_status: {
         Args: { _status: string; _user_id: string }
+        Returns: undefined
+      }
+      super_assign_rider: {
+        Args: { _order_id: string; _rider_id: string }
         Returns: undefined
       }
     }

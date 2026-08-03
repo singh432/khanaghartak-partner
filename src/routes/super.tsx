@@ -2,7 +2,7 @@ import { createFileRoute, Outlet, useNavigate, Link, useRouterState } from "@tan
 import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { khanaGharTakLogoUrl } from "@/assets/brand";
-import { LayoutDashboard, Store, ClipboardList, Users, BarChart3, Settings as SettingsIcon, LogOut, ShieldAlert, Bike } from "lucide-react";
+import { LayoutDashboard, Store, ClipboardList, Users, BarChart3, Settings as SettingsIcon, LogOut, ShieldAlert, Bike, Truck } from "lucide-react";
 
 export const Route = createFileRoute("/super")({ component: SuperLayout });
 
@@ -11,6 +11,8 @@ const NAV = [
   { to: "/super/restaurants", label: "Restaurants", icon: Store },
   { to: "/super/riders", label: "Riders", icon: Bike },
   { to: "/super/orders", label: "Orders", icon: ClipboardList },
+  { to: "/super/deliveries", label: "Delivery", icon: Truck },
+
   { to: "/super/customers", label: "Customers", icon: Users },
   { to: "/super/analytics", label: "Analytics", icon: BarChart3 },
   { to: "/super/settings", label: "Platform", icon: SettingsIcon },
@@ -88,7 +90,7 @@ function SuperLayout() {
           <Outlet />
         </main>
 
-        <nav className="fixed bottom-0 left-0 right-0 z-30 grid grid-cols-7 border-t bg-background md:hidden">
+        <nav className="fixed bottom-0 left-0 right-0 z-30 grid grid-cols-8 border-t bg-background md:hidden">
           {NAV.map((n) => {
             const active = isActive(n.to, (n as any).exact);
             return (

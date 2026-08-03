@@ -6,10 +6,13 @@ const payloadSchema = z.object({
   event: z.enum([
     "order_placed",
     "restaurant_accepted",
+    "rider_offer",
+    "no_rider",
     "ready_for_pickup",
     "rider_picked_up",
     "delivered",
   ]),
+
 });
 
 type Recipient = { type: string; phone: string; template: string; params: string[] };
@@ -112,7 +115,7 @@ export const Route = createFileRoute("/api/public/notify/whatsapp")({
         const [{ data: settings }, { data: order }] = await Promise.all([
           supabaseAdmin
             .from("platform_settings")
-            .select("whatsapp_from, whatsapp_enabled")
+            .select("whatsapp_from, whatsapp_enabled, support_phone")
             .limit(1)
             .maybeSingle(),
           supabaseAdmin
@@ -125,7 +128,12 @@ export const Route = createFileRoute("/api/public/notify/whatsapp")({
         ]);
 
         if (!order) return Response.json({ skipped: "order_not_found" });
-        const cfg = settings as { whatsapp_from: string | null; whatsapp_enabled: boolean } | null;
+        const cfg = settings as {
+          whatsapp_from: string | null;
+          whatsapp_enabled: boolean;
+          support_phone: string | null;
+        } | null;
+
         if (cfg && cfg.whatsapp_enabled === false) return Response.json({ skipped: "disabled" });
 
         const { data: restaurant } = await supabaseAdmin
@@ -159,25 +167,48 @@ export const Route = createFileRoute("/api/public/notify/whatsapp")({
               params: [orderRef, clean(restaurant?.name as string | null, "the kitchen")],
             });
           }
-        } else if (event === "ready_for_pickup") {
-          const { data: riders } = await supabaseAdmin
-            .from("rider_profiles")
-            .select("phone, full_name")
-            .eq("status", "approved");
+        } else if (event === "rider_offer" || event === "ready_for_pickup") {
           const pickup = clean(
             `${(restaurant?.name as string | null) ?? "Restaurant"}, ${(restaurant?.address as string | null) ?? ""}`,
             "Restaurant",
           );
-          for (const r of riders ?? []) {
-            const phone = toE164(r.phone as string | null);
-            if (!phone) continue;
+          // Only the rider holding the currently-live offer is messaged.
+          const { data: offers } = await supabaseAdmin
+            .from("delivery_offers")
+            .select("rider_id, distance_km, expires_at")
+            .eq("order_id", order_id)
+            .eq("status", "active")
+            .limit(1);
+          const offer = (offers ?? [])[0] as
+            | { rider_id: string; distance_km: number | null }
+            | undefined;
+          if (offer) {
+            const { data: rp } = await supabaseAdmin
+              .from("rider_profiles")
+              .select("phone")
+              .eq("user_id", offer.rider_id)
+              .maybeSingle();
+            const phone = toE164(rp?.phone as string | null);
+            if (phone) {
+              recipients.push({
+                type: "rider",
+                phone,
+                template: "kgt_delivery_available",
+                params: [orderRef, pickup, dropArea, total],
+              });
+            }
+          }
+        } else if (event === "no_rider") {
+          const phone = toE164(cfg?.support_phone ?? null);
+          if (phone) {
             recipients.push({
-              type: "rider",
+              type: "admin",
               phone,
-              template: "kgt_delivery_available",
-              params: [orderRef, pickup, dropArea, total],
+              template: "kgt_no_rider",
+              params: [orderRef, clean(restaurant?.name as string | null, "Restaurant"), dropArea],
             });
           }
+
         } else if (event === "rider_picked_up") {
           let riderName = "Your rider";
           if (order.rider_id) {
