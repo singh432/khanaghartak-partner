@@ -2,7 +2,7 @@ import { createFileRoute, Outlet, useNavigate, Link, useRouterState } from "@tan
 import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { khanaGharTakLogoUrl } from "@/assets/brand";
-import { LayoutDashboard, Store, ClipboardList, Users, BarChart3, Settings as SettingsIcon, LogOut, ShieldAlert, Bike } from "lucide-react";
+import { LayoutDashboard, Store, ClipboardList, Users, BarChart3, Settings as SettingsIcon, LogOut, ShieldAlert, Bike, Truck } from "lucide-react";
 
 export const Route = createFileRoute("/super")({ component: SuperLayout });
 
