@@ -235,54 +235,62 @@ function RiderDashboard({
         </button>
       </header>
 
+      <div className="px-3 pt-3">
+        <BaseLocationCard hasBase={hasBase} onSaved={() => { setHasBase(true); load(); }} />
+      </div>
+
       <div className="grid grid-cols-2 gap-1 p-3">
-        <Tab on={tab === "available"} onClick={() => setTab("available")} label={`Available (${availableOrders.length})`} />
+        <Tab on={tab === "available"} onClick={() => setTab("available")} label={`Offered to you (${offers.length})`} />
         <Tab on={tab === "mine"} onClick={() => setTab("mine")} label={`My Deliveries (${mineOrders.length})`} />
       </div>
 
       <div className="space-y-3 px-3">
-        {tab === "available" && availableOrders.length === 0 && (
-          <EmptyState text="No orders waiting for pickup right now." />
+        {tab === "available" && offers.length === 0 && (
+          <EmptyState text="No delivery offers right now. You'll get a WhatsApp message when an order is offered to you." />
         )}
         {tab === "mine" && mineOrders.length === 0 && (
           <EmptyState text="You haven't accepted any deliveries yet." />
         )}
 
-        {tab === "available" && availableOrders.map((o) => {
-          const r = o.restaurant_id ? restaurants[o.restaurant_id] : undefined;
-          return (
-            <article key={o.id} className="rounded-2xl border bg-card p-4 shadow-sm">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <p className="font-mono text-[11px] font-bold text-muted-foreground">#{o.id.slice(0, 8).toUpperCase()}</p>
-                  <p className="text-base font-bold leading-tight">{o.item_count} item{o.item_count === 1 ? "" : "s"}</p>
-                </div>
+        {tab === "available" && offers.map((o) => (
+          <article key={o.order_id} className="rounded-2xl border-2 border-primary/40 bg-card p-4 shadow-sm">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <p className="font-mono text-[11px] font-bold text-muted-foreground">#{o.order_id.slice(0, 8).toUpperCase()}</p>
+                <p className="text-base font-bold leading-tight">{o.item_count} item{o.item_count === 1 ? "" : "s"}</p>
+              </div>
+              <div className="text-right">
                 <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-bold text-primary">
                   ₹{Number(o.total).toFixed(0)} COD
                 </span>
+                <p className="mt-1 text-[11px] font-bold text-destructive">
+                  <Countdown expiresAt={o.expires_at} onExpire={load} />
+                </p>
               </div>
+            </div>
 
-              {r && (
-                <div className="mt-3 rounded-xl bg-accent/40 p-3 text-xs">
-                  <p className="font-bold text-foreground">Pickup: {r.name}</p>
-                  {r.address && <p className="text-muted-foreground">{r.address}</p>}
-                </div>
+            <div className="mt-3 rounded-xl bg-accent/40 p-3 text-xs">
+              <p className="font-bold text-foreground">Pickup: {o.restaurant_name ?? "Restaurant"}</p>
+              {o.restaurant_address && <p className="text-muted-foreground">{o.restaurant_address}</p>}
+              {o.distance_km != null && (
+                <p className="mt-1 font-semibold text-primary">~{Number(o.distance_km).toFixed(1)} km from your base area</p>
               )}
+            </div>
 
-              <div className="mt-3 rounded-xl bg-secondary p-3 text-xs">
-                <p className="font-bold text-foreground">Drop area: {o.drop_area ?? "—"}</p>
-                <p className="mt-1 text-muted-foreground italic">Customer contact and exact address unlock after you accept.</p>
-              </div>
+            <div className="mt-3 rounded-xl bg-secondary p-3 text-xs">
+              <p className="font-bold text-foreground">Drop area: {o.drop_area ?? "—"}</p>
+              <p className="mt-1 text-muted-foreground italic">Customer contact and exact address unlock after you accept.</p>
+            </div>
 
-              <div className="mt-3">
-                <button onClick={() => accept(o.id)}
-                  className="w-full rounded-xl bg-primary py-3 text-sm font-bold text-primary-foreground">
-                  Accept this Delivery
-                </button>
-              </div>
-            </article>
-          );
-        })}
+            <div className="mt-3">
+              <button onClick={() => accept(o.order_id)}
+                className="w-full rounded-xl bg-primary py-3 text-sm font-bold text-primary-foreground">
+                Accept this Delivery
+              </button>
+            </div>
+          </article>
+        ))}
+
 
         {tab === "mine" && mineOrders.map((o) => {
           const r = o.restaurant_id ? restaurants[o.restaurant_id] : undefined;
