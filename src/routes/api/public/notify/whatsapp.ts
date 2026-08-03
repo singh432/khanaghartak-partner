@@ -115,7 +115,7 @@ export const Route = createFileRoute("/api/public/notify/whatsapp")({
         const [{ data: settings }, { data: order }] = await Promise.all([
           supabaseAdmin
             .from("platform_settings")
-            .select("whatsapp_from, whatsapp_enabled")
+            .select("whatsapp_from, whatsapp_enabled, support_phone")
             .limit(1)
             .maybeSingle(),
           supabaseAdmin
