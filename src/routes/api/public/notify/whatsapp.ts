@@ -128,7 +128,12 @@ export const Route = createFileRoute("/api/public/notify/whatsapp")({
         ]);
 
         if (!order) return Response.json({ skipped: "order_not_found" });
-        const cfg = settings as { whatsapp_from: string | null; whatsapp_enabled: boolean } | null;
+        const cfg = settings as {
+          whatsapp_from: string | null;
+          whatsapp_enabled: boolean;
+          support_phone: string | null;
+        } | null;
+
         if (cfg && cfg.whatsapp_enabled === false) return Response.json({ skipped: "disabled" });
 
         const { data: restaurant } = await supabaseAdmin
