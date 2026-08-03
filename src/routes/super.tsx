@@ -11,6 +11,8 @@ const NAV = [
   { to: "/super/restaurants", label: "Restaurants", icon: Store },
   { to: "/super/riders", label: "Riders", icon: Bike },
   { to: "/super/orders", label: "Orders", icon: ClipboardList },
+  { to: "/super/deliveries", label: "Delivery", icon: Truck },
+
   { to: "/super/customers", label: "Customers", icon: Users },
   { to: "/super/analytics", label: "Analytics", icon: BarChart3 },
   { to: "/super/settings", label: "Platform", icon: SettingsIcon },

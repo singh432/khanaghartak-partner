@@ -27,6 +27,7 @@ import { Route as SuperSettingsRouteImport } from './routes/super.settings'
 import { Route as SuperRidersRouteImport } from './routes/super.riders'
 import { Route as SuperRestaurantsRouteImport } from './routes/super.restaurants'
 import { Route as SuperOrdersRouteImport } from './routes/super.orders'
+import { Route as SuperDeliveriesRouteImport } from './routes/super.deliveries'
 import { Route as SuperCustomersRouteImport } from './routes/super.customers'
 import { Route as SuperAnalyticsRouteImport } from './routes/super.analytics'
 import { Route as OrderIdRouteImport } from './routes/order.$id'
@@ -126,6 +127,11 @@ const SuperOrdersRoute = SuperOrdersRouteImport.update({
   path: '/orders',
   getParentRoute: () => SuperRoute,
 } as any)
+const SuperDeliveriesRoute = SuperDeliveriesRouteImport.update({
+  id: '/deliveries',
+  path: '/deliveries',
+  getParentRoute: () => SuperRoute,
+} as any)
 const SuperCustomersRoute = SuperCustomersRouteImport.update({
   id: '/customers',
   path: '/customers',
@@ -187,6 +193,7 @@ export interface FileRoutesByFullPath {
   '/order/$id': typeof OrderIdRoute
   '/super/analytics': typeof SuperAnalyticsRoute
   '/super/customers': typeof SuperCustomersRoute
+  '/super/deliveries': typeof SuperDeliveriesRoute
   '/super/orders': typeof SuperOrdersRoute
   '/super/restaurants': typeof SuperRestaurantsRoute
   '/super/riders': typeof SuperRidersRoute
@@ -213,6 +220,7 @@ export interface FileRoutesByTo {
   '/order/$id': typeof OrderIdRoute
   '/super/analytics': typeof SuperAnalyticsRoute
   '/super/customers': typeof SuperCustomersRoute
+  '/super/deliveries': typeof SuperDeliveriesRoute
   '/super/orders': typeof SuperOrdersRoute
   '/super/restaurants': typeof SuperRestaurantsRoute
   '/super/riders': typeof SuperRidersRoute
@@ -242,6 +250,7 @@ export interface FileRoutesById {
   '/order/$id': typeof OrderIdRoute
   '/super/analytics': typeof SuperAnalyticsRoute
   '/super/customers': typeof SuperCustomersRoute
+  '/super/deliveries': typeof SuperDeliveriesRoute
   '/super/orders': typeof SuperOrdersRoute
   '/super/restaurants': typeof SuperRestaurantsRoute
   '/super/riders': typeof SuperRidersRoute
@@ -272,6 +281,7 @@ export interface FileRouteTypes {
     | '/order/$id'
     | '/super/analytics'
     | '/super/customers'
+    | '/super/deliveries'
     | '/super/orders'
     | '/super/restaurants'
     | '/super/riders'
@@ -298,6 +308,7 @@ export interface FileRouteTypes {
     | '/order/$id'
     | '/super/analytics'
     | '/super/customers'
+    | '/super/deliveries'
     | '/super/orders'
     | '/super/restaurants'
     | '/super/riders'
@@ -326,6 +337,7 @@ export interface FileRouteTypes {
     | '/order/$id'
     | '/super/analytics'
     | '/super/customers'
+    | '/super/deliveries'
     | '/super/orders'
     | '/super/restaurants'
     | '/super/riders'
@@ -480,6 +492,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SuperOrdersRouteImport
       parentRoute: typeof SuperRoute
     }
+    '/super/deliveries': {
+      id: '/super/deliveries'
+      path: '/deliveries'
+      fullPath: '/super/deliveries'
+      preLoaderRoute: typeof SuperDeliveriesRouteImport
+      parentRoute: typeof SuperRoute
+    }
     '/super/customers': {
       id: '/super/customers'
       path: '/customers'
@@ -560,6 +579,7 @@ const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 interface SuperRouteChildren {
   SuperAnalyticsRoute: typeof SuperAnalyticsRoute
   SuperCustomersRoute: typeof SuperCustomersRoute
+  SuperDeliveriesRoute: typeof SuperDeliveriesRoute
   SuperOrdersRoute: typeof SuperOrdersRoute
   SuperRestaurantsRoute: typeof SuperRestaurantsRoute
   SuperRidersRoute: typeof SuperRidersRoute
@@ -570,6 +590,7 @@ interface SuperRouteChildren {
 const SuperRouteChildren: SuperRouteChildren = {
   SuperAnalyticsRoute: SuperAnalyticsRoute,
   SuperCustomersRoute: SuperCustomersRoute,
+  SuperDeliveriesRoute: SuperDeliveriesRoute,
   SuperOrdersRoute: SuperOrdersRoute,
   SuperRestaurantsRoute: SuperRestaurantsRoute,
   SuperRidersRoute: SuperRidersRoute,
