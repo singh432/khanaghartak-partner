@@ -6,10 +6,13 @@ const payloadSchema = z.object({
   event: z.enum([
     "order_placed",
     "restaurant_accepted",
+    "rider_offer",
+    "no_rider",
     "ready_for_pickup",
     "rider_picked_up",
     "delivered",
   ]),
+
 });
 
 type Recipient = { type: string; phone: string; template: string; params: string[] };
