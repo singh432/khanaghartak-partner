@@ -157,11 +157,18 @@ function openMaps(o: Order) {
   }
 }
 
-function RiderDashboard({ riderId, onSignOut }: { riderId: string; onSignOut: () => Promise<void> }) {
+function RiderDashboard({
+  riderId,
+  profile,
+  onSignOut,
+}: { riderId: string; profile: RiderProfile; onSignOut: () => Promise<void> }) {
   const [mineOrders, setMineOrders] = useState<Order[]>([]);
-  const [availableOrders, setAvailableOrders] = useState<AvailableOrder[]>([]);
+  const [offers, setOffers] = useState<Offer[]>([]);
   const [restaurants, setRestaurants] = useState<Record<string, Restaurant>>({});
   const [tab, setTab] = useState<"available" | "mine">("available");
+  const [hasBase, setHasBase] = useState(
+    profile.base_latitude != null && profile.base_longitude != null,
+  );
 
   const load = async () => {
     // "Mine" orders: full details visible via RLS only for orders assigned to this rider
@@ -176,18 +183,12 @@ function RiderDashboard({ riderId, onSignOut }: { riderId: string; onSignOut: ()
     const mineList = (mine ?? []) as unknown as Order[];
     setMineOrders(mineList);
 
-    // Available orders: safe summary only — no customer PII until accepted
-    const { data: avail, error: availErr } = await supabase.rpc("rider_list_available_orders" as any);
-    if (availErr) { toast.error(availErr.message); return; }
-    const availList = (avail ?? []) as unknown as AvailableOrder[];
-    setAvailableOrders(availList);
+    // Live offers made to this rider only — no customer PII until accepted
+    const { data: offerData, error: offerErr } = await supabase.rpc("rider_list_offers" as any);
+    if (offerErr) { toast.error(offerErr.message); return; }
+    setOffers((offerData ?? []) as unknown as Offer[]);
 
-    const rIds = [
-      ...new Set([
-        ...mineList.map((o) => o.restaurant_id).filter(Boolean),
-        ...availList.map((o) => o.restaurant_id).filter(Boolean),
-      ]),
-    ] as string[];
+    const rIds = [...new Set(mineList.map((o) => o.restaurant_id).filter(Boolean))] as string[];
     if (rIds.length) {
       const { data: rs } = await supabase.from("restaurants").select("id,name,address,phone").in("id", rIds);
       const map: Record<string, Restaurant> = {};
@@ -195,6 +196,7 @@ function RiderDashboard({ riderId, onSignOut }: { riderId: string; onSignOut: ()
       setRestaurants(map);
     }
   };
+
 
   useEffect(() => {
     load();
