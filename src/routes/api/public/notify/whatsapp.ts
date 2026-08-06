@@ -47,6 +47,14 @@ function clean(v: string | null | undefined, fallback = "-") {
   return s.length ? s.slice(0, 900) : fallback;
 }
 
+// Meta error codes raised while a template is still in review / not approved.
+const TEMPLATE_PENDING_CODES = new Set([132000, 132001, 132005, 132007, 132012, 132015, 132068, 132069]);
+
+function isTemplatePending(code: number | null, message: string) {
+  if (code != null && TEMPLATE_PENDING_CODES.has(code)) return true;
+  return /template/i.test(message) && /(not exist|not found|not approved|paused|disabled|rejected)/i.test(message);
+}
+
 async function sendWhatsApp(to: string, template: string, params: string[]) {
   const token = process.env["WHATSAPP_ACCESS_TOKEN"];
   const phoneNumberId = process.env["WHATSAPP_PHONE_NUMBER_ID"];
