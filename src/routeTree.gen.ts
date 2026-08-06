@@ -9,17 +9,21 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TermsAndConditionsRouteImport } from './routes/terms-and-conditions'
 import { Route as SuperRouteImport } from './routes/super'
 import { Route as RiderRouteImport } from './routes/rider'
 import { Route as QrRouteImport } from './routes/qr'
+import { Route as PrivacyPolicyRouteImport } from './routes/privacy-policy'
 import { Route as OrdersRouteImport } from './routes/orders'
 import { Route as MenuRouteImport } from './routes/menu'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LocationRouteImport } from './routes/location'
 import { Route as HomeRouteImport } from './routes/home'
+import { Route as ContactRouteImport } from './routes/contact'
 import { Route as CheckoutRouteImport } from './routes/checkout'
 import { Route as CartRouteImport } from './routes/cart'
 import { Route as AdminRouteImport } from './routes/admin'
+import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SuperIndexRouteImport } from './routes/super.index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
@@ -37,6 +41,11 @@ import { Route as AdminMenuRouteImport } from './routes/admin.menu'
 import { Route as AdminAnalyticsRouteImport } from './routes/admin.analytics'
 import { Route as ApiPublicNotifyWhatsappRouteImport } from './routes/api/public/notify/whatsapp'
 
+const TermsAndConditionsRoute = TermsAndConditionsRouteImport.update({
+  id: '/terms-and-conditions',
+  path: '/terms-and-conditions',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SuperRoute = SuperRouteImport.update({
   id: '/super',
   path: '/super',
@@ -50,6 +59,11 @@ const RiderRoute = RiderRouteImport.update({
 const QrRoute = QrRouteImport.update({
   id: '/qr',
   path: '/qr',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyPolicyRoute = PrivacyPolicyRouteImport.update({
+  id: '/privacy-policy',
+  path: '/privacy-policy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OrdersRoute = OrdersRouteImport.update({
@@ -77,6 +91,11 @@ const HomeRoute = HomeRouteImport.update({
   path: '/home',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ContactRoute = ContactRouteImport.update({
+  id: '/contact',
+  path: '/contact',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CheckoutRoute = CheckoutRouteImport.update({
   id: '/checkout',
   path: '/checkout',
@@ -90,6 +109,11 @@ const CartRoute = CartRouteImport.update({
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AboutRoute = AboutRouteImport.update({
+  id: '/about',
+  path: '/about',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -175,17 +199,21 @@ const ApiPublicNotifyWhatsappRoute = ApiPublicNotifyWhatsappRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
   '/admin': typeof AdminRouteWithChildren
   '/cart': typeof CartRoute
   '/checkout': typeof CheckoutRoute
+  '/contact': typeof ContactRoute
   '/home': typeof HomeRoute
   '/location': typeof LocationRoute
   '/login': typeof LoginRoute
   '/menu': typeof MenuRoute
   '/orders': typeof OrdersRoute
+  '/privacy-policy': typeof PrivacyPolicyRoute
   '/qr': typeof QrRoute
   '/rider': typeof RiderRoute
   '/super': typeof SuperRouteWithChildren
+  '/terms-and-conditions': typeof TermsAndConditionsRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/menu': typeof AdminMenuRoute
   '/admin/orders': typeof AdminOrdersRoute
@@ -204,15 +232,19 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
   '/cart': typeof CartRoute
   '/checkout': typeof CheckoutRoute
+  '/contact': typeof ContactRoute
   '/home': typeof HomeRoute
   '/location': typeof LocationRoute
   '/login': typeof LoginRoute
   '/menu': typeof MenuRoute
   '/orders': typeof OrdersRoute
+  '/privacy-policy': typeof PrivacyPolicyRoute
   '/qr': typeof QrRoute
   '/rider': typeof RiderRoute
+  '/terms-and-conditions': typeof TermsAndConditionsRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/menu': typeof AdminMenuRoute
   '/admin/orders': typeof AdminOrdersRoute
@@ -232,17 +264,21 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
   '/admin': typeof AdminRouteWithChildren
   '/cart': typeof CartRoute
   '/checkout': typeof CheckoutRoute
+  '/contact': typeof ContactRoute
   '/home': typeof HomeRoute
   '/location': typeof LocationRoute
   '/login': typeof LoginRoute
   '/menu': typeof MenuRoute
   '/orders': typeof OrdersRoute
+  '/privacy-policy': typeof PrivacyPolicyRoute
   '/qr': typeof QrRoute
   '/rider': typeof RiderRoute
   '/super': typeof SuperRouteWithChildren
+  '/terms-and-conditions': typeof TermsAndConditionsRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/menu': typeof AdminMenuRoute
   '/admin/orders': typeof AdminOrdersRoute
@@ -263,17 +299,21 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/about'
     | '/admin'
     | '/cart'
     | '/checkout'
+    | '/contact'
     | '/home'
     | '/location'
     | '/login'
     | '/menu'
     | '/orders'
+    | '/privacy-policy'
     | '/qr'
     | '/rider'
     | '/super'
+    | '/terms-and-conditions'
     | '/admin/analytics'
     | '/admin/menu'
     | '/admin/orders'
@@ -292,15 +332,19 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/about'
     | '/cart'
     | '/checkout'
+    | '/contact'
     | '/home'
     | '/location'
     | '/login'
     | '/menu'
     | '/orders'
+    | '/privacy-policy'
     | '/qr'
     | '/rider'
+    | '/terms-and-conditions'
     | '/admin/analytics'
     | '/admin/menu'
     | '/admin/orders'
@@ -319,17 +363,21 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/about'
     | '/admin'
     | '/cart'
     | '/checkout'
+    | '/contact'
     | '/home'
     | '/location'
     | '/login'
     | '/menu'
     | '/orders'
+    | '/privacy-policy'
     | '/qr'
     | '/rider'
     | '/super'
+    | '/terms-and-conditions'
     | '/admin/analytics'
     | '/admin/menu'
     | '/admin/orders'
@@ -349,23 +397,34 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AboutRoute: typeof AboutRoute
   AdminRoute: typeof AdminRouteWithChildren
   CartRoute: typeof CartRoute
   CheckoutRoute: typeof CheckoutRoute
+  ContactRoute: typeof ContactRoute
   HomeRoute: typeof HomeRoute
   LocationRoute: typeof LocationRoute
   LoginRoute: typeof LoginRoute
   MenuRoute: typeof MenuRoute
   OrdersRoute: typeof OrdersRoute
+  PrivacyPolicyRoute: typeof PrivacyPolicyRoute
   QrRoute: typeof QrRoute
   RiderRoute: typeof RiderRoute
   SuperRoute: typeof SuperRouteWithChildren
+  TermsAndConditionsRoute: typeof TermsAndConditionsRoute
   OrderIdRoute: typeof OrderIdRoute
   ApiPublicNotifyWhatsappRoute: typeof ApiPublicNotifyWhatsappRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/terms-and-conditions': {
+      id: '/terms-and-conditions'
+      path: '/terms-and-conditions'
+      fullPath: '/terms-and-conditions'
+      preLoaderRoute: typeof TermsAndConditionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/super': {
       id: '/super'
       path: '/super'
@@ -385,6 +444,13 @@ declare module '@tanstack/react-router' {
       path: '/qr'
       fullPath: '/qr'
       preLoaderRoute: typeof QrRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy-policy': {
+      id: '/privacy-policy'
+      path: '/privacy-policy'
+      fullPath: '/privacy-policy'
+      preLoaderRoute: typeof PrivacyPolicyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/orders': {
@@ -422,6 +488,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HomeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/contact': {
+      id: '/contact'
+      path: '/contact'
+      fullPath: '/contact'
+      preLoaderRoute: typeof ContactRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/checkout': {
       id: '/checkout'
       path: '/checkout'
@@ -441,6 +514,13 @@ declare module '@tanstack/react-router' {
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/about': {
+      id: '/about'
+      path: '/about'
+      fullPath: '/about'
+      preLoaderRoute: typeof AboutRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -602,30 +682,24 @@ const SuperRouteWithChildren = SuperRoute._addFileChildren(SuperRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AboutRoute: AboutRoute,
   AdminRoute: AdminRouteWithChildren,
   CartRoute: CartRoute,
   CheckoutRoute: CheckoutRoute,
+  ContactRoute: ContactRoute,
   HomeRoute: HomeRoute,
   LocationRoute: LocationRoute,
   LoginRoute: LoginRoute,
   MenuRoute: MenuRoute,
   OrdersRoute: OrdersRoute,
+  PrivacyPolicyRoute: PrivacyPolicyRoute,
   QrRoute: QrRoute,
   RiderRoute: RiderRoute,
   SuperRoute: SuperRouteWithChildren,
+  TermsAndConditionsRoute: TermsAndConditionsRoute,
   OrderIdRoute: OrderIdRoute,
   ApiPublicNotifyWhatsappRoute: ApiPublicNotifyWhatsappRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
