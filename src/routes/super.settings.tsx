@@ -135,6 +135,10 @@ function SuperSettings() {
 
         <div className="pt-2">
           <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">Recent messages</h3>
+          <p className="mb-2 text-xs text-muted-foreground">
+            Templates still in Meta review show as <span className="font-bold">template pending</span>. Orders are never
+            blocked — sending starts automatically the moment Meta marks a template Active.
+          </p>
           {logs.length === 0 ? (
             <p className="text-sm text-muted-foreground">No notifications sent yet.</p>
           ) : (
@@ -152,10 +156,17 @@ function SuperSettings() {
                   </div>
                   <span className={`shrink-0 rounded-full px-2 py-0.5 font-bold ${
                     l.status === "sent" ? "bg-success/15 text-success"
+                      : l.status === "template_pending" ? "bg-primary/15 text-primary"
                       : l.status === "failed" ? "bg-destructive/15 text-destructive"
                       : "bg-secondary"}`}>
-                    {l.status}
+                    {l.status.replace(/_/g, " ")}
                   </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
                 </li>
               ))}
             </ul>
