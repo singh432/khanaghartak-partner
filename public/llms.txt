@@ -1,0 +1,17 @@
+# KhanaGharTak
+
+> Jo Dil Chahe, Wahi Order Karo — online food delivery from verified restaurants and home kitchens in Shankargarh, Prayagraj, with upfront pricing and Cash on Delivery.
+
+KhanaGharTak connects customers with local partner kitchens. Delivery is charged at a transparent per-kilometre rate plus a small fixed platform fee, with the full breakdown shown before you confirm an order. Average delivery time is around 35 minutes.
+
+## Pages
+
+- [Home](/): What KhanaGharTak is, how ordering works, and how to get started.
+- [Restaurants](/restaurants): Verified partner restaurants and home kitchens currently delivering.
+- [About](/about): Our story, service area and honest pricing approach.
+- [Contact](/contact): Support email help@khanaghartak.in and phone +91 80092 53547.
+
+## Optional
+
+- [Privacy Policy](/privacy-policy): What data we collect and how it is used.
+- [Terms & Conditions](/terms-and-conditions): Terms for customers, partner kitchens and riders.
