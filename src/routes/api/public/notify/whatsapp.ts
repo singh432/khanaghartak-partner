@@ -47,53 +47,84 @@ function clean(v: string | null | undefined, fallback = "-") {
   return s.length ? s.slice(0, 900) : fallback;
 }
 
+// Meta error codes raised while a template is still in review / not approved.
+const TEMPLATE_PENDING_CODES = new Set([132000, 132001, 132005, 132007, 132012, 132015, 132068, 132069]);
+
+function isTemplatePending(code: number | null, message: string) {
+  if (code != null && TEMPLATE_PENDING_CODES.has(code)) return true;
+  return /template/i.test(message) && /(not exist|not found|not approved|paused|disabled|rejected)/i.test(message);
+}
+
 async function sendWhatsApp(to: string, template: string, params: string[]) {
   const token = process.env["WHATSAPP_ACCESS_TOKEN"];
   const phoneNumberId = process.env["WHATSAPP_PHONE_NUMBER_ID"];
   if (!token || !phoneNumberId) {
-    return { ok: false, sid: null, error: "WhatsApp Cloud API is not configured" };
+    return { ok: false, sid: null, error: "WhatsApp Cloud API is not configured", pending: false };
   }
 
-  const res = await fetch(`https://graph.facebook.com/v21.0/${phoneNumberId}/messages`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      messaging_product: "whatsapp",
-      to: to.replace(/^\+/, ""),
-      type: "template",
-      template: {
-        name: template,
-        language: { code: "en" },
-        components: params.length
-          ? [{ type: "body", parameters: params.map((p) => ({ type: "text", text: p })) }]
-          : [],
+  try {
+    const res = await fetch(`https://graph.facebook.com/v21.0/${phoneNumberId}/messages`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
       },
-    }),
-  });
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        to: to.replace(/^\+/, ""),
+        type: "template",
+        template: {
+          name: template,
+          language: { code: "en" },
+          components: params.length
+            ? [{ type: "body", parameters: params.map((p) => ({ type: "text", text: p })) }]
+            : [],
+        },
+      }),
+    });
 
-  const text = await res.text();
-  if (!res.ok) {
-    console.error(`WhatsApp send failed [${res.status}]: ${text}`);
-    let msg = text.slice(0, 500);
+    const text = await res.text();
+    if (!res.ok) {
+      let msg = text.slice(0, 500);
+      let code: number | null = null;
+      try {
+        const e = (JSON.parse(text) as { error?: { message?: string; code?: number } }).error;
+        if (e?.message) {
+          code = e.code ?? null;
+          msg = `[${e.code ?? res.status}] ${e.message}`;
+        }
+      } catch {
+        /* ignore */
+      }
+      const pending = isTemplatePending(code, msg);
+      // Template still in Meta review: log it, never break the order workflow.
+      // Sending resumes automatically once the template goes Active — no code change needed.
+      if (pending) {
+        console.warn(`WhatsApp template "${template}" not active yet: ${msg}`);
+      } else {
+        console.error(`WhatsApp send failed [${res.status}]: ${text}`);
+      }
+      return {
+        ok: false,
+        sid: null,
+        error: pending ? `Template "${template}" not active yet · ${msg}` : msg,
+        pending,
+      };
+    }
+    let sid: string | null = null;
     try {
-      const e = (JSON.parse(text) as { error?: { message?: string; code?: number } }).error;
-      if (e?.message) msg = `[${e.code ?? res.status}] ${e.message}`;
+      sid = (JSON.parse(text) as { messages?: { id?: string }[] }).messages?.[0]?.id ?? null;
     } catch {
       /* ignore */
     }
-    return { ok: false, sid: null, error: msg };
+    return { ok: true, sid, error: null, pending: false };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`WhatsApp request error: ${msg}`);
+    return { ok: false, sid: null, error: msg.slice(0, 500), pending: false };
   }
-  let sid: string | null = null;
-  try {
-    sid = (JSON.parse(text) as { messages?: { id?: string }[] }).messages?.[0]?.id ?? null;
-  } catch {
-    /* ignore */
-  }
-  return { ok: true, sid, error: null };
 }
+
 
 
 export const Route = createFileRoute("/api/public/notify/whatsapp")({
@@ -240,7 +271,7 @@ export const Route = createFileRoute("/api/public/notify/whatsapp")({
           }
         }
 
-        const results: { type: string; ok: boolean; error: string | null }[] = [];
+        const results: { type: string; ok: boolean; error: string | null; pending?: boolean }[] = [];
         const logRows: Record<string, unknown>[] = [];
 
         for (const r of recipients) {
@@ -251,11 +282,11 @@ export const Route = createFileRoute("/api/public/notify/whatsapp")({
             event,
             recipient_type: r.type,
             phone: r.phone,
-            status: sent.ok ? "sent" : "failed",
+            status: sent.ok ? "sent" : sent.pending ? "template_pending" : "failed",
             provider_sid: sent.sid,
             error: sent.error,
           });
-          results.push({ type: r.type, ok: sent.ok, error: sent.error });
+          results.push({ type: r.type, ok: sent.ok, error: sent.error, pending: sent.pending });
         }
 
         if (recipients.length === 0) {
@@ -268,8 +299,15 @@ export const Route = createFileRoute("/api/public/notify/whatsapp")({
           });
         }
 
-        if (logRows.length) await supabaseAdmin.from("notification_log").insert(logRows as never);
+        if (logRows.length) {
+          // Logging must never fail the request — the order workflow continues regardless.
+          const { error: logError } = await supabaseAdmin
+            .from("notification_log")
+            .insert(logRows as never);
+          if (logError) console.error(`notification_log insert failed: ${logError.message}`);
+        }
 
+        // Always 200: notification problems must not roll back or block the order.
         return Response.json({ event, sent: results });
       },
     },
