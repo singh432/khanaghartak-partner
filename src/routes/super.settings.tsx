@@ -167,11 +167,7 @@ function SuperSettings() {
           )}
         </div>
 
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+
       </div>
 
 
