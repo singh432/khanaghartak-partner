@@ -13,9 +13,9 @@ export const Route = createFileRoute("/cart")({
       { name: "description", content: "Review the items in your cart and proceed to checkout for fast home delivery." },
       { property: "og:title", content: "Your Cart — KhanaGharTak" },
       { property: "og:description", content: "Review the items in your cart and proceed to checkout for fast home delivery." },
-      { property: "og:url", content: "https://khanaghartak.lovable.app/cart" },
+      { property: "og:url", content: "https://khanaghartak.in/cart" },
     ],
-    links: [{ rel: "canonical", href: "https://khanaghartak.lovable.app/cart" }],
+    links: [{ rel: "canonical", href: "https://khanaghartak.in/cart" }],
   }),
 });
 

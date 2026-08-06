@@ -15,9 +15,9 @@ export const Route = createFileRoute("/location")({
       { name: "description", content: "Set your delivery address and pin your exact location for faster KhanaGharTak deliveries." },
       { property: "og:title", content: "Delivery Location — KhanaGharTak" },
       { property: "og:description", content: "Set your delivery address and pin your exact location for faster KhanaGharTak deliveries." },
-      { property: "og:url", content: "https://khanaghartak.lovable.app/location" },
+      { property: "og:url", content: "https://khanaghartak.in/location" },
     ],
-    links: [{ rel: "canonical", href: "https://khanaghartak.lovable.app/location" }],
+    links: [{ rel: "canonical", href: "https://khanaghartak.in/location" }],
   }),
 });
 

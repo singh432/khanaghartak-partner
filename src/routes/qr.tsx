@@ -12,9 +12,9 @@ export const Route = createFileRoute("/qr")({
       { name: "description", content: "Scan the KhanaGharTak QR code to open the app and order home-style food." },
       { property: "og:title", content: "Scan to order — KhanaGharTak" },
       { property: "og:description", content: "Scan the KhanaGharTak QR code to open the app and order home-style food." },
-      { property: "og:url", content: "https://khanaghartak.lovable.app/qr" },
+      { property: "og:url", content: "https://khanaghartak.in/qr" },
     ],
-    links: [{ rel: "canonical", href: "https://khanaghartak.lovable.app/qr" }],
+    links: [{ rel: "canonical", href: "https://khanaghartak.in/qr" }],
   }),
 });
 
@@ -89,7 +89,7 @@ function QrPage() {
         setLoading(false);
         return;
       }
-      const s = (data as QRSettings | null) ?? { target_url: "https://khanaghartak.lovable.app", label: "Scan to order" };
+      const s = (data as QRSettings | null) ?? { target_url: "https://khanaghartak.in", label: "Scan to order" };
       setSettings(s);
       generateQrWithLogo(s.target_url)
         .then(setDataUrl)

@@ -18,9 +18,9 @@ export const Route = createFileRoute("/menu")({
       { name: "description", content: "Explore our full menu of home-style Indian dishes. Order online with Cash on Delivery." },
       { property: "og:title", content: "Our Menu — KhanaGharTak" },
       { property: "og:description", content: "Explore our full menu of home-style Indian dishes. Order online with Cash on Delivery." },
-      { property: "og:url", content: "https://khanaghartak.lovable.app/menu" },
+      { property: "og:url", content: "https://khanaghartak.in/menu" },
     ],
-    links: [{ rel: "canonical", href: "https://khanaghartak.lovable.app/menu" }],
+    links: [{ rel: "canonical", href: "https://khanaghartak.in/menu" }],
   }),
 });
 

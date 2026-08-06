@@ -13,9 +13,9 @@ export const Route = createFileRoute("/login")({
       { name: "description", content: "Sign in to KhanaGharTak with Google and order home-style food with Cash on Delivery." },
       { property: "og:title", content: "Sign in — KhanaGharTak" },
       { property: "og:description", content: "Sign in to KhanaGharTak with Google and order home-style food with Cash on Delivery." },
-      { property: "og:url", content: "https://khanaghartak.lovable.app/login" },
+      { property: "og:url", content: "https://khanaghartak.in/login" },
     ],
-    links: [{ rel: "canonical", href: "https://khanaghartak.lovable.app/login" }],
+    links: [{ rel: "canonical", href: "https://khanaghartak.in/login" }],
   }),
 });
 

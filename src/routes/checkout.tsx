@@ -20,9 +20,9 @@ export const Route = createFileRoute("/checkout")({
       { name: "description", content: "Confirm your delivery details and place your Cash on Delivery order with KhanaGharTak." },
       { property: "og:title", content: "Checkout — KhanaGharTak" },
       { property: "og:description", content: "Confirm your delivery details and place your Cash on Delivery order with KhanaGharTak." },
-      { property: "og:url", content: "https://khanaghartak.lovable.app/checkout" },
+      { property: "og:url", content: "https://khanaghartak.in/checkout" },
     ],
-    links: [{ rel: "canonical", href: "https://khanaghartak.lovable.app/checkout" }],
+    links: [{ rel: "canonical", href: "https://khanaghartak.in/checkout" }],
   }),
 });
 
