@@ -29,7 +29,13 @@ export const Route = createFileRoute("/")({
       { name: "description", content: "Order home-style food from trusted local kitchens. Fast delivery, Cash on Delivery, hot and fresh — every single meal." },
       { property: "og:title", content: "KhanaGharTak — Jo Dil Chahe, Wahi Order Karo" },
       { property: "og:description", content: "Order home-style food from trusted local kitchens. Fast delivery, Cash on Delivery." },
+      { property: "og:url", content: "https://khanaghartak.in/" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "KhanaGharTak — Jo Dil Chahe, Wahi Order Karo" },
+      { name: "twitter:description", content: "Order home-style food from trusted local kitchens. Fast delivery, Cash on Delivery." },
     ],
+    links: [{ rel: "canonical", href: "https://khanaghartak.in/" }],
   }),
 });
 

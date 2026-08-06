@@ -10,13 +10,14 @@ export const Route = createFileRoute("/orders")({
   component: OrdersPage,
   head: () => ({
     meta: [
+      { name: "robots", content: "noindex, nofollow" },
       { title: "My Orders — KhanaGharTak" },
       { name: "description", content: "Track your past and active orders from KhanaGharTak in one place." },
       { property: "og:title", content: "My Orders — KhanaGharTak" },
       { property: "og:description", content: "Track your past and active orders from KhanaGharTak in one place." },
-      { property: "og:url", content: "https://khanaghartak.lovable.app/orders" },
+      { property: "og:url", content: "https://khanaghartak.in/orders" },
     ],
-    links: [{ rel: "canonical", href: "https://khanaghartak.lovable.app/orders" }],
+    links: [{ rel: "canonical", href: "https://khanaghartak.in/orders" }],
   }),
 });
 

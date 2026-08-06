@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+
+Disallow: /admin
+Disallow: /super
+Disallow: /cart
+Disallow: /checkout
+Disallow: /orders
+Disallow: /order/
+Disallow: /rider
+Disallow: /api/
+
+Sitemap: https://khanaghartak.in/sitemap.xml
