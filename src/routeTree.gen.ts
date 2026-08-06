@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as TermsAndConditionsRouteImport } from './routes/terms-and-conditions'
 import { Route as SuperRouteImport } from './routes/super'
 import { Route as RiderRouteImport } from './routes/rider'
+import { Route as RestaurantsRouteImport } from './routes/restaurants'
 import { Route as QrRouteImport } from './routes/qr'
 import { Route as PrivacyPolicyRouteImport } from './routes/privacy-policy'
 import { Route as OrdersRouteImport } from './routes/orders'
@@ -54,6 +55,11 @@ const SuperRoute = SuperRouteImport.update({
 const RiderRoute = RiderRouteImport.update({
   id: '/rider',
   path: '/rider',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RestaurantsRoute = RestaurantsRouteImport.update({
+  id: '/restaurants',
+  path: '/restaurants',
   getParentRoute: () => rootRouteImport,
 } as any)
 const QrRoute = QrRouteImport.update({
@@ -211,6 +217,7 @@ export interface FileRoutesByFullPath {
   '/orders': typeof OrdersRoute
   '/privacy-policy': typeof PrivacyPolicyRoute
   '/qr': typeof QrRoute
+  '/restaurants': typeof RestaurantsRoute
   '/rider': typeof RiderRoute
   '/super': typeof SuperRouteWithChildren
   '/terms-and-conditions': typeof TermsAndConditionsRoute
@@ -243,6 +250,7 @@ export interface FileRoutesByTo {
   '/orders': typeof OrdersRoute
   '/privacy-policy': typeof PrivacyPolicyRoute
   '/qr': typeof QrRoute
+  '/restaurants': typeof RestaurantsRoute
   '/rider': typeof RiderRoute
   '/terms-and-conditions': typeof TermsAndConditionsRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
@@ -276,6 +284,7 @@ export interface FileRoutesById {
   '/orders': typeof OrdersRoute
   '/privacy-policy': typeof PrivacyPolicyRoute
   '/qr': typeof QrRoute
+  '/restaurants': typeof RestaurantsRoute
   '/rider': typeof RiderRoute
   '/super': typeof SuperRouteWithChildren
   '/terms-and-conditions': typeof TermsAndConditionsRoute
@@ -311,6 +320,7 @@ export interface FileRouteTypes {
     | '/orders'
     | '/privacy-policy'
     | '/qr'
+    | '/restaurants'
     | '/rider'
     | '/super'
     | '/terms-and-conditions'
@@ -343,6 +353,7 @@ export interface FileRouteTypes {
     | '/orders'
     | '/privacy-policy'
     | '/qr'
+    | '/restaurants'
     | '/rider'
     | '/terms-and-conditions'
     | '/admin/analytics'
@@ -375,6 +386,7 @@ export interface FileRouteTypes {
     | '/orders'
     | '/privacy-policy'
     | '/qr'
+    | '/restaurants'
     | '/rider'
     | '/super'
     | '/terms-and-conditions'
@@ -409,6 +421,7 @@ export interface RootRouteChildren {
   OrdersRoute: typeof OrdersRoute
   PrivacyPolicyRoute: typeof PrivacyPolicyRoute
   QrRoute: typeof QrRoute
+  RestaurantsRoute: typeof RestaurantsRoute
   RiderRoute: typeof RiderRoute
   SuperRoute: typeof SuperRouteWithChildren
   TermsAndConditionsRoute: typeof TermsAndConditionsRoute
@@ -437,6 +450,13 @@ declare module '@tanstack/react-router' {
       path: '/rider'
       fullPath: '/rider'
       preLoaderRoute: typeof RiderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/restaurants': {
+      id: '/restaurants'
+      path: '/restaurants'
+      fullPath: '/restaurants'
+      preLoaderRoute: typeof RestaurantsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/qr': {
@@ -694,6 +714,7 @@ const rootRouteChildren: RootRouteChildren = {
   OrdersRoute: OrdersRoute,
   PrivacyPolicyRoute: PrivacyPolicyRoute,
   QrRoute: QrRoute,
+  RestaurantsRoute: RestaurantsRoute,
   RiderRoute: RiderRoute,
   SuperRoute: SuperRouteWithChildren,
   TermsAndConditionsRoute: TermsAndConditionsRoute,
