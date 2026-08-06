@@ -59,49 +59,72 @@ async function sendWhatsApp(to: string, template: string, params: string[]) {
   const token = process.env["WHATSAPP_ACCESS_TOKEN"];
   const phoneNumberId = process.env["WHATSAPP_PHONE_NUMBER_ID"];
   if (!token || !phoneNumberId) {
-    return { ok: false, sid: null, error: "WhatsApp Cloud API is not configured" };
+    return { ok: false, sid: null, error: "WhatsApp Cloud API is not configured", pending: false };
   }
 
-  const res = await fetch(`https://graph.facebook.com/v21.0/${phoneNumberId}/messages`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      messaging_product: "whatsapp",
-      to: to.replace(/^\+/, ""),
-      type: "template",
-      template: {
-        name: template,
-        language: { code: "en" },
-        components: params.length
-          ? [{ type: "body", parameters: params.map((p) => ({ type: "text", text: p })) }]
-          : [],
+  try {
+    const res = await fetch(`https://graph.facebook.com/v21.0/${phoneNumberId}/messages`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
       },
-    }),
-  });
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        to: to.replace(/^\+/, ""),
+        type: "template",
+        template: {
+          name: template,
+          language: { code: "en" },
+          components: params.length
+            ? [{ type: "body", parameters: params.map((p) => ({ type: "text", text: p })) }]
+            : [],
+        },
+      }),
+    });
 
-  const text = await res.text();
-  if (!res.ok) {
-    console.error(`WhatsApp send failed [${res.status}]: ${text}`);
-    let msg = text.slice(0, 500);
+    const text = await res.text();
+    if (!res.ok) {
+      let msg = text.slice(0, 500);
+      let code: number | null = null;
+      try {
+        const e = (JSON.parse(text) as { error?: { message?: string; code?: number } }).error;
+        if (e?.message) {
+          code = e.code ?? null;
+          msg = `[${e.code ?? res.status}] ${e.message}`;
+        }
+      } catch {
+        /* ignore */
+      }
+      const pending = isTemplatePending(code, msg);
+      // Template still in Meta review: log it, never break the order workflow.
+      // Sending resumes automatically once the template goes Active — no code change needed.
+      if (pending) {
+        console.warn(`WhatsApp template "${template}" not active yet: ${msg}`);
+      } else {
+        console.error(`WhatsApp send failed [${res.status}]: ${text}`);
+      }
+      return {
+        ok: false,
+        sid: null,
+        error: pending ? `Template "${template}" not active yet · ${msg}` : msg,
+        pending,
+      };
+    }
+    let sid: string | null = null;
     try {
-      const e = (JSON.parse(text) as { error?: { message?: string; code?: number } }).error;
-      if (e?.message) msg = `[${e.code ?? res.status}] ${e.message}`;
+      sid = (JSON.parse(text) as { messages?: { id?: string }[] }).messages?.[0]?.id ?? null;
     } catch {
       /* ignore */
     }
-    return { ok: false, sid: null, error: msg };
+    return { ok: true, sid, error: null, pending: false };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`WhatsApp request error: ${msg}`);
+    return { ok: false, sid: null, error: msg.slice(0, 500), pending: false };
   }
-  let sid: string | null = null;
-  try {
-    sid = (JSON.parse(text) as { messages?: { id?: string }[] }).messages?.[0]?.id ?? null;
-  } catch {
-    /* ignore */
-  }
-  return { ok: true, sid, error: null };
 }
+
 
 
 export const Route = createFileRoute("/api/public/notify/whatsapp")({
