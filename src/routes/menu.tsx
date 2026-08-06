@@ -14,6 +14,7 @@ export const Route = createFileRoute("/menu")({
   component: MenuPage,
   head: () => ({
     meta: [
+      { name: "robots", content: "noindex, nofollow" },
       { title: "Our Menu — KhanaGharTak" },
       { name: "description", content: "Explore our full menu of home-style Indian dishes. Order online with Cash on Delivery." },
       { property: "og:title", content: "Our Menu — KhanaGharTak" },

@@ -9,6 +9,7 @@ export const Route = createFileRoute("/cart")({
   component: CartPage,
   head: () => ({
     meta: [
+      { name: "robots", content: "noindex, nofollow" },
       { title: "Your Cart — KhanaGharTak" },
       { name: "description", content: "Review the items in your cart and proceed to checkout for fast home delivery." },
       { property: "og:title", content: "Your Cart — KhanaGharTak" },

@@ -11,6 +11,7 @@ export const Route = createFileRoute("/location")({
   component: LocationPage,
   head: () => ({
     meta: [
+      { name: "robots", content: "noindex, nofollow" },
       { title: "Delivery Location — KhanaGharTak" },
       { name: "description", content: "Set your delivery address and pin your exact location for faster KhanaGharTak deliveries." },
       { property: "og:title", content: "Delivery Location — KhanaGharTak" },

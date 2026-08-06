@@ -16,6 +16,7 @@ export const Route = createFileRoute("/checkout")({
   component: CheckoutPage,
   head: () => ({
     meta: [
+      { name: "robots", content: "noindex, nofollow" },
       { title: "Checkout — KhanaGharTak" },
       { name: "description", content: "Confirm your delivery details and place your Cash on Delivery order with KhanaGharTak." },
       { property: "og:title", content: "Checkout — KhanaGharTak" },

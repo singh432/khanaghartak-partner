@@ -14,6 +14,7 @@ export const Route = createFileRoute("/home")({
   component: HomePage,
   head: () => ({
     meta: [
+      { name: "robots", content: "noindex, nofollow" },
       { title: "Home — KhanaGharTak" },
       { name: "description", content: "Browse today's home-style dishes from KhanaGharTak and order with Cash on Delivery." },
       { property: "og:title", content: "Home — KhanaGharTak" },
