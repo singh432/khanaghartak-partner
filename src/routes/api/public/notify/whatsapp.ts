@@ -271,7 +271,7 @@ export const Route = createFileRoute("/api/public/notify/whatsapp")({
           }
         }
 
-        const results: { type: string; ok: boolean; error: string | null }[] = [];
+        const results: { type: string; ok: boolean; error: string | null; pending?: boolean }[] = [];
         const logRows: Record<string, unknown>[] = [];
 
         for (const r of recipients) {
@@ -282,11 +282,11 @@ export const Route = createFileRoute("/api/public/notify/whatsapp")({
             event,
             recipient_type: r.type,
             phone: r.phone,
-            status: sent.ok ? "sent" : "failed",
+            status: sent.ok ? "sent" : sent.pending ? "template_pending" : "failed",
             provider_sid: sent.sid,
             error: sent.error,
           });
-          results.push({ type: r.type, ok: sent.ok, error: sent.error });
+          results.push({ type: r.type, ok: sent.ok, error: sent.error, pending: sent.pending });
         }
 
         if (recipients.length === 0) {
@@ -299,8 +299,15 @@ export const Route = createFileRoute("/api/public/notify/whatsapp")({
           });
         }
 
-        if (logRows.length) await supabaseAdmin.from("notification_log").insert(logRows as never);
+        if (logRows.length) {
+          // Logging must never fail the request — the order workflow continues regardless.
+          const { error: logError } = await supabaseAdmin
+            .from("notification_log")
+            .insert(logRows as never);
+          if (logError) console.error(`notification_log insert failed: ${logError.message}`);
+        }
 
+        // Always 200: notification problems must not roll back or block the order.
         return Response.json({ event, sent: results });
       },
     },
