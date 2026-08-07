@@ -30,7 +30,7 @@ export const Route = createFileRoute("/menu")({
 });
 
 
-type Category = { id: string; name: string; priority: number };
+type Category = { id: string; name: string; priority: number; restaurant_id: string | null };
 type MenuItem = {
   id: string; restaurant_id: string; category_id: string; name: string; description: string | null;
   price: number; offer_price: number | null; half_price: number | null; half_offer_price: number | null;
