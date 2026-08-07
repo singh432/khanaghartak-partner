@@ -71,7 +71,7 @@ function CheckoutPage() {
       const { data } = await supabase
         .from("menu_items")
         .select("restaurants:restaurant_id(latitude, longitude)")
-        .eq("id", items[0].id)
+        .eq("id", items[0].menu_item_id)
         .maybeSingle();
       if (!active) return;
       const r = (data as { restaurants: { latitude: number | null; longitude: number | null } | null } | null)?.restaurants;
@@ -111,7 +111,7 @@ function CheckoutPage() {
     if (!user) return;
     setPlacing(true);
     const { data, error } = await supabase.rpc("place_order", {
-      _items: items.map((i) => ({ id: i.id, qty: i.qty })),
+      _items: items.map((i) => ({ id: i.menu_item_id, portion: i.portion, qty: i.qty })),
       _customer_name: form.name,
       _customer_phone: form.phone,
       _address: form.address,
