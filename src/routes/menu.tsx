@@ -275,8 +275,8 @@ function MenuPage() {
       {categories.length > 0 && (
         <>
           {showCatPanel && (
-            <div className="fixed inset-0 z-40 bg-black/40" onClick={() => setShowCatPanel(false)}>
-              <div className="absolute bottom-28 right-4 max-h-[60vh] w-56 overflow-auto rounded-2xl bg-card p-2 shadow-2xl"
+            <div className="fixed inset-0 z-[60] bg-black/40" onClick={() => setShowCatPanel(false)}>
+              <div className="absolute bottom-40 right-4 max-h-[60vh] w-56 overflow-auto rounded-2xl bg-card p-2 shadow-2xl"
                 onClick={(e) => e.stopPropagation()}>
                 {categories.map((c) => (
                   <button key={c.id} onClick={() => scrollToCat(c.id)}
