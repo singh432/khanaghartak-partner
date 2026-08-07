@@ -178,6 +178,7 @@ function MenuPage() {
           {categories.map((cat) => {
             const list = grouped.get(cat.id) ?? [];
             const byPiece = isPieceCategory(cat.name);
+            const singlePrice = isSinglePriceCategory(cat.name);
             if (list.length === 0) return null;
             return (
               <section key={cat.id} data-cat={cat.id}
