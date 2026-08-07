@@ -234,12 +234,16 @@ function AdminMenu() {
               <Field label="Description">
                 <textarea className="ai" rows={2} maxLength={300} value={editing.description} onChange={(e) => setEditing({ ...editing, description: e.target.value })} />
               </Field>
-              {isPieceCategory(categories.find((c) => c.id === editing.category_id)?.name) ? (
+              {isSinglePriceCategory(categories.find((c) => c.id === editing.category_id)?.name) ? (
                 <>
-                  <Field label="Price per piece (₹)">
+                  <Field label={isPieceCategory(categories.find((c) => c.id === editing.category_id)?.name) ? "Price per piece (₹)" : "Price (₹)"}>
                     <input className="ai" inputMode="decimal" value={editing.price} onChange={(e) => setEditing({ ...editing, price: e.target.value.replace(/[^0-9.]/g, ""), half_price: "" })} />
                   </Field>
-                  <p className="-mt-1 text-[11px] text-muted-foreground">Breads like roti and paratha are sold per piece — no half plate.</p>
+                  <p className="-mt-1 text-[11px] text-muted-foreground">
+                    {isPieceCategory(categories.find((c) => c.id === editing.category_id)?.name)
+                      ? "Breads like roti and paratha are sold per piece — no half plate."
+                      : "Thali has a single fixed price — no full or half."}
+                  </p>
                 </>
               ) : (
                 <>
