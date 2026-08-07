@@ -116,7 +116,7 @@ function AdminOrders() {
                 <div>
                   <p className="font-mono text-xs font-bold">#{o.id.slice(0, 8).toUpperCase()}</p>
                   <p className="text-base font-semibold leading-tight">{o.customer_name}</p>
-                  <a href={`tel:${o.customer_phone}`} className="text-xs text-primary underline">{o.customer_phone}</a>
+                  <p className="text-xs text-muted-foreground">Contact &amp; address shared with the rider</p>
                 </div>
                 <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold capitalize ${o.status === "placed" ? "bg-primary text-primary-foreground" : "bg-secondary"}`}>
                   {STATUS_LABEL[o.status as Status]}
@@ -125,17 +125,7 @@ function AdminOrders() {
 
               <p className="mt-2 text-xs text-muted-foreground">{new Date(o.created_at).toLocaleString()}</p>
 
-              <p className="mt-2 text-sm">
-                <span className="text-muted-foreground">Address: </span>{o.address}
-                {o.landmark && <span className="text-muted-foreground"> · {o.landmark}</span>}
-              </p>
-              {o.latitude && o.longitude && (
-                <a target="_blank" rel="noreferrer"
-                  href={`https://www.google.com/maps?q=${o.latitude},${o.longitude}`}
-                  className="mt-1 inline-block text-xs font-semibold text-primary underline">
-                  Open in Maps
-                </a>
-              )}
+
               {o.notes && <p className="mt-2 rounded-lg bg-accent px-2 py-1 text-xs">Note: {o.notes}</p>}
               {o.rejection_reason && <p className="mt-2 rounded-lg bg-destructive/10 px-2 py-1 text-xs text-destructive">Rejected: {o.rejection_reason}</p>}
 
