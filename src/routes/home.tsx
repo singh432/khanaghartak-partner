@@ -107,50 +107,59 @@ function HomePage() {
           />
         )}
         {!restaurantLoading && !restaurantError && restaurants.length > 0 && (
-          <div className="space-y-4">
+          <div className="space-y-5">
             {restaurants.map((restaurant) => (
-              <div key={restaurant.id} className="overflow-hidden rounded-3xl bg-card shadow-[var(--shadow-card)] fade-in">
-                <Link to="/menu" search={{ r: restaurant.id }} aria-label={`View menu of ${restaurant.name}`}
-                  className="relative block h-44 w-full overflow-hidden">
+              <Link
+                key={restaurant.id}
+                to="/menu"
+                search={{ r: restaurant.id }}
+                aria-label={`View menu of ${restaurant.name}`}
+                className="block overflow-hidden rounded-3xl bg-card shadow-[var(--shadow-card)] fade-in"
+              >
+                <div className="relative h-48 w-full overflow-hidden">
                   <img src={restaurant.banner_url ?? hero} alt={restaurant.name}
-                    className="h-full w-full object-cover" width={1600} height={900} />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                  <div className="absolute bottom-3 left-4 right-4 text-white">
-                    <h2 className="text-2xl font-extrabold tracking-tight">{restaurant.name}</h2>
-                    <p className="text-xs opacity-90">{restaurant.tagline}</p>
-                  </div>
-                  <span className={`absolute right-3 top-3 rounded-full px-3 py-1 text-xs font-semibold ${restaurant.is_open ? "bg-success text-success-foreground" : "bg-destructive text-destructive-foreground"}`}>
+                    className="h-full w-full object-cover" width={1600} height={900} loading="lazy" />
+                  <span className={`absolute left-3 top-3 rounded-full px-3 py-1 text-xs font-semibold ${restaurant.is_open ? "bg-success text-success-foreground" : "bg-destructive text-destructive-foreground"}`}>
                     {restaurant.is_open ? "Open" : "Closed"}
                   </span>
-                </Link>
-                <div className="flex items-center justify-between gap-2 px-4 py-3 text-sm">
-                  <span className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2.5 py-1 font-semibold text-success">
-                    <Star className="h-3.5 w-3.5 fill-current" />
-                    {Number(restaurant.rating).toFixed(1)}
+                  <span className="absolute bottom-0 right-0 rounded-tl-2xl bg-card px-3 py-1.5 text-xs font-extrabold tracking-tight">
+                    {restaurant.delivery_time ?? "35 MIN"}
                   </span>
-                  <span className="inline-flex items-center gap-1 text-muted-foreground">
-                    <Clock className="h-4 w-4" />
-                    {restaurant.delivery_time}
-                  </span>
-                  {restaurant.distance != null && (
-                    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                      <MapPin className="h-3.5 w-3.5" /> {restaurant.distance.toFixed(1)} km
-                    </span>
+                </div>
+
+                <div className="px-4 pb-4 pt-3">
+                  <h2 className="text-lg font-extrabold leading-tight tracking-tight">{restaurant.name}</h2>
+                  <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+                    {restaurant.rating_count > 0 && restaurant.rating != null && (
+                      <span className="inline-flex items-center gap-1 font-semibold text-success">
+                        <Star className="h-3.5 w-3.5 fill-current" />
+                        {Number(restaurant.rating).toFixed(1)}
+                        <span className="font-normal text-muted-foreground">({restaurant.rating_count})</span>
+                      </span>
+                    )}
+                    {restaurant.rating_count > 0 && restaurant.address && <span aria-hidden>•</span>}
+                    {restaurant.address && <span className="truncate">{restaurant.address}</span>}
+                    {restaurant.distance != null && (
+                      <>
+                        <span aria-hidden>•</span>
+                        <span>{restaurant.distance.toFixed(1)} km</span>
+                      </>
+                    )}
+                  </div>
+                  {restaurant.tagline && (
+                    <p className="mt-1 truncate text-sm text-muted-foreground">{restaurant.tagline}</p>
+                  )}
+                  {restaurant.rating_count === 0 && (
+                    <p className="mt-1 inline-flex items-center gap-1 text-xs text-muted-foreground">
+                      <Clock className="h-3.5 w-3.5" /> Newly added kitchen
+                    </p>
                   )}
                 </div>
-                {restaurant.address && (
-                  <p className="truncate px-4 pb-2 text-xs text-muted-foreground">{restaurant.address}</p>
-                )}
-                <div className="px-4 pb-4">
-                  <Link to="/menu" search={{ r: restaurant.id }} className="block w-full rounded-2xl bg-primary py-3 text-center text-sm font-bold text-primary-foreground shadow-[var(--shadow-soft)]">
-                    View Menu
-                  </Link>
-                </div>
-              </div>
-
+              </Link>
             ))}
           </div>
         )}
+
 
         <div className="mt-6 grid grid-cols-2 gap-3">
           <Link to="/orders" className="rounded-2xl border bg-card p-4 text-sm font-semibold">
