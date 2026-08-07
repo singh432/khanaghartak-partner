@@ -232,15 +232,26 @@ function AdminMenu() {
               <Field label="Description">
                 <textarea className="ai" rows={2} maxLength={300} value={editing.description} onChange={(e) => setEditing({ ...editing, description: e.target.value })} />
               </Field>
-              <div className="grid grid-cols-2 gap-2">
-                <Field label="Full plate price (₹)">
-                  <input className="ai" inputMode="decimal" value={editing.price} onChange={(e) => setEditing({ ...editing, price: e.target.value.replace(/[^0-9.]/g, "") })} />
-                </Field>
-                <Field label="Half plate price (₹)">
-                  <input className="ai" inputMode="decimal" placeholder="Optional" value={editing.half_price} onChange={(e) => setEditing({ ...editing, half_price: e.target.value.replace(/[^0-9.]/g, "") })} />
-                </Field>
-              </div>
-              <p className="-mt-1 text-[11px] text-muted-foreground">Leave half plate empty if the dish is sold in full plate only.</p>
+              {isPieceCategory(categories.find((c) => c.id === editing.category_id)?.name) ? (
+                <>
+                  <Field label="Price per piece (₹)">
+                    <input className="ai" inputMode="decimal" value={editing.price} onChange={(e) => setEditing({ ...editing, price: e.target.value.replace(/[^0-9.]/g, ""), half_price: "" })} />
+                  </Field>
+                  <p className="-mt-1 text-[11px] text-muted-foreground">Breads like roti and paratha are sold per piece — no half plate.</p>
+                </>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Field label="Full plate price (₹)">
+                      <input className="ai" inputMode="decimal" value={editing.price} onChange={(e) => setEditing({ ...editing, price: e.target.value.replace(/[^0-9.]/g, "") })} />
+                    </Field>
+                    <Field label="Half plate price (₹)">
+                      <input className="ai" inputMode="decimal" placeholder="Optional" value={editing.half_price} onChange={(e) => setEditing({ ...editing, half_price: e.target.value.replace(/[^0-9.]/g, "") })} />
+                    </Field>
+                  </div>
+                  <p className="-mt-1 text-[11px] text-muted-foreground">Leave half plate empty if the dish is sold in full plate only.</p>
+                </>
+              )}
               <Field label="Type">
                 <div className="flex gap-2">
                   {(["veg", "nonveg"] as const).map((v) => (
