@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { BrandHeader } from "@/components/BrandHeader";
@@ -55,7 +55,7 @@ function MenuPage() {
   const { r: restaurantParam } = Route.useSearch();
   const { user, loading } = useAuth();
   const { coords } = useLocationGate();
-  const { items: cart, add, inc, dec, totalQty, subtotal } = useCart();
+  const { items: cart, add, inc, dec, totalQty } = useCart();
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [menu, setMenu] = useState<MenuItem[]>([]);
@@ -298,17 +298,6 @@ function MenuPage() {
         </>
       )}
 
-      {/* Sticky cart bar */}
-      {totalQty > 0 && (
-        <Link to="/cart"
-          className="fixed bottom-[72px] left-1/2 z-50 flex w-[calc(100%-2rem)] max-w-[448px] -translate-x-1/2 items-center justify-between rounded-2xl bg-primary px-4 py-3 text-primary-foreground shadow-2xl">
-          <div className="text-sm">
-            <div className="font-bold leading-tight">{totalQty} item{totalQty > 1 ? "s" : ""} · ₹{subtotal.toFixed(0)}</div>
-            <div className="text-[11px] opacity-90">Extra charges may apply</div>
-          </div>
-          <span className="text-sm font-bold">View Cart →</span>
-        </Link>
-      )}
     </div>
   );
 }
