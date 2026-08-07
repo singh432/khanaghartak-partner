@@ -3,7 +3,7 @@ import { useEffect, useState, type ChangeEvent } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Plus, Pencil, Trash2, Upload, X, Loader2 } from "lucide-react";
-import { isPieceCategory } from "@/lib/portions";
+import { isPieceCategory, isThaliCategory, isSinglePriceCategory } from "@/lib/portions";
 
 export const Route = createFileRoute("/admin/menu")({ component: AdminMenu });
 
