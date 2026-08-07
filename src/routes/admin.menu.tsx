@@ -3,7 +3,7 @@ import { useEffect, useState, type ChangeEvent } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Plus, Pencil, Trash2, Upload, X, Loader2 } from "lucide-react";
-import { isPieceCategory } from "@/lib/portions";
+import { isPieceCategory, isThaliCategory, isSinglePriceCategory } from "@/lib/portions";
 
 export const Route = createFileRoute("/admin/menu")({ component: AdminMenu });
 
@@ -171,6 +171,8 @@ function AdminMenu() {
                   <p className="line-clamp-1 text-xs text-muted-foreground">{m.description}</p>
                   {isPieceCategory(cat.name) ? (
                     <p className="mt-1 text-sm font-bold">₹{Number(m.price).toFixed(0)} <span className="font-semibold text-muted-foreground">/ piece</span></p>
+                  ) : isThaliCategory(cat.name) ? (
+                    <p className="mt-1 text-sm font-bold">₹{Number(m.price).toFixed(0)}</p>
                   ) : (
                     <p className="mt-1 text-sm font-bold">Full ₹{Number(m.price).toFixed(0)}{m.half_price != null && <span className="ml-2 font-semibold text-muted-foreground">Half ₹{Number(m.half_price).toFixed(0)}</span>}</p>
                   )}
@@ -232,12 +234,16 @@ function AdminMenu() {
               <Field label="Description">
                 <textarea className="ai" rows={2} maxLength={300} value={editing.description} onChange={(e) => setEditing({ ...editing, description: e.target.value })} />
               </Field>
-              {isPieceCategory(categories.find((c) => c.id === editing.category_id)?.name) ? (
+              {isSinglePriceCategory(categories.find((c) => c.id === editing.category_id)?.name) ? (
                 <>
-                  <Field label="Price per piece (₹)">
+                  <Field label={isPieceCategory(categories.find((c) => c.id === editing.category_id)?.name) ? "Price per piece (₹)" : "Price (₹)"}>
                     <input className="ai" inputMode="decimal" value={editing.price} onChange={(e) => setEditing({ ...editing, price: e.target.value.replace(/[^0-9.]/g, ""), half_price: "" })} />
                   </Field>
-                  <p className="-mt-1 text-[11px] text-muted-foreground">Breads like roti and paratha are sold per piece — no half plate.</p>
+                  <p className="-mt-1 text-[11px] text-muted-foreground">
+                    {isPieceCategory(categories.find((c) => c.id === editing.category_id)?.name)
+                      ? "Breads like roti and paratha are sold per piece — no half plate."
+                      : "Thali has a single fixed price — no full or half."}
+                  </p>
                 </>
               ) : (
                 <>

@@ -10,3 +10,14 @@ export function isPieceCategory(categoryName?: string | null): boolean {
   if (!n) return false;
   return BREAD_WORDS.some((w) => n.includes(w));
 }
+
+/** Thali categories are sold as one fixed plate — no full/half split. */
+export function isThaliCategory(categoryName?: string | null): boolean {
+  const n = (categoryName ?? "").toLowerCase();
+  return n.includes("thali") || n.includes("thaali");
+}
+
+/** True when the category has one single price (no half plate). */
+export function isSinglePriceCategory(categoryName?: string | null): boolean {
+  return isPieceCategory(categoryName) || isThaliCategory(categoryName);
+}
