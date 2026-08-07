@@ -6,7 +6,7 @@ import { useCart, cartKey, type Portion } from "@/hooks/useCart";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocationGate } from "@/hooks/useLocationGate";
 import { distanceKm as haversineKm, SERVICE_RADIUS_KM } from "@/lib/geo";
-import { isPieceCategory } from "@/lib/portions";
+import { isPieceCategory, isSinglePriceCategory } from "@/lib/portions";
 import { PageError, PageSpinner } from "@/components/PageState";
 import { withTimeout } from "@/lib/supabase-query";
 import { Plus, Minus, Search, Star, Clock } from "lucide-react";
