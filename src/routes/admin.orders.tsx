@@ -42,11 +42,11 @@ function AdminOrders() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
-    supabase.from("orders").select("*").order("created_at", { ascending: false }).limit(200)
-      .then(({ data }) => setOrders((data ?? []) as unknown as Order[]));
+    supabase.from("orders").select(ORDER_COLUMNS).order("created_at", { ascending: false }).limit(200)
+      .then(({ data }) => setOrders((data ?? []).map((r) => pick(r as Record<string, unknown>))));
     const channel = supabase.channel("admin-orders")
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "orders" }, (payload) => {
-        const o = payload.new as Order;
+        const o = pick(payload.new as Record<string, unknown>);
         setOrders((cur) => [o, ...cur]);
         toast.success(`🔔 New order from ${o.customer_name}`, { duration: 6000 });
         try { audioRef.current?.play().catch(() => {}); } catch {}
@@ -55,7 +55,7 @@ function AdminOrders() {
         }
       })
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "orders" }, (payload) => {
-        const o = payload.new as Order;
+        const o = pick(payload.new as Record<string, unknown>);
         setOrders((cur) => cur.map((x) => x.id === o.id ? o : x));
       })
       .subscribe();
