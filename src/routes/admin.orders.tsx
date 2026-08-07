@@ -63,8 +63,7 @@ function AdminOrders() {
   const filtered = useMemo(() => orders.filter((o) => {
     if (filter !== "all" && o.status !== filter) return false;
     if (q && !o.id.toLowerCase().includes(q.toLowerCase()) &&
-        !o.customer_name.toLowerCase().includes(q.toLowerCase()) &&
-        !o.customer_phone.includes(q)) return false;
+        !o.customer_name.toLowerCase().includes(q.toLowerCase())) return false;
     return true;
   }), [orders, filter, q]);
 
@@ -94,7 +93,7 @@ function AdminOrders() {
         <div className="flex items-center gap-2 rounded-xl border bg-card px-3">
           <Search className="h-4 w-4 text-muted-foreground" />
           <input value={q} onChange={(e) => setQ(e.target.value)} maxLength={60}
-            placeholder="Search by order ID, name, phone"
+            placeholder="Search by order ID or customer name"
             className="h-10 flex-1 bg-transparent text-sm outline-none" />
         </div>
         <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
@@ -116,7 +115,7 @@ function AdminOrders() {
                 <div>
                   <p className="font-mono text-xs font-bold">#{o.id.slice(0, 8).toUpperCase()}</p>
                   <p className="text-base font-semibold leading-tight">{o.customer_name}</p>
-                  <a href={`tel:${o.customer_phone}`} className="text-xs text-primary underline">{o.customer_phone}</a>
+                  <p className="text-xs text-muted-foreground">Contact &amp; address shared with the rider</p>
                 </div>
                 <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold capitalize ${o.status === "placed" ? "bg-primary text-primary-foreground" : "bg-secondary"}`}>
                   {STATUS_LABEL[o.status as Status]}
@@ -125,17 +124,7 @@ function AdminOrders() {
 
               <p className="mt-2 text-xs text-muted-foreground">{new Date(o.created_at).toLocaleString()}</p>
 
-              <p className="mt-2 text-sm">
-                <span className="text-muted-foreground">Address: </span>{o.address}
-                {o.landmark && <span className="text-muted-foreground"> · {o.landmark}</span>}
-              </p>
-              {o.latitude && o.longitude && (
-                <a target="_blank" rel="noreferrer"
-                  href={`https://www.google.com/maps?q=${o.latitude},${o.longitude}`}
-                  className="mt-1 inline-block text-xs font-semibold text-primary underline">
-                  Open in Maps
-                </a>
-              )}
+
               {o.notes && <p className="mt-2 rounded-lg bg-accent px-2 py-1 text-xs">Note: {o.notes}</p>}
               {o.rejection_reason && <p className="mt-2 rounded-lg bg-destructive/10 px-2 py-1 text-xs text-destructive">Rejected: {o.rejection_reason}</p>}
 
