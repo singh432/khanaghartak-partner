@@ -85,6 +85,7 @@ function HomePage() {
   return (
     <div className="pb-10">
       <BrandHeader subtitle={profileAddress ? `Deliver to: ${profileAddress.slice(0, 30)}${profileAddress.length > 30 ? "…" : ""}` : "Set your delivery location"} />
+      <RatingPrompt userId={user.id} />
 
       <div className="px-4 pt-4">
         {!profileAddress && (
