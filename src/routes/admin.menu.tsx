@@ -171,6 +171,8 @@ function AdminMenu() {
                   <p className="line-clamp-1 text-xs text-muted-foreground">{m.description}</p>
                   {isPieceCategory(cat.name) ? (
                     <p className="mt-1 text-sm font-bold">₹{Number(m.price).toFixed(0)} <span className="font-semibold text-muted-foreground">/ piece</span></p>
+                  ) : isThaliCategory(cat.name) ? (
+                    <p className="mt-1 text-sm font-bold">₹{Number(m.price).toFixed(0)}</p>
                   ) : (
                     <p className="mt-1 text-sm font-bold">Full ₹{Number(m.price).toFixed(0)}{m.half_price != null && <span className="ml-2 font-semibold text-muted-foreground">Half ₹{Number(m.half_price).toFixed(0)}</span>}</p>
                   )}
