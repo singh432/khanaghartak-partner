@@ -197,7 +197,7 @@ function MenuPage() {
                         <p className="mt-1 text-xs leading-snug text-muted-foreground line-clamp-2">{item.description}</p>
 
                         <div className="mt-2 space-y-2">
-                          {portionsOf(item, byPiece).map((p) => {
+                          {portionsOf(item, singlePrice).map((p) => {
                             const key = cartKey(item.id, p.portion);
                             const qty = qtyInCart(key);
                             return (
@@ -206,7 +206,7 @@ function MenuPage() {
                                   <span className="rounded-md bg-secondary px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">
                                     Per piece
                                   </span>
-                                ) : portionsOf(item).length > 1 ? (
+                                ) : !singlePrice && portionsOf(item).length > 1 ? (
                                   <span className="rounded-md bg-secondary px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">
                                     {p.portion === "half" ? "Half" : "Full"}
                                   </span>
