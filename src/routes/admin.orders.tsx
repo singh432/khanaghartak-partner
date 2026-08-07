@@ -63,8 +63,7 @@ function AdminOrders() {
   const filtered = useMemo(() => orders.filter((o) => {
     if (filter !== "all" && o.status !== filter) return false;
     if (q && !o.id.toLowerCase().includes(q.toLowerCase()) &&
-        !o.customer_name.toLowerCase().includes(q.toLowerCase()) &&
-        !o.customer_phone.includes(q)) return false;
+        !o.customer_name.toLowerCase().includes(q.toLowerCase())) return false;
     return true;
   }), [orders, filter, q]);
 
