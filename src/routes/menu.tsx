@@ -13,6 +13,9 @@ import { Plus, Minus, Search, Star, Clock } from "lucide-react";
 
 export const Route = createFileRoute("/menu")({
   component: MenuPage,
+  validateSearch: (search: Record<string, unknown>) => ({
+    r: typeof search.r === "string" ? search.r : undefined,
+  }),
   head: () => ({
     meta: [
       { name: "robots", content: "noindex, nofollow" },
@@ -26,7 +29,8 @@ export const Route = createFileRoute("/menu")({
   }),
 });
 
-type Category = { id: string; name: string; priority: number };
+
+type Category = { id: string; name: string; priority: number; restaurant_id: string | null };
 type MenuItem = {
   id: string; restaurant_id: string; category_id: string; name: string; description: string | null;
   price: number; offer_price: number | null; half_price: number | null; half_offer_price: number | null;
@@ -48,6 +52,7 @@ type Restaurant = {
 
 function MenuPage() {
   const navigate = useNavigate();
+  const { r: restaurantParam } = Route.useSearch();
   const { user, loading } = useAuth();
   const { coords } = useLocationGate();
   const { items: cart, add, inc, dec, totalQty, subtotal } = useCart();
@@ -78,18 +83,25 @@ function MenuPage() {
         if (!active) return;
         const allRestaurants = (rs ?? []) as Restaurant[];
         // Restaurants without a pinned location are still shown (distance unknown).
-        const nearbyIds = new Set(
-          allRestaurants.filter((r) => {
-            if (!coords || r.latitude == null || r.longitude == null) return true;
-            return haversineKm(coords, { lat: r.latitude, lng: r.longitude }) <= SERVICE_RADIUS_KM;
-          }).map((r) => r.id),
-        );
-        const nearbyRestaurants = allRestaurants.filter((r) => nearbyIds.has(r.id));
-        setRestaurant(nearbyRestaurants[0] ?? null);
-        setCategories((c ?? []) as Category[]);
+        const nearbyRestaurants = allRestaurants.filter((r) => {
+          if (!coords || r.latitude == null || r.longitude == null) return true;
+          return haversineKm(coords, { lat: r.latitude, lng: r.longitude }) <= SERVICE_RADIUS_KM;
+        });
+        // Show exactly one restaurant's menu: the requested one, else the first nearby.
+        const selected =
+          (restaurantParam ? nearbyRestaurants.find((r) => r.id === restaurantParam) : null) ??
+          nearbyRestaurants[0] ??
+          null;
+        setRestaurant(selected);
         const allItems = (m ?? []) as MenuItem[];
-        setMenu(allItems.filter((it) => nearbyIds.has(it.restaurant_id)));
-        if (c && c.length) setActiveCat(c[0].id);
+        const items = selected ? allItems.filter((it) => it.restaurant_id === selected.id) : [];
+        setMenu(items);
+        const usedCatIds = new Set(items.map((it) => it.category_id));
+        const cats = ((c ?? []) as Category[]).filter(
+          (cat) => (selected && cat.restaurant_id === selected.id) || usedCatIds.has(cat.id),
+        );
+        setCategories(cats);
+        if (cats.length) setActiveCat(cats[0].id);
       } catch (err) {
         if (active) setDataError(err instanceof Error ? err.message : "Could not load menu");
       } finally {
@@ -97,7 +109,8 @@ function MenuPage() {
       }
     })();
     return () => { active = false; };
-  }, [coords]);
+  }, [coords, restaurantParam]);
+
 
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();

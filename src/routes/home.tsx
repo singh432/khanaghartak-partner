@@ -110,7 +110,8 @@ function HomePage() {
           <div className="space-y-4">
             {restaurants.map((restaurant) => (
               <div key={restaurant.id} className="overflow-hidden rounded-3xl bg-card shadow-[var(--shadow-card)] fade-in">
-                <div className="relative h-44 w-full overflow-hidden">
+                <Link to="/menu" search={{ r: restaurant.id }} aria-label={`View menu of ${restaurant.name}`}
+                  className="relative block h-44 w-full overflow-hidden">
                   <img src={restaurant.banner_url ?? hero} alt={restaurant.name}
                     className="h-full w-full object-cover" width={1600} height={900} />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
@@ -121,7 +122,7 @@ function HomePage() {
                   <span className={`absolute right-3 top-3 rounded-full px-3 py-1 text-xs font-semibold ${restaurant.is_open ? "bg-success text-success-foreground" : "bg-destructive text-destructive-foreground"}`}>
                     {restaurant.is_open ? "Open" : "Closed"}
                   </span>
-                </div>
+                </Link>
                 <div className="flex items-center justify-between gap-2 px-4 py-3 text-sm">
                   <span className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2.5 py-1 font-semibold text-success">
                     <Star className="h-3.5 w-3.5 fill-current" />
@@ -141,11 +142,12 @@ function HomePage() {
                   <p className="truncate px-4 pb-2 text-xs text-muted-foreground">{restaurant.address}</p>
                 )}
                 <div className="px-4 pb-4">
-                  <Link to="/menu" className="block w-full rounded-2xl bg-primary py-3 text-center text-sm font-bold text-primary-foreground shadow-[var(--shadow-soft)]">
+                  <Link to="/menu" search={{ r: restaurant.id }} className="block w-full rounded-2xl bg-primary py-3 text-center text-sm font-bold text-primary-foreground shadow-[var(--shadow-soft)]">
                     View Menu
                   </Link>
                 </div>
               </div>
+
             ))}
           </div>
         )}
