@@ -9,13 +9,13 @@ export const Route = createFileRoute("/admin/menu")({ component: AdminMenu });
 type Category = { id: string; name: string; priority: number };
 type MenuItem = {
   id: string; category_id: string; name: string; description: string | null;
-  price: number; image_url: string | null; veg_type: "veg" | "nonveg"; is_available: boolean;
+  price: number; half_price: number | null; image_url: string | null; veg_type: "veg" | "nonveg"; is_available: boolean;
 };
 type FormState = {
   id?: string; name: string; category_id: string; description: string;
-  price: string; image_url: string; veg_type: "veg" | "nonveg"; is_available: boolean;
+  price: string; half_price: string; image_url: string; veg_type: "veg" | "nonveg"; is_available: boolean;
 };
-const EMPTY: FormState = { name: "", category_id: "", description: "", price: "", image_url: "", veg_type: "veg", is_available: true };
+const EMPTY: FormState = { name: "", category_id: "", description: "", price: "", half_price: "", image_url: "", veg_type: "veg", is_available: true };
 
 function AdminMenu() {
   const [restaurantId, setRestaurantId] = useState<string | null>(null);
@@ -52,7 +52,7 @@ function AdminMenu() {
   const startAdd = () => setEditing({ ...EMPTY, category_id: categories[0]?.id ?? "" });
   const startEdit = (m: MenuItem) => setEditing({
     id: m.id, name: m.name, category_id: m.category_id, description: m.description ?? "",
-    price: String(m.price), image_url: m.image_url ?? "", veg_type: m.veg_type, is_available: m.is_available,
+    price: String(m.price), half_price: m.half_price == null ? "" : String(m.half_price), image_url: m.image_url ?? "", veg_type: m.veg_type, is_available: m.is_available,
   });
 
   const toggleAvailable = async (m: MenuItem) => {
@@ -81,12 +81,14 @@ function AdminMenu() {
     if (editing.name.trim().length < 2) return toast.error("Name is required");
     if (!editing.category_id) return toast.error("Choose a category");
     const price = Number(editing.price);
-    if (!price || price <= 0) return toast.error("Enter a valid price");
+    if (!price || price <= 0) return toast.error("Enter a valid full plate price");
+    if (editing.half_price.trim() !== "" && !(Number(editing.half_price) > 0)) return toast.error("Enter a valid half plate price");
 
     setSaving(true);
     const payload: any = {
       name: editing.name.trim(), description: editing.description.trim() || null,
-      price, image_url: editing.image_url || null, veg_type: editing.veg_type,
+      price, half_price: editing.half_price.trim() === "" ? null : Number(editing.half_price),
+      image_url: editing.image_url || null, veg_type: editing.veg_type,
       is_available: editing.is_available, category_id: editing.category_id,
     };
     if (!editing.id) payload.restaurant_id = restaurantId;
@@ -106,9 +108,15 @@ function AdminMenu() {
     setDeleteId(null);
   };
 
+  const [addingCat, setAddingCat] = useState(false);
   const addCategory = async () => {
-    const name = newCat.trim(); if (name.length < 2) return;
+    const name = newCat.trim();
+    if (name.length < 2) return toast.error("Category name must be at least 2 characters");
+    if (!restaurantId) return toast.error("Create your restaurant profile first, then add categories");
+    if (categories.some((c) => c.name.toLowerCase() === name.toLowerCase())) return toast.error("That category already exists");
+    setAddingCat(true);
     const { error } = await supabase.from("categories").insert({ name, priority: categories.length, restaurant_id: restaurantId });
+    setAddingCat(false);
     if (error) toast.error(error.message); else { toast.success("Category added"); setNewCat(""); load(); }
   };
 
@@ -133,9 +141,12 @@ function AdminMenu() {
         </div>
         <div className="mt-3 flex gap-2">
           <input value={newCat} onChange={(e) => setNewCat(e.target.value)} maxLength={40}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCategory(); } }}
             placeholder="New category name"
             className="h-10 flex-1 rounded-xl border bg-background px-3 text-sm outline-none focus:border-ring" />
-          <button onClick={addCategory} className="rounded-xl bg-foreground px-4 text-sm font-bold text-background">Add</button>
+          <button onClick={addCategory} disabled={addingCat} className="inline-flex items-center rounded-xl bg-foreground px-4 text-sm font-bold text-background disabled:opacity-60">
+            {addingCat && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Add
+          </button>
         </div>
       </div>
 
@@ -157,7 +168,7 @@ function AdminMenu() {
                     <h3 className="truncate font-semibold leading-tight">{m.name}</h3>
                   </div>
                   <p className="line-clamp-1 text-xs text-muted-foreground">{m.description}</p>
-                  <p className="mt-1 text-sm font-bold">₹{Number(m.price).toFixed(0)}</p>
+                  <p className="mt-1 text-sm font-bold">Full ₹{Number(m.price).toFixed(0)}{m.half_price != null && <span className="ml-2 font-semibold text-muted-foreground">Half ₹{Number(m.half_price).toFixed(0)}</span>}</p>
                   <div className="mt-2 flex items-center gap-2">
                     <label className="inline-flex cursor-pointer items-center gap-2">
                       <span className="relative inline-block h-5 w-9 rounded-full bg-secondary">
@@ -216,9 +227,15 @@ function AdminMenu() {
               <Field label="Description">
                 <textarea className="ai" rows={2} maxLength={300} value={editing.description} onChange={(e) => setEditing({ ...editing, description: e.target.value })} />
               </Field>
-              <Field label="Price (₹)">
-                <input className="ai" inputMode="decimal" value={editing.price} onChange={(e) => setEditing({ ...editing, price: e.target.value.replace(/[^0-9.]/g, "") })} />
-              </Field>
+              <div className="grid grid-cols-2 gap-2">
+                <Field label="Full plate price (₹)">
+                  <input className="ai" inputMode="decimal" value={editing.price} onChange={(e) => setEditing({ ...editing, price: e.target.value.replace(/[^0-9.]/g, "") })} />
+                </Field>
+                <Field label="Half plate price (₹)">
+                  <input className="ai" inputMode="decimal" placeholder="Optional" value={editing.half_price} onChange={(e) => setEditing({ ...editing, half_price: e.target.value.replace(/[^0-9.]/g, "") })} />
+                </Field>
+              </div>
+              <p className="-mt-1 text-[11px] text-muted-foreground">Leave half plate empty if the dish is sold in full plate only.</p>
               <Field label="Type">
                 <div className="flex gap-2">
                   {(["veg", "nonveg"] as const).map((v) => (

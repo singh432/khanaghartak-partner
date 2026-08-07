@@ -1,7 +1,12 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 
+export type Portion = "full" | "half";
+
 export type CartItem = {
+  /** composite key: `${menu_item_id}:${portion}` */
   id: string;
+  menu_item_id: string;
+  portion: Portion;
   name: string;
   price: number;
   image_url: string | null;
@@ -9,10 +14,12 @@ export type CartItem = {
   qty: number;
 };
 
+export const cartKey = (menuItemId: string, portion: Portion) => `${menuItemId}:${portion}`;
+
 type CartCtx = {
   items: CartItem[];
   ready: boolean;
-  add: (item: Omit<CartItem, "qty">) => void;
+  add: (item: Omit<CartItem, "qty" | "id">) => void;
   inc: (id: string) => void;
   dec: (id: string) => void;
   remove: (id: string) => void;
@@ -22,7 +29,7 @@ type CartCtx = {
 };
 
 const Ctx = createContext<CartCtx | null>(null);
-const STORAGE_KEY = "kgt_cart_v1";
+const STORAGE_KEY = "kgt_cart_v2";
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
@@ -32,6 +39,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) setItems(JSON.parse(raw));
+      localStorage.removeItem("kgt_cart_v1");
     } catch {
     } finally {
       setReady(true);
@@ -44,10 +52,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [items, ready]);
 
   const add: CartCtx["add"] = (it) => {
+    const id = cartKey(it.menu_item_id, it.portion);
     setItems((cur) => {
-      const existing = cur.find((c) => c.id === it.id);
-      if (existing) return cur.map((c) => c.id === it.id ? { ...c, qty: c.qty + 1 } : c);
-      return [...cur, { ...it, qty: 1 }];
+      const existing = cur.find((c) => c.id === id);
+      if (existing) return cur.map((c) => c.id === id ? { ...c, qty: c.qty + 1 } : c);
+      return [...cur, { ...it, id, qty: 1 }];
     });
   };
   const inc = (id: string) => setItems((cur) => cur.map((c) => c.id === id ? { ...c, qty: c.qty + 1 } : c));
