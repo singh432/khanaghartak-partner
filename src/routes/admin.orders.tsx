@@ -9,13 +9,21 @@ export const Route = createFileRoute("/admin/orders")({ component: AdminOrders }
 type Order = {
   id: string; status: string; total: number; subtotal: number;
   delivery_fee: number; platform_fee: number; distance_km: number | null;
-  customer_name: string; customer_phone: string; address: string;
-  landmark: string | null; notes: string | null;
-  latitude: number | null; longitude: number | null;
+  customer_name: string;
+  notes: string | null;
   items: { name: string; qty: number; price: number }[];
   rejection_reason: string | null;
   created_at: string;
 };
+
+const ORDER_COLUMNS =
+  "id,status,total,subtotal,delivery_fee,platform_fee,distance_km,customer_name,notes,items,rejection_reason,created_at";
+
+function pick(row: Record<string, unknown>): Order {
+  const o: Record<string, unknown> = {};
+  for (const k of ORDER_COLUMNS.split(",")) o[k] = row[k];
+  return o as unknown as Order;
+}
 
 const STATUSES = ["placed", "accepted", "preparing", "out_for_delivery", "delivered", "rejected"] as const;
 type Status = typeof STATUSES[number];
@@ -34,11 +42,11 @@ function AdminOrders() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
-    supabase.from("orders").select("*").order("created_at", { ascending: false }).limit(200)
-      .then(({ data }) => setOrders((data ?? []) as unknown as Order[]));
+    supabase.from("orders").select(ORDER_COLUMNS).order("created_at", { ascending: false }).limit(200)
+      .then(({ data }) => setOrders((data ?? []).map((r) => pick(r as Record<string, unknown>))));
     const channel = supabase.channel("admin-orders")
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "orders" }, (payload) => {
-        const o = payload.new as Order;
+        const o = pick(payload.new as Record<string, unknown>);
         setOrders((cur) => [o, ...cur]);
         toast.success(`🔔 New order from ${o.customer_name}`, { duration: 6000 });
         try { audioRef.current?.play().catch(() => {}); } catch {}
@@ -47,7 +55,7 @@ function AdminOrders() {
         }
       })
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "orders" }, (payload) => {
-        const o = payload.new as Order;
+        const o = pick(payload.new as Record<string, unknown>);
         setOrders((cur) => cur.map((x) => x.id === o.id ? o : x));
       })
       .subscribe();
