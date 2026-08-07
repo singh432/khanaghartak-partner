@@ -27,7 +27,7 @@ export const Route = createFileRoute("/home")({
 
 type Restaurant = {
   id: string; name: string; tagline: string | null;
-  rating: number; delivery_time: string; is_open: boolean;
+  rating: number | null; rating_count: number; delivery_time: string; is_open: boolean;
   banner_url: string | null; image_url: string | null; address: string | null;
   latitude: number | null; longitude: number | null;
 };
