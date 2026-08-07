@@ -373,6 +373,51 @@ export type Database = {
         }
         Relationships: []
       }
+      restaurant_ratings: {
+        Row: {
+          comment: string | null
+          created_at: string
+          id: string
+          order_id: string
+          rating: number
+          restaurant_id: string
+          user_id: string
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          id?: string
+          order_id: string
+          rating: number
+          restaurant_id: string
+          user_id: string
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          id?: string
+          order_id?: string
+          rating?: number
+          restaurant_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "restaurant_ratings_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "restaurant_ratings_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       restaurants: {
         Row: {
           address: string | null
@@ -392,6 +437,7 @@ export type Database = {
           owner_id: string | null
           phone: string | null
           rating: number | null
+          rating_count: number
           status: string
           tagline: string | null
           updated_at: string
@@ -414,6 +460,7 @@ export type Database = {
           owner_id?: string | null
           phone?: string | null
           rating?: number | null
+          rating_count?: number
           status?: string
           tagline?: string | null
           updated_at?: string
@@ -436,6 +483,7 @@ export type Database = {
           owner_id?: string | null
           phone?: string | null
           rating?: number | null
+          rating_count?: number
           status?: string
           tagline?: string | null
           updated_at?: string
