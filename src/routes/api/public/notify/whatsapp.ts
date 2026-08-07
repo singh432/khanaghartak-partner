@@ -55,6 +55,48 @@ function isTemplatePending(code: number | null, message: string) {
   return /template/i.test(message) && /(not exist|not found|not approved|paused|disabled|rejected)/i.test(message);
 }
 
+async function postTemplate(
+  token: string,
+  phoneNumberId: string,
+  to: string,
+  template: string,
+  params: string[],
+) {
+  const res = await fetch(`https://graph.facebook.com/v21.0/${phoneNumberId}/messages`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      messaging_product: "whatsapp",
+      to: to.replace(/^\+/, ""),
+      type: "template",
+      template: {
+        name: template,
+        language: { code: "en" },
+        components: params.length
+          ? [{ type: "body", parameters: params.map((p) => ({ type: "text", text: p })) }]
+          : [],
+      },
+    }),
+  });
+  const text = await res.text();
+  return { res, text };
+}
+
+/** Meta rejects a send when the body variable count differs from the approved template. */
+function isParamCountMismatch(code: number | null, message: string) {
+  return code === 132000 || /number of parameters does not match/i.test(message);
+}
+
+/** Build a param list of exactly `n` entries: trim extras, pad short lists. */
+function resize(params: string[], n: number): string[] {
+  if (n === params.length) return params;
+  if (n < params.length) return params.slice(0, n);
+  return [...params, ...Array(n - params.length).fill("-")];
+}
+
 async function sendWhatsApp(to: string, template: string, params: string[]) {
   const token = process.env["WHATSAPP_ACCESS_TOKEN"];
   const phoneNumberId = process.env["WHATSAPP_PHONE_NUMBER_ID"];
@@ -62,29 +104,31 @@ async function sendWhatsApp(to: string, template: string, params: string[]) {
     return { ok: false, sid: null, error: "WhatsApp Cloud API is not configured", pending: false };
   }
 
-  try {
-    const res = await fetch(`https://graph.facebook.com/v21.0/${phoneNumberId}/messages`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        messaging_product: "whatsapp",
-        to: to.replace(/^\+/, ""),
-        type: "template",
-        template: {
-          name: template,
-          language: { code: "en" },
-          components: params.length
-            ? [{ type: "body", parameters: params.map((p) => ({ type: "text", text: p })) }]
-            : [],
-        },
-      }),
-    });
+  // Try the intended param count first, then other plausible counts. The approved
+  // template in Meta may use a different number of variables than we send; this
+  // keeps notifications flowing without a code change when that happens.
+  const counts = [params.length, ...[0, 1, 2, 3, 4, 5, 6].filter((n) => n !== params.length)];
 
-    const text = await res.text();
-    if (!res.ok) {
+  try {
+    let lastMsg = "";
+    let lastCode: number | null = null;
+
+    for (const n of counts) {
+      const { res, text } = await postTemplate(token, phoneNumberId, to, template, resize(params, n));
+
+      if (res.ok) {
+        let sid: string | null = null;
+        try {
+          sid = (JSON.parse(text) as { messages?: { id?: string }[] }).messages?.[0]?.id ?? null;
+        } catch {
+          /* ignore */
+        }
+        if (n !== params.length) {
+          console.warn(`WhatsApp template "${template}" expects ${n} variables (sent ${params.length}).`);
+        }
+        return { ok: true, sid, error: null, pending: false };
+      }
+
       let msg = text.slice(0, 500);
       let code: number | null = null;
       try {
@@ -96,28 +140,25 @@ async function sendWhatsApp(to: string, template: string, params: string[]) {
       } catch {
         /* ignore */
       }
-      const pending = isTemplatePending(code, msg);
-      // Template still in Meta review: log it, never break the order workflow.
-      // Sending resumes automatically once the template goes Active — no code change needed.
-      if (pending) {
-        console.warn(`WhatsApp template "${template}" not active yet: ${msg}`);
-      } else {
-        console.error(`WhatsApp send failed [${res.status}]: ${text}`);
-      }
-      return {
-        ok: false,
-        sid: null,
-        error: pending ? `Template "${template}" not active yet · ${msg}` : msg,
-        pending,
-      };
+      lastMsg = msg;
+      lastCode = code;
+
+      // Only a param-count mismatch is worth retrying with a different shape.
+      if (!isParamCountMismatch(code, msg)) break;
     }
-    let sid: string | null = null;
-    try {
-      sid = (JSON.parse(text) as { messages?: { id?: string }[] }).messages?.[0]?.id ?? null;
-    } catch {
-      /* ignore */
+
+    const pending = isTemplatePending(lastCode, lastMsg) && !isParamCountMismatch(lastCode, lastMsg);
+    if (pending) {
+      console.warn(`WhatsApp template "${template}" not active yet: ${lastMsg}`);
+    } else {
+      console.error(`WhatsApp send failed for "${template}": ${lastMsg}`);
     }
-    return { ok: true, sid, error: null, pending: false };
+    return {
+      ok: false,
+      sid: null,
+      error: pending ? `Template "${template}" not active yet · ${lastMsg}` : lastMsg,
+      pending,
+    };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error(`WhatsApp request error: ${msg}`);
