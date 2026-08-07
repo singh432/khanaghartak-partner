@@ -62,7 +62,7 @@ function AdminLayout() {
     let active = true;
     setRestaurantChecked(false);
     (async () => {
-      const { data } = await supabase.from("restaurants").select("id, name, status").eq("owner_id", user.id).limit(1).maybeSingle();
+      const { data } = await supabase.from("restaurants").select("id, name, status, is_open").eq("owner_id", user.id).limit(1).maybeSingle();
       if (active) {
         setRestaurant((data as any) ?? null);
         setRestaurantChecked(true);
