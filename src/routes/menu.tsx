@@ -289,8 +289,9 @@ function MenuPage() {
             </div>
           )}
           <button onClick={() => setShowCatPanel((s) => !s)}
-            className="fixed right-4 z-40 flex flex-col items-center gap-1 rounded-2xl bg-foreground px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-background shadow-xl"
-            style={{ bottom: totalQty > 0 ? 96 : 24 }}>
+            aria-label="Browse categories"
+            className="fixed right-4 z-[60] flex flex-col items-center gap-0.5 rounded-2xl bg-foreground px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-background shadow-xl"
+            style={{ bottom: totalQty > 0 ? 148 : 84 }}>
             <span className="text-xl leading-none">≡</span>
             <span>Menu</span>
           </button>
@@ -300,7 +301,7 @@ function MenuPage() {
       {/* Sticky cart bar */}
       {totalQty > 0 && (
         <Link to="/cart"
-          className="fixed bottom-4 left-1/2 z-30 flex w-[calc(100%-2rem)] max-w-[448px] -translate-x-1/2 items-center justify-between rounded-2xl bg-primary px-4 py-3 text-primary-foreground shadow-2xl">
+          className="fixed bottom-[72px] left-1/2 z-50 flex w-[calc(100%-2rem)] max-w-[448px] -translate-x-1/2 items-center justify-between rounded-2xl bg-primary px-4 py-3 text-primary-foreground shadow-2xl">
           <div className="text-sm">
             <div className="font-bold leading-tight">{totalQty} item{totalQty > 1 ? "s" : ""} · ₹{subtotal.toFixed(0)}</div>
             <div className="text-[11px] opacity-90">Extra charges may apply</div>
