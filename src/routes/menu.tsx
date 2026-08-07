@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { BrandHeader } from "@/components/BrandHeader";
@@ -55,7 +55,7 @@ function MenuPage() {
   const { r: restaurantParam } = Route.useSearch();
   const { user, loading } = useAuth();
   const { coords } = useLocationGate();
-  const { items: cart, add, inc, dec, totalQty, subtotal } = useCart();
+  const { items: cart, add, inc, dec, totalQty } = useCart();
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [menu, setMenu] = useState<MenuItem[]>([]);
