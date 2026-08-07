@@ -13,6 +13,9 @@ import { Plus, Minus, Search, Star, Clock } from "lucide-react";
 
 export const Route = createFileRoute("/menu")({
   component: MenuPage,
+  validateSearch: (search: Record<string, unknown>) => ({
+    r: typeof search.r === "string" ? search.r : undefined,
+  }),
   head: () => ({
     meta: [
       { name: "robots", content: "noindex, nofollow" },
@@ -25,6 +28,7 @@ export const Route = createFileRoute("/menu")({
     links: [{ rel: "canonical", href: "https://khanaghartak.in/menu" }],
   }),
 });
+
 
 type Category = { id: string; name: string; priority: number };
 type MenuItem = {
