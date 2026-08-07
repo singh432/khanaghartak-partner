@@ -6,6 +6,7 @@ import { useLocationGate } from "@/hooks/useLocationGate";
 import { distanceKm as haversineKm, SERVICE_RADIUS_KM } from "@/lib/geo";
 import { BrandHeader } from "@/components/BrandHeader";
 import { PageError, PageSpinner } from "@/components/PageState";
+import { RatingPrompt } from "@/components/RatingPrompt";
 import { withTimeout } from "@/lib/supabase-query";
 import { Star, Clock, MapPin, LogOut } from "lucide-react";
 import hero from "@/assets/hero.jpg";
