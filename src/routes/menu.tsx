@@ -6,6 +6,7 @@ import { useCart, cartKey, type Portion } from "@/hooks/useCart";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocationGate } from "@/hooks/useLocationGate";
 import { distanceKm as haversineKm, SERVICE_RADIUS_KM } from "@/lib/geo";
+import { isPieceCategory } from "@/lib/portions";
 import { PageError, PageSpinner } from "@/components/PageState";
 import { withTimeout } from "@/lib/supabase-query";
 import { Plus, Minus, Search, Star, Clock } from "lucide-react";
@@ -32,8 +33,9 @@ type MenuItem = {
   image_url: string | null; veg_type: "veg" | "nonveg"; is_available: boolean;
 };
 
-function portionsOf(item: MenuItem): { portion: Portion; price: number }[] {
+function portionsOf(item: MenuItem, byPiece = false): { portion: Portion; price: number }[] {
   const full = Number(item.offer_price ?? item.price);
+  if (byPiece) return [{ portion: "full", price: full }];
   const half = item.half_offer_price ?? item.half_price;
   const list: { portion: Portion; price: number }[] = [{ portion: "full", price: full }];
   if (half != null) list.unshift({ portion: "half", price: Number(half) });
@@ -175,6 +177,7 @@ function MenuPage() {
         <div className="mt-6 space-y-8">
           {categories.map((cat) => {
             const list = grouped.get(cat.id) ?? [];
+            const byPiece = isPieceCategory(cat.name);
             if (list.length === 0) return null;
             return (
               <section key={cat.id} data-cat={cat.id}
@@ -193,16 +196,20 @@ function MenuPage() {
                         <p className="mt-1 text-xs leading-snug text-muted-foreground line-clamp-2">{item.description}</p>
 
                         <div className="mt-2 space-y-2">
-                          {portionsOf(item).map((p) => {
+                          {portionsOf(item, byPiece).map((p) => {
                             const key = cartKey(item.id, p.portion);
                             const qty = qtyInCart(key);
                             return (
                               <div key={p.portion} className="flex items-center gap-2">
-                                {portionsOf(item).length > 1 && (
+                                {byPiece ? (
+                                  <span className="rounded-md bg-secondary px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">
+                                    Per piece
+                                  </span>
+                                ) : portionsOf(item).length > 1 ? (
                                   <span className="rounded-md bg-secondary px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">
                                     {p.portion === "half" ? "Half" : "Full"}
                                   </span>
-                                )}
+                                ) : null}
                                 <span className="text-sm font-bold">₹{p.price.toFixed(0)}</span>
                                 <div className="ml-auto">
                                   {!item.is_available ? (

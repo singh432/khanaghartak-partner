@@ -3,6 +3,7 @@ import { useEffect, useState, type ChangeEvent } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Plus, Pencil, Trash2, Upload, X, Loader2 } from "lucide-react";
+import { isPieceCategory } from "@/lib/portions";
 
 export const Route = createFileRoute("/admin/menu")({ component: AdminMenu });
 
@@ -168,7 +169,11 @@ function AdminMenu() {
                     <h3 className="truncate font-semibold leading-tight">{m.name}</h3>
                   </div>
                   <p className="line-clamp-1 text-xs text-muted-foreground">{m.description}</p>
-                  <p className="mt-1 text-sm font-bold">Full ₹{Number(m.price).toFixed(0)}{m.half_price != null && <span className="ml-2 font-semibold text-muted-foreground">Half ₹{Number(m.half_price).toFixed(0)}</span>}</p>
+                  {isPieceCategory(cat.name) ? (
+                    <p className="mt-1 text-sm font-bold">₹{Number(m.price).toFixed(0)} <span className="font-semibold text-muted-foreground">/ piece</span></p>
+                  ) : (
+                    <p className="mt-1 text-sm font-bold">Full ₹{Number(m.price).toFixed(0)}{m.half_price != null && <span className="ml-2 font-semibold text-muted-foreground">Half ₹{Number(m.half_price).toFixed(0)}</span>}</p>
+                  )}
                   <div className="mt-2 flex items-center gap-2">
                     <label className="inline-flex cursor-pointer items-center gap-2">
                       <span className="relative inline-block h-5 w-9 rounded-full bg-secondary">
@@ -227,15 +232,26 @@ function AdminMenu() {
               <Field label="Description">
                 <textarea className="ai" rows={2} maxLength={300} value={editing.description} onChange={(e) => setEditing({ ...editing, description: e.target.value })} />
               </Field>
-              <div className="grid grid-cols-2 gap-2">
-                <Field label="Full plate price (₹)">
-                  <input className="ai" inputMode="decimal" value={editing.price} onChange={(e) => setEditing({ ...editing, price: e.target.value.replace(/[^0-9.]/g, "") })} />
-                </Field>
-                <Field label="Half plate price (₹)">
-                  <input className="ai" inputMode="decimal" placeholder="Optional" value={editing.half_price} onChange={(e) => setEditing({ ...editing, half_price: e.target.value.replace(/[^0-9.]/g, "") })} />
-                </Field>
-              </div>
-              <p className="-mt-1 text-[11px] text-muted-foreground">Leave half plate empty if the dish is sold in full plate only.</p>
+              {isPieceCategory(categories.find((c) => c.id === editing.category_id)?.name) ? (
+                <>
+                  <Field label="Price per piece (₹)">
+                    <input className="ai" inputMode="decimal" value={editing.price} onChange={(e) => setEditing({ ...editing, price: e.target.value.replace(/[^0-9.]/g, ""), half_price: "" })} />
+                  </Field>
+                  <p className="-mt-1 text-[11px] text-muted-foreground">Breads like roti and paratha are sold per piece — no half plate.</p>
+                </>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Field label="Full plate price (₹)">
+                      <input className="ai" inputMode="decimal" value={editing.price} onChange={(e) => setEditing({ ...editing, price: e.target.value.replace(/[^0-9.]/g, "") })} />
+                    </Field>
+                    <Field label="Half plate price (₹)">
+                      <input className="ai" inputMode="decimal" placeholder="Optional" value={editing.half_price} onChange={(e) => setEditing({ ...editing, half_price: e.target.value.replace(/[^0-9.]/g, "") })} />
+                    </Field>
+                  </div>
+                  <p className="-mt-1 text-[11px] text-muted-foreground">Leave half plate empty if the dish is sold in full plate only.</p>
+                </>
+              )}
               <Field label="Type">
                 <div className="flex gap-2">
                   {(["veg", "nonveg"] as const).map((v) => (
