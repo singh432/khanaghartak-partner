@@ -32,8 +32,9 @@ type MenuItem = {
   image_url: string | null; veg_type: "veg" | "nonveg"; is_available: boolean;
 };
 
-function portionsOf(item: MenuItem): { portion: Portion; price: number }[] {
+function portionsOf(item: MenuItem, byPiece = false): { portion: Portion; price: number }[] {
   const full = Number(item.offer_price ?? item.price);
+  if (byPiece) return [{ portion: "full", price: full }];
   const half = item.half_offer_price ?? item.half_price;
   const list: { portion: Portion; price: number }[] = [{ portion: "full", price: full }];
   if (half != null) list.unshift({ portion: "half", price: Number(half) });
