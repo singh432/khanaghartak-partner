@@ -168,7 +168,11 @@ function AdminMenu() {
                     <h3 className="truncate font-semibold leading-tight">{m.name}</h3>
                   </div>
                   <p className="line-clamp-1 text-xs text-muted-foreground">{m.description}</p>
-                  <p className="mt-1 text-sm font-bold">Full ₹{Number(m.price).toFixed(0)}{m.half_price != null && <span className="ml-2 font-semibold text-muted-foreground">Half ₹{Number(m.half_price).toFixed(0)}</span>}</p>
+                  {isPieceCategory(cat.name) ? (
+                    <p className="mt-1 text-sm font-bold">₹{Number(m.price).toFixed(0)} <span className="font-semibold text-muted-foreground">/ piece</span></p>
+                  ) : (
+                    <p className="mt-1 text-sm font-bold">Full ₹{Number(m.price).toFixed(0)}{m.half_price != null && <span className="ml-2 font-semibold text-muted-foreground">Half ₹{Number(m.half_price).toFixed(0)}</span>}</p>
+                  )}
                   <div className="mt-2 flex items-center gap-2">
                     <label className="inline-flex cursor-pointer items-center gap-2">
                       <span className="relative inline-block h-5 w-9 rounded-full bg-secondary">
