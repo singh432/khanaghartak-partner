@@ -175,40 +175,58 @@ function MenuPage() {
                 <div className="space-y-3">
                   {list.map((item) => (
                     <article key={item.id} className="flex gap-3 rounded-2xl border bg-card p-3 shadow-[var(--shadow-card)]">
-                      <div className="flex-1">
+                      <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5">
                           <VegDot type={item.veg_type} />
                           <h3 className="font-semibold leading-tight">{item.name}</h3>
                         </div>
                         <p className="mt-1 text-xs leading-snug text-muted-foreground line-clamp-2">{item.description}</p>
-                        <p className="mt-2 text-sm font-bold">₹{Number(item.price).toFixed(0)}</p>
+
+                        <div className="mt-2 space-y-2">
+                          {portionsOf(item).map((p) => {
+                            const key = cartKey(item.id, p.portion);
+                            const qty = qtyInCart(key);
+                            return (
+                              <div key={p.portion} className="flex items-center gap-2">
+                                {portionsOf(item).length > 1 && (
+                                  <span className="rounded-md bg-secondary px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">
+                                    {p.portion === "half" ? "Half" : "Full"}
+                                  </span>
+                                )}
+                                <span className="text-sm font-bold">₹{p.price.toFixed(0)}</span>
+                                <div className="ml-auto">
+                                  {!item.is_available ? (
+                                    <span className="rounded-lg border-2 border-muted bg-card px-2 py-1 text-[10px] font-bold uppercase text-muted-foreground">
+                                      Unavailable
+                                    </span>
+                                  ) : qty === 0 ? (
+                                    <button
+                                      onClick={() => add({ menu_item_id: item.id, portion: p.portion, name: p.portion === "half" ? `${item.name} (Half)` : item.name, price: p.price, image_url: item.image_url, veg_type: item.veg_type })}
+                                      className="rounded-lg border-2 border-primary bg-card px-4 py-1 text-xs font-bold text-primary shadow-sm">
+                                      ADD
+                                    </button>
+                                  ) : (
+                                    <div className="flex items-center rounded-lg border-2 border-primary bg-primary text-primary-foreground shadow-sm">
+                                      <button aria-label={`Remove one ${item.name}`} onClick={() => dec(key)} className="px-2 py-1"><Minus className="h-3 w-3" aria-hidden="true" /></button>
+                                      <span className="px-1 text-xs font-bold tabular-nums">{qty}</span>
+                                      <button aria-label={`Add one ${item.name}`} onClick={() => inc(key)} className="px-2 py-1"><Plus className="h-3 w-3" aria-hidden="true" /></button>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
-                      <div className="relative w-24 shrink-0">
+                      <div className="w-24 shrink-0">
                         {item.image_url && (
                           <img src={item.image_url} alt={item.name} loading="lazy"
                             width={96} height={96}
                             className="h-24 w-24 rounded-xl object-cover" />
                         )}
-                        <div className="absolute -bottom-2 left-1/2 -translate-x-1/2">
-                          {!item.is_available ? (
-                            <span className="rounded-lg border-2 border-muted bg-card px-3 py-1 text-[10px] font-bold uppercase text-muted-foreground">
-                              Currently Unavailable
-                            </span>
-                          ) : qtyInCart(item.id) === 0 ? (
-                            <button onClick={() => add({ id: item.id, name: item.name, price: Number(item.price), image_url: item.image_url, veg_type: item.veg_type })}
-                              className="rounded-lg border-2 border-primary bg-card px-4 py-1 text-xs font-bold text-primary shadow-sm">
-                              ADD
-                            </button>
-                          ) : (
-                            <div className="flex items-center rounded-lg border-2 border-primary bg-primary text-primary-foreground shadow-sm">
-                              <button aria-label={`Remove one ${item.name}`} onClick={() => dec(item.id)} className="px-2 py-1"><Minus className="h-3 w-3" aria-hidden="true" /></button>
-                              <span className="px-1 text-xs font-bold tabular-nums">{qtyInCart(item.id)}</span>
-                              <button aria-label={`Add one ${item.name}`} onClick={() => inc(item.id)} className="px-2 py-1"><Plus className="h-3 w-3" aria-hidden="true" /></button>
-                            </div>
-                          )}
-                        </div>
                       </div>
                     </article>
+
                   ))}
                 </div>
               </section>
