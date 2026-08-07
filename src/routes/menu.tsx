@@ -75,9 +75,10 @@ function MenuPage() {
         if (rError || cError || mError) throw rError ?? cError ?? mError;
         if (!active) return;
         const allRestaurants = (rs ?? []) as Restaurant[];
+        // Restaurants without a pinned location are still shown (distance unknown).
         const nearbyIds = new Set(
           allRestaurants.filter((r) => {
-            if (!coords || r.latitude == null || r.longitude == null) return false;
+            if (!coords || r.latitude == null || r.longitude == null) return true;
             return haversineKm(coords, { lat: r.latitude, lng: r.longitude }) <= SERVICE_RADIUS_KM;
           }).map((r) => r.id),
         );
