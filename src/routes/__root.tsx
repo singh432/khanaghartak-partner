@@ -15,6 +15,7 @@ import { CartProvider } from "@/hooks/useCart";
 import { LocationGateProvider } from "@/hooks/useLocationGate";
 import { LocationGate } from "@/components/LocationGate";
 import { BottomNav } from "@/components/BottomNav";
+import { CartBar } from "@/components/CartBar";
 
 import appCss from "../styles.css?url";
 import { khanaGharTakLogoUrl } from "@/assets/brand";
@@ -140,6 +141,7 @@ function RootComponent() {
                   <Outlet />
                 </main>
               )}
+              <CartBar />
               <BottomNav />
             </LocationGate>
             <Toaster position="top-center" richColors />

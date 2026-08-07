@@ -298,17 +298,6 @@ function MenuPage() {
         </>
       )}
 
-      {/* Sticky cart bar */}
-      {totalQty > 0 && (
-        <Link to="/cart"
-          className="fixed bottom-[72px] left-1/2 z-50 flex w-[calc(100%-2rem)] max-w-[448px] -translate-x-1/2 items-center justify-between rounded-2xl bg-primary px-4 py-3 text-primary-foreground shadow-2xl">
-          <div className="text-sm">
-            <div className="font-bold leading-tight">{totalQty} item{totalQty > 1 ? "s" : ""} · ₹{subtotal.toFixed(0)}</div>
-            <div className="text-[11px] opacity-90">Extra charges may apply</div>
-          </div>
-          <span className="text-sm font-bold">View Cart →</span>
-        </Link>
-      )}
     </div>
   );
 }
