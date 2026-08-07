@@ -17,12 +17,41 @@ const NAV: NavItem[] = [
   { to: "/admin/settings", label: "Settings", icon: SettingsIcon },
 ];
 
+function OpenToggle({ restaurantId, isOpen, onChange }: { restaurantId: string; isOpen: boolean; onChange: (v: boolean) => void }) {
+  const [busy, setBusy] = useState(false);
+  const toggle = async () => {
+    const next = !isOpen;
+    setBusy(true);
+    const { error } = await supabase.from("restaurants").update({ is_open: next }).eq("id", restaurantId);
+    setBusy(false);
+    if (error) return toast.error(error.message);
+    onChange(next);
+    toast.success(next ? "Restaurant is now OPEN" : "Restaurant is now CLOSED");
+  };
+  return (
+    <button
+      onClick={toggle}
+      disabled={busy}
+      aria-pressed={isOpen}
+      className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide transition-colors disabled:opacity-60 ${
+        isOpen ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive"
+      }`}
+    >
+      {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <span className={`h-2 w-2 rounded-full ${isOpen ? "bg-success" : "bg-destructive"}`} />}
+      {isOpen ? "Open" : "Closed"}
+      <span className={`ml-1 flex h-4 w-7 items-center rounded-full p-0.5 ${isOpen ? "bg-success justify-end" : "bg-muted-foreground/40 justify-start"}`}>
+        <span className="h-3 w-3 rounded-full bg-background" />
+      </span>
+    </button>
+  );
+}
+
 function AdminLayout() {
   const navigate = useNavigate();
   const { user, loading, isAdmin, signOut } = useAuth();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [restaurantChecked, setRestaurantChecked] = useState(false);
-  const [restaurant, setRestaurant] = useState<{ id: string; name: string; status: string } | null>(null);
+  const [restaurant, setRestaurant] = useState<{ id: string; name: string; status: string; is_open: boolean | null } | null>(null);
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/login", search: { as: "admin" } as never });
