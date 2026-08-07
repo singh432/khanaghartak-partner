@@ -105,6 +105,10 @@ function AdminLayout() {
             </Link>
           ))}
         </nav>
+        <div className="px-3">
+          <OpenToggle restaurantId={restaurant.id} isOpen={!!restaurant.is_open}
+            onChange={(v) => setRestaurant((r) => (r ? { ...r, is_open: v } : r))} />
+        </div>
         <button onClick={signOut} className="m-3 flex items-center justify-center gap-2 rounded-xl border bg-card px-3 py-2.5 text-sm font-semibold text-foreground/80">
           <LogOut className="h-4 w-4" /> Sign out
         </button>
@@ -123,9 +127,13 @@ function AdminLayout() {
               </p>
             </div>
           </div>
-          <button onClick={signOut} aria-label="Sign out" className="rounded-full p-2 text-muted-foreground">
-            <LogOut className="h-4 w-4" />
-          </button>
+          <div className="flex items-center gap-1.5">
+            <OpenToggle restaurantId={restaurant.id} isOpen={!!restaurant.is_open}
+              onChange={(v) => setRestaurant((r) => (r ? { ...r, is_open: v } : r))} />
+            <button onClick={signOut} aria-label="Sign out" className="rounded-full p-2 text-muted-foreground">
+              <LogOut className="h-4 w-4" />
+            </button>
+          </div>
         </header>
 
         <main className="mx-auto max-w-5xl">
