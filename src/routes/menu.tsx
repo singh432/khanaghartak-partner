@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { BrandHeader } from "@/components/BrandHeader";
-import { useCart } from "@/hooks/useCart";
+import { useCart, cartKey, type Portion } from "@/hooks/useCart";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocationGate } from "@/hooks/useLocationGate";
 import { distanceKm as haversineKm, SERVICE_RADIUS_KM } from "@/lib/geo";
@@ -28,8 +28,17 @@ export const Route = createFileRoute("/menu")({
 type Category = { id: string; name: string; priority: number };
 type MenuItem = {
   id: string; restaurant_id: string; category_id: string; name: string; description: string | null;
-  price: number; image_url: string | null; veg_type: "veg" | "nonveg"; is_available: boolean;
+  price: number; offer_price: number | null; half_price: number | null; half_offer_price: number | null;
+  image_url: string | null; veg_type: "veg" | "nonveg"; is_available: boolean;
 };
+
+function portionsOf(item: MenuItem): { portion: Portion; price: number }[] {
+  const full = Number(item.offer_price ?? item.price);
+  const half = item.half_offer_price ?? item.half_price;
+  const list: { portion: Portion; price: number }[] = [{ portion: "full", price: full }];
+  if (half != null) list.unshift({ portion: "half", price: Number(half) });
+  return list.reverse();
+}
 type Restaurant = {
   id: string; name: string; rating: number; delivery_time: string;
   latitude: number | null; longitude: number | null; status: string | null;
@@ -103,7 +112,7 @@ function MenuPage() {
     return map;
   }, [filtered, categories]);
 
-  const qtyInCart = (id: string) => cart.find((c) => c.id === id)?.qty ?? 0;
+  const qtyInCart = (key: string) => cart.find((c) => c.id === key)?.qty ?? 0;
 
   const scrollToCat = (id: string) => {
     setActiveCat(id);
