@@ -93,7 +93,7 @@ function AdminOrders() {
         <div className="flex items-center gap-2 rounded-xl border bg-card px-3">
           <Search className="h-4 w-4 text-muted-foreground" />
           <input value={q} onChange={(e) => setQ(e.target.value)} maxLength={60}
-            placeholder="Search by order ID, name, phone"
+            placeholder="Search by order ID or customer name"
             className="h-10 flex-1 bg-transparent text-sm outline-none" />
         </div>
         <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
