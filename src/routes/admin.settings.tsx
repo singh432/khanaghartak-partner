@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { khanaGharTakLogoUrl } from "@/assets/brand";
 import { Loader2, Navigation } from "lucide-react";
+import { getCurrentLocation } from "@/lib/geolocate";
 
 export const Route = createFileRoute("/admin/settings")({ component: AdminSettings });
 
