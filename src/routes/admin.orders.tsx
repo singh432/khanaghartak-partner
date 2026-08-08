@@ -157,7 +157,11 @@ function AdminOrders() {
                 </>)}
                 {o.status === "accepted" && <Action onClick={() => updateStatus(o.id, "preparing")} primary>Mark Preparing</Action>}
                 {o.status === "preparing" && <Action onClick={() => updateStatus(o.id, "out_for_delivery")} primary>Ready for Delivery</Action>}
-                {o.status === "out_for_delivery" && <Action onClick={() => updateStatus(o.id, "delivered")} primary>Mark Delivered</Action>}
+                {o.status === "out_for_delivery" && (
+                  <p className="col-span-2 rounded-xl bg-secondary py-2.5 text-center text-xs font-semibold text-muted-foreground">
+                    Waiting for the rider to mark it delivered
+                  </p>
+                )}
               </div>
             </article>
           ))}
