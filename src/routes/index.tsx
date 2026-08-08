@@ -1,5 +1,5 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { khanaGharTakLogoUrl } from "@/assets/brand";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -46,8 +46,16 @@ function loginHref(as: CtaTarget) {
 }
 
 function Landing() {
-  const { user, isAdmin, isRider } = useAuth();
+  const { user, loading, isAdmin, isRider, isSuperAdmin } = useAuth();
+  const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
+
+  // Already signed in? Keep them signed in and send them straight to their area.
+  useEffect(() => {
+    if (loading || !user) return;
+    const to = isSuperAdmin ? "/super" : isAdmin ? "/admin" : isRider ? "/rider" : "/home";
+    navigate({ to: to as "/home", replace: true });
+  }, [loading, user, isAdmin, isRider, isSuperAdmin, navigate]);
 
   const navLinks: Array<{ label: string; href: string; primary?: boolean }> = [
     { label: "Order Food", href: user ? "/home" : loginHref("user"), primary: true },
@@ -55,6 +63,7 @@ function Landing() {
     { label: "Rider Login", href: isRider ? "/rider" : loginHref("rider") },
     { label: "Help", href: "#help" },
   ];
+
 
   return (
     <div className="min-h-[100dvh] bg-background text-foreground">
