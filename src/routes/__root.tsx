@@ -13,7 +13,7 @@ import { Toaster } from "sonner";
 import { AuthProvider } from "@/hooks/useAuth";
 import { CartProvider } from "@/hooks/useCart";
 import { LocationGateProvider } from "@/hooks/useLocationGate";
-import { LocationGate } from "@/components/LocationGate";
+
 import { BottomNav } from "@/components/BottomNav";
 import { CartBar } from "@/components/CartBar";
 
