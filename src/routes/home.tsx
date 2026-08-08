@@ -62,9 +62,9 @@ function HomePage() {
               : null;
             return { ...r, distance };
           })
-          // Restaurants without a pinned location are still shown (distance unknown).
-          .filter((r) => r.distance == null || r.distance <= SERVICE_RADIUS_KM)
+          // Every approved restaurant is shown; nearest ones first.
           .sort((a, b) => (a.distance ?? Number.MAX_SAFE_INTEGER) - (b.distance ?? Number.MAX_SAFE_INTEGER));
+
         setRestaurants(nearby);
       })
       .catch((err) => {
