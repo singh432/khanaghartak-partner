@@ -4,7 +4,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { khanaGharTakLogoUrl } from "@/assets/brand";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { LayoutDashboard, ClipboardList, UtensilsCrossed, BarChart3, Settings as SettingsIcon, LogOut, Bell, Loader2 } from "lucide-react";
+import { LayoutDashboard, ClipboardList, UtensilsCrossed, BarChart3, Settings as SettingsIcon, LogOut, Bell, Loader2, Navigation, MapPin } from "lucide-react";
+import { getCurrentLocation } from "@/lib/geolocate";
 
 export const Route = createFileRoute("/admin")({ component: AdminLayout });
 
