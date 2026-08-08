@@ -4,7 +4,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { khanaGharTakLogoUrl } from "@/assets/brand";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { LayoutDashboard, ClipboardList, UtensilsCrossed, BarChart3, Settings as SettingsIcon, LogOut, Bell, Loader2 } from "lucide-react";
+import { LayoutDashboard, ClipboardList, UtensilsCrossed, BarChart3, Settings as SettingsIcon, LogOut, Bell, Loader2, Navigation, MapPin } from "lucide-react";
+import { getCurrentLocation } from "@/lib/geolocate";
 
 export const Route = createFileRoute("/admin")({ component: AdminLayout });
 
@@ -159,12 +160,28 @@ function AdminLayout() {
 
 function RestaurantSetup({ userId, onSignOut }: { userId: string; onSignOut: () => Promise<void> }) {
   const [saving, setSaving] = useState(false);
+  const [locating, setLocating] = useState(false);
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [form, setForm] = useState({ name: "", tagline: "", phone: "", address: "" });
+
+  const pinLocation = async () => {
+    setLocating(true);
+    try {
+      const p = await getCurrentLocation();
+      setCoords(p);
+      toast.success("Restaurant location pinned");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not get location");
+    } finally {
+      setLocating(false);
+    }
+  };
 
   const createRestaurant = async (event: FormEvent) => {
     event.preventDefault();
     const name = form.name.trim();
     if (name.length < 2) return toast.error("Restaurant name is required");
+    if (!coords) return toast.error("Pin your restaurant location so we can deliver nearby");
     setSaving(true);
     const { data, error } = await supabase.from("restaurants").insert({
       owner_id: userId,
@@ -172,6 +189,8 @@ function RestaurantSetup({ userId, onSignOut }: { userId: string; onSignOut: () 
       tagline: form.tagline.trim() || null,
       phone: form.phone.trim() || null,
       address: form.address.trim() || null,
+      latitude: coords.lat,
+      longitude: coords.lng,
       status: "pending",
       is_open: true,
       delivery_time: "30-40 min",
@@ -192,6 +211,7 @@ function RestaurantSetup({ userId, onSignOut }: { userId: string; onSignOut: () 
     window.location.href = "/admin";
   };
 
+
   return (
     <div className="min-h-screen bg-secondary/30 px-4 py-8">
       <div className="mx-auto max-w-md rounded-2xl border bg-card p-5 shadow-sm">
@@ -203,6 +223,30 @@ function RestaurantSetup({ userId, onSignOut }: { userId: string; onSignOut: () 
           <SetupField label="Tagline"><input className="setup-input" value={form.tagline} maxLength={120} onChange={(e) => setForm({ ...form, tagline: e.target.value })} placeholder="Fresh home-style meals" /></SetupField>
           <SetupField label="Phone"><input className="setup-input" value={form.phone} maxLength={20} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+91 98765 43210" /></SetupField>
           <SetupField label="Address"><textarea className="setup-input" rows={3} value={form.address} maxLength={300} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="Restaurant address" /></SetupField>
+
+          <div className="rounded-xl border bg-secondary/40 p-3">
+            <p className="text-sm font-semibold">Restaurant location</p>
+            <p className="text-[11px] text-muted-foreground">We save this pin permanently and deliver within 5 km of it.</p>
+            <button type="button" onClick={pinLocation} disabled={locating}
+              className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-2.5 text-xs font-bold text-primary-foreground disabled:opacity-60">
+              {locating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Navigation className="h-3.5 w-3.5" />}
+              {locating ? "Getting location…" : coords ? "Re-pin location" : "Use my current location"}
+            </button>
+            {coords && (
+              <p className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-semibold text-success">
+                <MapPin className="h-3.5 w-3.5" /> Pinned at {coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}
+              </p>
+            )}
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <input className="setup-input" type="number" step="0.000001" placeholder="Latitude"
+                value={coords?.lat ?? ""}
+                onChange={(e) => setCoords({ lat: Number(e.target.value), lng: coords?.lng ?? 0 })} />
+              <input className="setup-input" type="number" step="0.000001" placeholder="Longitude"
+                value={coords?.lng ?? ""}
+                onChange={(e) => setCoords({ lat: coords?.lat ?? 0, lng: Number(e.target.value) })} />
+            </div>
+          </div>
+
           <button type="submit" disabled={saving} className="inline-flex h-12 w-full items-center justify-center rounded-xl bg-primary text-sm font-bold text-primary-foreground disabled:opacity-60">
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Add restaurant
           </button>

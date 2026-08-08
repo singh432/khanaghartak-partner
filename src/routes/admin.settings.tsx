@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { khanaGharTakLogoUrl } from "@/assets/brand";
 import { Loader2, Navigation } from "lucide-react";
+import { getCurrentLocation } from "@/lib/geolocate";
 
 export const Route = createFileRoute("/admin/settings")({ component: AdminSettings });
 
@@ -22,6 +23,7 @@ function AdminSettings() {
   const [r, setR] = useState<Restaurant | null>(null);
   const [loadingRestaurant, setLoadingRestaurant] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [locating, setLocating] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -112,20 +114,23 @@ function AdminSettings() {
             </div>
             <button
               type="button"
-              onClick={() => {
-                if (!navigator.geolocation) return toast.error("Geolocation not supported");
-                navigator.geolocation.getCurrentPosition(
-                  (pos) => {
-                    setR({ ...r, latitude: pos.coords.latitude, longitude: pos.coords.longitude });
-                    toast.success("Pinned current location");
-                  },
-                  (err) => toast.error(err.message || "Could not get location"),
-                  { enableHighAccuracy: true, timeout: 10000 },
-                );
+              disabled={locating}
+              onClick={async () => {
+                setLocating(true);
+                try {
+                  const p = await getCurrentLocation();
+                  setR({ ...r, latitude: p.lat, longitude: p.lng });
+                  toast.success("Pinned current location");
+                } catch (e) {
+                  toast.error(e instanceof Error ? e.message : "Could not get location");
+                } finally {
+                  setLocating(false);
+                }
               }}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-bold text-primary-foreground"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-bold text-primary-foreground disabled:opacity-60"
             >
-              <Navigation className="h-3.5 w-3.5" /> Use my location
+              {locating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Navigation className="h-3.5 w-3.5" />}
+              {locating ? "Getting location…" : "Use my location"}
             </button>
           </div>
           <div className="mt-3 grid gap-3 md:grid-cols-2">
