@@ -131,19 +131,18 @@ function RootComponent() {
       <AuthProvider>
         <CartProvider>
           <LocationGateProvider>
-            <LocationGate>
-              {fullWidth ? (
-                <main className="min-h-[100dvh] bg-background">
-                  <Outlet />
-                </main>
-              ) : (
-                <main className="app-shell pb-16">
-                  <Outlet />
-                </main>
-              )}
-              <CartBar />
-              <BottomNav />
-            </LocationGate>
+            {fullWidth ? (
+              <main className="min-h-[100dvh] bg-background">
+                <Outlet />
+              </main>
+            ) : (
+              <main className="app-shell pb-16">
+                <Outlet />
+              </main>
+            )}
+            <CartBar />
+            <BottomNav />
+
             <Toaster position="top-center" richColors />
           </LocationGateProvider>
         </CartProvider>
