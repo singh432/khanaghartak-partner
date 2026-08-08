@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocationGate } from "@/hooks/useLocationGate";
-import { distanceKm as haversineKm, SERVICE_RADIUS_KM } from "@/lib/geo";
+import { distanceKm as haversineKm } from "@/lib/geo";
 import { BrandHeader } from "@/components/BrandHeader";
 import { PageError, PageSpinner } from "@/components/PageState";
 import { RatingPrompt } from "@/components/RatingPrompt";
