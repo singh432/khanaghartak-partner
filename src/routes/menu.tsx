@@ -82,16 +82,12 @@ function MenuPage() {
         if (rError || cError || mError) throw rError ?? cError ?? mError;
         if (!active) return;
         const allRestaurants = (rs ?? []) as Restaurant[];
-        // Restaurants without a pinned location are still shown (distance unknown).
-        const nearbyRestaurants = allRestaurants.filter((r) => {
-          if (!coords || r.latitude == null || r.longitude == null) return true;
-          return haversineKm(coords, { lat: r.latitude, lng: r.longitude }) <= SERVICE_RADIUS_KM;
-        });
-        // Show exactly one restaurant's menu: the requested one, else the first nearby.
+        // Every approved restaurant is reachable, wherever it is pinned.
         const selected =
-          (restaurantParam ? nearbyRestaurants.find((r) => r.id === restaurantParam) : null) ??
-          nearbyRestaurants[0] ??
+          (restaurantParam ? allRestaurants.find((r) => r.id === restaurantParam) : null) ??
+          allRestaurants[0] ??
           null;
+
         setRestaurant(selected);
         const allItems = (m ?? []) as MenuItem[];
         const items = selected ? allItems.filter((it) => it.restaurant_id === selected.id) : [];
