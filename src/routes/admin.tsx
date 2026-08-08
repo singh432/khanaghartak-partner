@@ -159,12 +159,28 @@ function AdminLayout() {
 
 function RestaurantSetup({ userId, onSignOut }: { userId: string; onSignOut: () => Promise<void> }) {
   const [saving, setSaving] = useState(false);
+  const [locating, setLocating] = useState(false);
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [form, setForm] = useState({ name: "", tagline: "", phone: "", address: "" });
+
+  const pinLocation = async () => {
+    setLocating(true);
+    try {
+      const p = await getCurrentLocation();
+      setCoords(p);
+      toast.success("Restaurant location pinned");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not get location");
+    } finally {
+      setLocating(false);
+    }
+  };
 
   const createRestaurant = async (event: FormEvent) => {
     event.preventDefault();
     const name = form.name.trim();
     if (name.length < 2) return toast.error("Restaurant name is required");
+    if (!coords) return toast.error("Pin your restaurant location so we can deliver nearby");
     setSaving(true);
     const { data, error } = await supabase.from("restaurants").insert({
       owner_id: userId,
@@ -172,6 +188,8 @@ function RestaurantSetup({ userId, onSignOut }: { userId: string; onSignOut: () 
       tagline: form.tagline.trim() || null,
       phone: form.phone.trim() || null,
       address: form.address.trim() || null,
+      latitude: coords.lat,
+      longitude: coords.lng,
       status: "pending",
       is_open: true,
       delivery_time: "30-40 min",
@@ -191,6 +209,7 @@ function RestaurantSetup({ userId, onSignOut }: { userId: string; onSignOut: () 
     toast.success("Restaurant submitted for approval");
     window.location.href = "/admin";
   };
+
 
   return (
     <div className="min-h-screen bg-secondary/30 px-4 py-8">
