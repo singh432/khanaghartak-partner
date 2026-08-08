@@ -1,8 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
-import { distanceFromServiceCenterKm, SERVICE_RADIUS_KM, type LatLng } from "@/lib/geo";
+import type { LatLng } from "@/lib/geo";
 import { useAuth } from "@/hooks/useAuth";
 
-type GateStatus = "idle" | "checking" | "allowed" | "denied" | "out_of_range" | "unsupported";
+type GateStatus = "idle" | "checking" | "allowed" | "denied" | "unsupported";
 
 type Ctx = {
   status: GateStatus;
@@ -42,12 +42,6 @@ export function LocationGateProvider({ children }: { children: React.ReactNode }
   const [status, setStatus] = useState<GateStatus>("idle");
   const { user, loading: authLoading } = useAuth();
 
-  const evaluate = useCallback((p: LatLng) => {
-    const d = distanceFromServiceCenterKm(p);
-    setCoords(p);
-    setStatus(d <= SERVICE_RADIUS_KM ? "allowed" : "out_of_range");
-  }, []);
-
   const request = useCallback(() => {
     if (typeof window === "undefined") return;
     if (!("geolocation" in navigator)) {
@@ -59,31 +53,31 @@ export function LocationGateProvider({ children }: { children: React.ReactNode }
       (pos) => {
         const p = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         writeCached(p);
-        evaluate(p);
+        setCoords(p);
+        setStatus("allowed");
       },
       () => setStatus("denied"),
       { enableHighAccuracy: true, timeout: 12000, maximumAge: 5 * 60 * 1000 },
     );
-  }, [evaluate]);
+  }, []);
 
   useEffect(() => {
-    // Only check location AFTER the user is signed in.
+    // Location is only used to sort nearby kitchens — it never blocks access.
     if (authLoading || !user) {
       setStatus("idle");
       return;
     }
     const cached = readCached();
     if (cached) {
-      evaluate(cached);
+      setCoords(cached);
+      setStatus("allowed");
       return;
     }
     request();
-  }, [authLoading, user, evaluate, request]);
-
-  const distanceKm = coords ? distanceFromServiceCenterKm(coords) : null;
+  }, [authLoading, user, request]);
 
   return (
-    <LocationGateCtx.Provider value={{ status, coords, distanceKm, request }}>
+    <LocationGateCtx.Provider value={{ status, coords, distanceKm: null, request }}>
       {children}
     </LocationGateCtx.Provider>
   );
