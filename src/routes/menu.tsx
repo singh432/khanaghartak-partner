@@ -4,8 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { BrandHeader } from "@/components/BrandHeader";
 import { useCart, cartKey, type Portion } from "@/hooks/useCart";
 import { useAuth } from "@/hooks/useAuth";
-import { useLocationGate } from "@/hooks/useLocationGate";
-import { distanceKm as haversineKm, SERVICE_RADIUS_KM } from "@/lib/geo";
+
 import { isPieceCategory, isSinglePriceCategory } from "@/lib/portions";
 import { PageError, PageSpinner } from "@/components/PageState";
 import { withTimeout } from "@/lib/supabase-query";
@@ -54,7 +53,7 @@ function MenuPage() {
   const navigate = useNavigate();
   const { r: restaurantParam } = Route.useSearch();
   const { user, loading } = useAuth();
-  const { coords } = useLocationGate();
+
   const { items: cart, add, inc, dec, totalQty } = useCart();
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -82,16 +81,12 @@ function MenuPage() {
         if (rError || cError || mError) throw rError ?? cError ?? mError;
         if (!active) return;
         const allRestaurants = (rs ?? []) as Restaurant[];
-        // Restaurants without a pinned location are still shown (distance unknown).
-        const nearbyRestaurants = allRestaurants.filter((r) => {
-          if (!coords || r.latitude == null || r.longitude == null) return true;
-          return haversineKm(coords, { lat: r.latitude, lng: r.longitude }) <= SERVICE_RADIUS_KM;
-        });
-        // Show exactly one restaurant's menu: the requested one, else the first nearby.
+        // Every approved restaurant is reachable, wherever it is pinned.
         const selected =
-          (restaurantParam ? nearbyRestaurants.find((r) => r.id === restaurantParam) : null) ??
-          nearbyRestaurants[0] ??
+          (restaurantParam ? allRestaurants.find((r) => r.id === restaurantParam) : null) ??
+          allRestaurants[0] ??
           null;
+
         setRestaurant(selected);
         const allItems = (m ?? []) as MenuItem[];
         const items = selected ? allItems.filter((it) => it.restaurant_id === selected.id) : [];
@@ -109,7 +104,7 @@ function MenuPage() {
       }
     })();
     return () => { active = false; };
-  }, [coords, restaurantParam]);
+  }, [restaurantParam]);
 
 
   const filtered = useMemo(() => {

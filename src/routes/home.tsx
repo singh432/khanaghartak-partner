@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocationGate } from "@/hooks/useLocationGate";
-import { distanceKm as haversineKm, SERVICE_RADIUS_KM } from "@/lib/geo";
+import { distanceKm as haversineKm } from "@/lib/geo";
 import { BrandHeader } from "@/components/BrandHeader";
 import { PageError, PageSpinner } from "@/components/PageState";
 import { RatingPrompt } from "@/components/RatingPrompt";
@@ -62,9 +62,9 @@ function HomePage() {
               : null;
             return { ...r, distance };
           })
-          // Restaurants without a pinned location are still shown (distance unknown).
-          .filter((r) => r.distance == null || r.distance <= SERVICE_RADIUS_KM)
+          // Every approved restaurant is shown; nearest ones first.
           .sort((a, b) => (a.distance ?? Number.MAX_SAFE_INTEGER) - (b.distance ?? Number.MAX_SAFE_INTEGER));
+
         setRestaurants(nearby);
       })
       .catch((err) => {
@@ -104,8 +104,9 @@ function HomePage() {
         )}
         {!restaurantLoading && !restaurantError && restaurants.length === 0 && (
           <PageError
-            title="No kitchens nearby"
-            message={`No restaurants are currently active within ${SERVICE_RADIUS_KM} km of your location.`}
+            title="No kitchens yet"
+            message="No approved restaurants are live right now. Please check back shortly."
+
           />
         )}
         {!restaurantLoading && !restaurantError && restaurants.length > 0 && (
