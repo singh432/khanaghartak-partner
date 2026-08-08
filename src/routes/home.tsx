@@ -104,8 +104,9 @@ function HomePage() {
         )}
         {!restaurantLoading && !restaurantError && restaurants.length === 0 && (
           <PageError
-            title="No kitchens nearby"
-            message={`No restaurants are currently active within ${SERVICE_RADIUS_KM} km of your location.`}
+            title="No kitchens yet"
+            message="No approved restaurants are live right now. Please check back shortly."
+
           />
         )}
         {!restaurantLoading && !restaurantError && restaurants.length > 0 && (
