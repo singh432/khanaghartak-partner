@@ -33,12 +33,22 @@ type Category = { id: string; name: string; priority: number; restaurant_id: str
 type MenuItem = {
   id: string; restaurant_id: string; category_id: string; name: string; description: string | null;
   price: number; offer_price: number | null; half_price: number | null; half_offer_price: number | null;
+  price_kg: number | null; price_500g: number | null; price_250g: number | null; price_piece: number | null;
   image_url: string | null; veg_type: "veg" | "nonveg"; is_available: boolean;
 };
 
-function portionsOf(item: MenuItem, singlePrice = false): { portion: Portion; price: number }[] {
+function portionsOf(item: MenuItem, opts: { singlePrice?: boolean; sweet?: boolean } = {}): { portion: Portion; price: number }[] {
   const full = Number(item.offer_price ?? item.price);
-  if (singlePrice) return [{ portion: "full", price: full }];
+  if (opts.sweet) {
+    const list: { portion: Portion; price: number }[] = [];
+    if (item.price_250g != null) list.push({ portion: "g250", price: Number(item.price_250g) });
+    if (item.price_500g != null) list.push({ portion: "g500", price: Number(item.price_500g) });
+    if (item.price_kg != null) list.push({ portion: "kg", price: Number(item.price_kg) });
+    if (item.price_piece != null) list.push({ portion: "piece", price: Number(item.price_piece) });
+    if (list.length > 0) return list;
+    return [{ portion: "full", price: full }];
+  }
+  if (opts.singlePrice) return [{ portion: "full", price: full }];
   const half = item.half_offer_price ?? item.half_price;
   const list: { portion: Portion; price: number }[] = [{ portion: "full", price: full }];
   if (half != null) list.unshift({ portion: "half", price: Number(half) });
