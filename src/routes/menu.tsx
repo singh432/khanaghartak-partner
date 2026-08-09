@@ -216,18 +216,17 @@ function MenuPage() {
                         <p className="mt-1 text-xs leading-snug text-muted-foreground line-clamp-2">{item.description}</p>
 
                         <div className="mt-2 space-y-2">
-                          {portionsOf(item, singlePrice).map((p) => {
+                          {portionsOf(item, { singlePrice, sweet }).map((p) => {
                             const key = cartKey(item.id, p.portion);
                             const qty = qtyInCart(key);
+                            const opts = portionsOf(item, { singlePrice, sweet });
+                            const showLabel = sweet || byPiece || (!singlePrice && opts.length > 1);
+                            const label = byPiece && !sweet ? "Per piece" : PORTION_LABELS[p.portion];
                             return (
                               <div key={p.portion} className="flex items-center gap-2">
-                                {byPiece ? (
+                                {showLabel ? (
                                   <span className="rounded-md bg-secondary px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">
-                                    Per piece
-                                  </span>
-                                ) : !singlePrice && portionsOf(item).length > 1 ? (
-                                  <span className="rounded-md bg-secondary px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">
-                                    {p.portion === "half" ? "Half" : "Full"}
+                                    {label}
                                   </span>
                                 ) : null}
                                 <span className="text-sm font-bold">₹{p.price.toFixed(0)}</span>
@@ -238,7 +237,7 @@ function MenuPage() {
                                     </span>
                                   ) : qty === 0 ? (
                                     <button
-                                      onClick={() => add({ menu_item_id: item.id, portion: p.portion, name: p.portion === "half" ? `${item.name} (Half)` : item.name, price: p.price, image_url: item.image_url, veg_type: item.veg_type })}
+                                      onClick={() => add({ menu_item_id: item.id, portion: p.portion, name: showLabel && p.portion !== "full" ? `${item.name} (${label})` : item.name, price: p.price, image_url: item.image_url, veg_type: item.veg_type })}
                                       className="rounded-lg border-2 border-primary bg-card px-4 py-1 text-xs font-bold text-primary shadow-sm">
                                       ADD
                                     </button>
