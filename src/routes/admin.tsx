@@ -164,6 +164,12 @@ function RestaurantSetup({ userId, onSignOut }: { userId: string; onSignOut: () 
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [form, setForm] = useState({ name: "", tagline: "", phone: "", address: "" });
 
+  const clearDraft = useFormDraft(`kgt-draft-restaurant-${userId}`, { form, coords }, (d) => {
+    if (d.form) setForm((cur) => ({ ...cur, ...d.form }));
+    if (d.coords) setCoords(d.coords);
+  });
+
+
   const pinLocation = async () => {
     setLocating(true);
     try {
