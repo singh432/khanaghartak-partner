@@ -69,6 +69,8 @@ function MenuPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [menu, setMenu] = useState<MenuItem[]>([]);
   const [q, setQ] = useState("");
+  const [dietFilter, setDietFilter] = useState<"all" | "veg" | "nonveg">("all");
+
   const [activeCat, setActiveCat] = useState<string | null>(null);
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
   const [showCatPanel, setShowCatPanel] = useState(false);
@@ -119,9 +121,12 @@ function MenuPage() {
 
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
-    if (!term) return menu;
-    return menu.filter((i) => i.name.toLowerCase().includes(term) || (i.description ?? "").toLowerCase().includes(term));
-  }, [menu, q]);
+    let list = menu;
+    if (dietFilter !== "all") list = list.filter((i) => i.veg_type === dietFilter);
+    if (!term) return list;
+    return list.filter((i) => i.name.toLowerCase().includes(term) || (i.description ?? "").toLowerCase().includes(term));
+  }, [menu, q, dietFilter]);
+
 
   const grouped = useMemo(() => {
     const map = new Map<string, MenuItem[]>();
@@ -191,6 +196,32 @@ function MenuPage() {
             aria-label="Search dishes"
             placeholder="Search dishes..." className="h-11 flex-1 bg-transparent text-sm outline-none" />
         </div>
+
+        <div className="mt-3 flex gap-2" role="group" aria-label="Filter by food type">
+          {([
+            { key: "all", label: "All" },
+            { key: "veg", label: "Veg" },
+            { key: "nonveg", label: "Non-Veg" },
+          ] as const).map((f) => {
+            const active = dietFilter === f.key;
+            const tone = f.key === "veg" ? "border-success text-success" : f.key === "nonveg" ? "border-destructive text-destructive" : "border-primary text-primary";
+            return (
+              <button key={f.key} type="button" aria-pressed={active}
+                onClick={() => setDietFilter(f.key)}
+                className={`inline-flex items-center gap-1.5 rounded-full border-2 px-3 py-1.5 text-xs font-bold transition-colors ${active ? `${tone} bg-secondary` : "border-border text-muted-foreground bg-card"}`}>
+                {f.key !== "all" && <VegDot type={f.key} />}
+                {f.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {filtered.length === 0 && (
+          <p className="mt-6 rounded-2xl border border-dashed bg-card p-6 text-center text-sm text-muted-foreground">
+            No {dietFilter === "veg" ? "veg" : dietFilter === "nonveg" ? "non-veg" : ""} dishes match your search.
+          </p>
+        )}
+
 
         <div className="mt-6 space-y-8">
           {categories.map((cat) => {
