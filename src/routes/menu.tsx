@@ -5,7 +5,7 @@ import { BrandHeader } from "@/components/BrandHeader";
 import { useCart, cartKey, type Portion } from "@/hooks/useCart";
 import { useAuth } from "@/hooks/useAuth";
 
-import { isPieceCategory, isSinglePriceCategory } from "@/lib/portions";
+import { isPieceCategory, isSinglePriceCategory, isSweetCategory, PORTION_LABELS } from "@/lib/portions";
 import { PageError, PageSpinner } from "@/components/PageState";
 import { withTimeout } from "@/lib/supabase-query";
 import { Plus, Minus, Search, Star, Clock } from "lucide-react";
@@ -33,12 +33,22 @@ type Category = { id: string; name: string; priority: number; restaurant_id: str
 type MenuItem = {
   id: string; restaurant_id: string; category_id: string; name: string; description: string | null;
   price: number; offer_price: number | null; half_price: number | null; half_offer_price: number | null;
+  price_kg: number | null; price_500g: number | null; price_250g: number | null; price_piece: number | null;
   image_url: string | null; veg_type: "veg" | "nonveg"; is_available: boolean;
 };
 
-function portionsOf(item: MenuItem, singlePrice = false): { portion: Portion; price: number }[] {
+function portionsOf(item: MenuItem, opts: { singlePrice?: boolean; sweet?: boolean } = {}): { portion: Portion; price: number }[] {
   const full = Number(item.offer_price ?? item.price);
-  if (singlePrice) return [{ portion: "full", price: full }];
+  if (opts.sweet) {
+    const list: { portion: Portion; price: number }[] = [];
+    if (item.price_250g != null) list.push({ portion: "g250", price: Number(item.price_250g) });
+    if (item.price_500g != null) list.push({ portion: "g500", price: Number(item.price_500g) });
+    if (item.price_kg != null) list.push({ portion: "kg", price: Number(item.price_kg) });
+    if (item.price_piece != null) list.push({ portion: "piece", price: Number(item.price_piece) });
+    if (list.length > 0) return list;
+    return [{ portion: "full", price: full }];
+  }
+  if (opts.singlePrice) return [{ portion: "full", price: full }];
   const half = item.half_offer_price ?? item.half_price;
   const list: { portion: Portion; price: number }[] = [{ portion: "full", price: full }];
   if (half != null) list.unshift({ portion: "half", price: Number(half) });
@@ -185,8 +195,9 @@ function MenuPage() {
         <div className="mt-6 space-y-8">
           {categories.map((cat) => {
             const list = grouped.get(cat.id) ?? [];
+            const sweet = isSweetCategory(cat.name);
             const byPiece = isPieceCategory(cat.name);
-            const singlePrice = isSinglePriceCategory(cat.name);
+            const singlePrice = !sweet && isSinglePriceCategory(cat.name);
             if (list.length === 0) return null;
             return (
               <section key={cat.id} data-cat={cat.id}
@@ -205,18 +216,17 @@ function MenuPage() {
                         <p className="mt-1 text-xs leading-snug text-muted-foreground line-clamp-2">{item.description}</p>
 
                         <div className="mt-2 space-y-2">
-                          {portionsOf(item, singlePrice).map((p) => {
+                          {portionsOf(item, { singlePrice, sweet }).map((p) => {
                             const key = cartKey(item.id, p.portion);
                             const qty = qtyInCart(key);
+                            const opts = portionsOf(item, { singlePrice, sweet });
+                            const showLabel = sweet || byPiece || (!singlePrice && opts.length > 1);
+                            const label = byPiece && !sweet ? "Per piece" : PORTION_LABELS[p.portion];
                             return (
                               <div key={p.portion} className="flex items-center gap-2">
-                                {byPiece ? (
+                                {showLabel ? (
                                   <span className="rounded-md bg-secondary px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">
-                                    Per piece
-                                  </span>
-                                ) : !singlePrice && portionsOf(item).length > 1 ? (
-                                  <span className="rounded-md bg-secondary px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">
-                                    {p.portion === "half" ? "Half" : "Full"}
+                                    {label}
                                   </span>
                                 ) : null}
                                 <span className="text-sm font-bold">₹{p.price.toFixed(0)}</span>
@@ -227,7 +237,7 @@ function MenuPage() {
                                     </span>
                                   ) : qty === 0 ? (
                                     <button
-                                      onClick={() => add({ menu_item_id: item.id, portion: p.portion, name: p.portion === "half" ? `${item.name} (Half)` : item.name, price: p.price, image_url: item.image_url, veg_type: item.veg_type })}
+                                      onClick={() => add({ menu_item_id: item.id, portion: p.portion, name: showLabel && p.portion !== "full" ? `${item.name} (${label})` : item.name, price: p.price, image_url: item.image_url, veg_type: item.veg_type })}
                                       className="rounded-lg border-2 border-primary bg-card px-4 py-1 text-xs font-bold text-primary shadow-sm">
                                       ADD
                                     </button>

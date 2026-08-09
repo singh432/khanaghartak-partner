@@ -21,3 +21,15 @@ export function isThaliCategory(categoryName?: string | null): boolean {
 export function isSinglePriceCategory(categoryName?: string | null): boolean {
   return isPieceCategory(categoryName) || isThaliCategory(categoryName);
 }
+
+/** Sweet-shop categories are sold by weight (1 kg / 500 g / 250 g) or per piece. */
+export function isSweetCategory(categoryName?: string | null): boolean {
+  const n = (categoryName ?? "").toLowerCase();
+  if (!n) return false;
+  return ["sweet", "sweets", "mithai", "mithaai", "misthan", "dessert", "desserts", "halwai"]
+    .some((w) => n.includes(w));
+}
+
+export const PORTION_LABELS: Record<string, string> = {
+  full: "Full", half: "Half", kg: "1 kg", g500: "500 g", g250: "250 g", piece: "Per piece",
+};

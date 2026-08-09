@@ -3,7 +3,7 @@ import { useEffect, useState, type ChangeEvent } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Plus, Pencil, Trash2, Upload, X, Loader2 } from "lucide-react";
-import { isPieceCategory, isThaliCategory, isSinglePriceCategory } from "@/lib/portions";
+import { isPieceCategory, isThaliCategory, isSinglePriceCategory, isSweetCategory } from "@/lib/portions";
 import { useFormDraft } from "@/hooks/useFormDraft";
 
 
@@ -13,12 +13,14 @@ type Category = { id: string; name: string; priority: number };
 type MenuItem = {
   id: string; category_id: string; name: string; description: string | null;
   price: number; half_price: number | null; image_url: string | null; veg_type: "veg" | "nonveg"; is_available: boolean;
+  price_kg: number | null; price_500g: number | null; price_250g: number | null; price_piece: number | null;
 };
 type FormState = {
   id?: string; name: string; category_id: string; description: string;
   price: string; half_price: string; image_url: string; veg_type: "veg" | "nonveg"; is_available: boolean;
+  price_kg: string; price_500g: string; price_250g: string; price_piece: string;
 };
-const EMPTY: FormState = { name: "", category_id: "", description: "", price: "", half_price: "", image_url: "", veg_type: "veg", is_available: true };
+const EMPTY: FormState = { name: "", category_id: "", description: "", price: "", half_price: "", image_url: "", veg_type: "veg", is_available: true, price_kg: "", price_500g: "", price_250g: "", price_piece: "" };
 
 function AdminMenu() {
   const [restaurantId, setRestaurantId] = useState<string | null>(null);
@@ -81,6 +83,10 @@ function AdminMenu() {
   const startEdit = (m: MenuItem) => setEditing({
     id: m.id, name: m.name, category_id: m.category_id, description: m.description ?? "",
     price: String(m.price), half_price: m.half_price == null ? "" : String(m.half_price), image_url: m.image_url ?? "", veg_type: m.veg_type, is_available: m.is_available,
+    price_kg: m.price_kg == null ? "" : String(m.price_kg),
+    price_500g: m.price_500g == null ? "" : String(m.price_500g),
+    price_250g: m.price_250g == null ? "" : String(m.price_250g),
+    price_piece: m.price_piece == null ? "" : String(m.price_piece),
   });
 
 
@@ -109,14 +115,26 @@ function AdminMenu() {
     if (!editing) return;
     if (editing.name.trim().length < 2) return toast.error("Name is required");
     if (!editing.category_id) return toast.error("Choose a category");
-    const price = Number(editing.price);
-    if (!price || price <= 0) return toast.error("Enter a valid full plate price");
-    if (editing.half_price.trim() !== "" && !(Number(editing.half_price) > 0)) return toast.error("Enter a valid half plate price");
+    const sweet = isSweetCategory(categories.find((c) => c.id === editing.category_id)?.name);
+    const num = (v: string) => (v.trim() === "" ? null : Number(v));
+    const kg = num(editing.price_kg), g500 = num(editing.price_500g), g250 = num(editing.price_250g), piece = num(editing.price_piece);
+    let price = Number(editing.price);
+    if (sweet) {
+      const any = [kg, g500, g250, piece].filter((v) => v != null) as number[];
+      if (any.length === 0 || any.some((v) => !(v > 0))) return toast.error("Enter at least one valid price (1 kg / 500 g / 250 g / per piece)");
+      price = any[0];
+    } else {
+      if (!price || price <= 0) return toast.error("Enter a valid full plate price");
+      if (editing.half_price.trim() !== "" && !(Number(editing.half_price) > 0)) return toast.error("Enter a valid half plate price");
+    }
 
     setSaving(true);
     const payload: any = {
       name: editing.name.trim(), description: editing.description.trim() || null,
-      price, half_price: editing.half_price.trim() === "" ? null : Number(editing.half_price),
+      price,
+      half_price: sweet || editing.half_price.trim() === "" ? null : Number(editing.half_price),
+      price_kg: sweet ? kg : null, price_500g: sweet ? g500 : null,
+      price_250g: sweet ? g250 : null, price_piece: sweet ? piece : null,
       image_url: editing.image_url || null, veg_type: editing.veg_type,
       is_available: editing.is_available, category_id: editing.category_id,
     };
@@ -203,7 +221,15 @@ function AdminMenu() {
                     <h3 className="truncate font-semibold leading-tight">{m.name}</h3>
                   </div>
                   <p className="line-clamp-1 text-xs text-muted-foreground">{m.description}</p>
-                  {isPieceCategory(cat.name) ? (
+                  {isSweetCategory(cat.name) ? (
+                    <p className="mt-1 flex flex-wrap gap-x-2 text-sm font-bold">
+                      {m.price_kg != null && <span>1 kg ₹{Number(m.price_kg).toFixed(0)}</span>}
+                      {m.price_500g != null && <span>500 g ₹{Number(m.price_500g).toFixed(0)}</span>}
+                      {m.price_250g != null && <span>250 g ₹{Number(m.price_250g).toFixed(0)}</span>}
+                      {m.price_piece != null && <span>1 pc ₹{Number(m.price_piece).toFixed(0)}</span>}
+                      {m.price_kg == null && m.price_500g == null && m.price_250g == null && m.price_piece == null && <span>₹{Number(m.price).toFixed(0)}</span>}
+                    </p>
+                  ) : isPieceCategory(cat.name) ? (
                     <p className="mt-1 text-sm font-bold">₹{Number(m.price).toFixed(0)} <span className="font-semibold text-muted-foreground">/ piece</span></p>
                   ) : isThaliCategory(cat.name) ? (
                     <p className="mt-1 text-sm font-bold">₹{Number(m.price).toFixed(0)}</p>
@@ -268,7 +294,25 @@ function AdminMenu() {
               <Field label="Description">
                 <textarea className="ai" rows={2} maxLength={300} value={editing.description} onChange={(e) => setEditing({ ...editing, description: e.target.value })} />
               </Field>
-              {isSinglePriceCategory(categories.find((c) => c.id === editing.category_id)?.name) ? (
+              {isSweetCategory(categories.find((c) => c.id === editing.category_id)?.name) ? (
+                <>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Field label="1 kg price (₹)">
+                      <input className="ai" inputMode="decimal" placeholder="Optional" value={editing.price_kg} onChange={(e) => setEditing({ ...editing, price_kg: e.target.value.replace(/[^0-9.]/g, "") })} />
+                    </Field>
+                    <Field label="500 g price (₹)">
+                      <input className="ai" inputMode="decimal" placeholder="Optional" value={editing.price_500g} onChange={(e) => setEditing({ ...editing, price_500g: e.target.value.replace(/[^0-9.]/g, "") })} />
+                    </Field>
+                    <Field label="250 g price (₹)">
+                      <input className="ai" inputMode="decimal" placeholder="Optional" value={editing.price_250g} onChange={(e) => setEditing({ ...editing, price_250g: e.target.value.replace(/[^0-9.]/g, "") })} />
+                    </Field>
+                    <Field label="Per piece price (₹)">
+                      <input className="ai" inputMode="decimal" placeholder="Optional" value={editing.price_piece} onChange={(e) => setEditing({ ...editing, price_piece: e.target.value.replace(/[^0-9.]/g, "") })} />
+                    </Field>
+                  </div>
+                  <p className="-mt-1 text-[11px] text-muted-foreground">Sweets are sold by weight or per piece — fill only the sizes you sell.</p>
+                </>
+              ) : isSinglePriceCategory(categories.find((c) => c.id === editing.category_id)?.name) ? (
                 <>
                   <Field label={isPieceCategory(categories.find((c) => c.id === editing.category_id)?.name) ? "Price per piece (₹)" : "Price (₹)"}>
                     <input className="ai" inputMode="decimal" value={editing.price} onChange={(e) => setEditing({ ...editing, price: e.target.value.replace(/[^0-9.]/g, ""), half_price: "" })} />
