@@ -82,6 +82,10 @@ function BecomeRider() {
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({ full_name: "", phone: "", vehicle: "" });
 
+  const clearDraft = useFormDraft("kgt-draft-rider-signup", form, (d) => {
+    if (d) setForm((cur) => ({ ...cur, ...d }));
+  });
+
   const enroll = async (e: FormEvent) => {
     e.preventDefault();
     if (form.full_name.trim().length < 2) return toast.error("Enter your full name");
@@ -93,9 +97,11 @@ function BecomeRider() {
       _vehicle: form.vehicle.trim() || null,
     });
     if (error) { toast.error(error.message); setBusy(false); return; }
+    clearDraft();
     toast.success("Submitted! Awaiting admin approval.");
     window.location.reload();
   };
+
 
   return (
     <div className="mx-auto flex min-h-[100dvh] max-w-md flex-col items-center justify-center p-6">
