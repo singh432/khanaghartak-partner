@@ -4,7 +4,7 @@ import { SitePage, Section } from "@/components/SitePage";
 const URL = "https://khanaghartak.in/contact";
 const TITLE = "Contact KhanaGharTak — Support, Partners & Riders";
 const DESC =
-  "Get in touch with KhanaGharTak. Email help@khanaghartak.in or call +91 80092 53547 for order help, restaurant onboarding or rider partnerships.";
+  "Get in touch with KhanaGharTak. Email help@khanaghartak.in or call +91 97117 20846 for order help, restaurant onboarding or rider partnerships.";
 
 export const Route = createFileRoute("/contact")({
   component: ContactPage,
@@ -30,13 +30,13 @@ export const Route = createFileRoute("/contact")({
           name: "KhanaGharTak",
           url: "https://khanaghartak.in",
           email: "help@khanaghartak.in",
-          telephone: "+91-80092-53547",
+          telephone: "+91-97117-20846",
           contactPoint: [
             {
               "@type": "ContactPoint",
               contactType: "customer support",
               email: "help@khanaghartak.in",
-              telephone: "+91-80092-53547",
+              telephone: "+91-97117-20846",
               availableLanguage: ["en", "hi"],
             },
           ],
@@ -59,9 +59,9 @@ function ContactPage() {
           <p className="font-display mt-2 break-all text-lg text-foreground">help@khanaghartak.in</p>
           <p className="mt-1 text-xs">Replies within 24 hours</p>
         </a>
-        <a href="tel:+918009253547" className="rounded-2xl border bg-card p-6 transition hover:-translate-y-0.5">
+        <a href="tel:+919711720846" className="rounded-2xl border bg-card p-6 transition hover:-translate-y-0.5">
           <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground">Call us</p>
-          <p className="font-display mt-2 text-lg text-foreground">+91 80092 53547</p>
+          <p className="font-display mt-2 text-lg text-foreground">+91 97117 20846</p>
           <p className="mt-1 text-xs">Mon – Sun · 9am to 10pm</p>
         </a>
       </div>

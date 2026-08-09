@@ -58,7 +58,7 @@ function PrivacyPage() {
         </p>
       </Section>
       <Section heading="Contact">
-        <p>Questions? Email help@khanaghartak.in or call +91 80092 53547.</p>
+        <p>Questions? Email help@khanaghartak.in or call +91 97117 20846.</p>
       </Section>
     </SitePage>
   );

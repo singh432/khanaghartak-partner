@@ -119,7 +119,7 @@ function SuperSettings() {
         </div>
         <div className="grid gap-3 md:grid-cols-2">
           <Field label="Sender number (display only)">
-            <input className="ai" value={s.whatsapp_from ?? ""} placeholder="+91 80092 53547"
+            <input className="ai" value={s.whatsapp_from ?? ""} placeholder="+91 97117 20846"
               onChange={(e) => setS({ ...s, whatsapp_from: e.target.value })} />
           </Field>
           <label className="flex items-center gap-3 self-end rounded-xl border bg-input px-3 py-2.5">
