@@ -4,6 +4,8 @@ import { z } from "zod";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useFormDraft } from "@/hooks/useFormDraft";
+
 import { BrandHeader } from "@/components/BrandHeader";
 import { MapPin, Navigation, Loader2 } from "lucide-react";
 
