@@ -197,6 +197,32 @@ function MenuPage() {
             placeholder="Search dishes..." className="h-11 flex-1 bg-transparent text-sm outline-none" />
         </div>
 
+        <div className="mt-3 flex gap-2" role="group" aria-label="Filter by food type">
+          {([
+            { key: "all", label: "All" },
+            { key: "veg", label: "Veg" },
+            { key: "nonveg", label: "Non-Veg" },
+          ] as const).map((f) => {
+            const active = dietFilter === f.key;
+            const tone = f.key === "veg" ? "border-success text-success" : f.key === "nonveg" ? "border-destructive text-destructive" : "border-primary text-primary";
+            return (
+              <button key={f.key} type="button" aria-pressed={active}
+                onClick={() => setDietFilter(f.key)}
+                className={`inline-flex items-center gap-1.5 rounded-full border-2 px-3 py-1.5 text-xs font-bold transition-colors ${active ? `${tone} bg-secondary` : "border-border text-muted-foreground bg-card"}`}>
+                {f.key !== "all" && <VegDot type={f.key} />}
+                {f.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {filtered.length === 0 && (
+          <p className="mt-6 rounded-2xl border border-dashed bg-card p-6 text-center text-sm text-muted-foreground">
+            No {dietFilter === "veg" ? "veg" : dietFilter === "nonveg" ? "non-veg" : ""} dishes match your search.
+          </p>
+        )}
+
+
         <div className="mt-6 space-y-8">
           {categories.map((cat) => {
             const list = grouped.get(cat.id) ?? [];
