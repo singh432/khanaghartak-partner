@@ -124,7 +124,9 @@ function AdminMenu() {
       : await supabase.from("menu_items").insert(payload);
     setSaving(false);
     if (error) return toast.error(error.message);
+    if (!editing.id) clearItemDraft();
     toast.success(editing.id ? "Item updated" : "Item added");
+
     setEditing(null);
   };
 
@@ -228,7 +230,7 @@ function AdminMenu() {
       ))}
 
       {editing && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 md:items-center" onClick={() => setEditing(null)}>
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 md:items-center">
           <div className="w-full max-w-md max-h-[92vh] overflow-y-auto rounded-t-2xl bg-card p-5 shadow-xl md:rounded-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <h3 className="text-base font-bold">{editing.id ? "Edit menu item" : "Add menu item"}</h3>
@@ -300,7 +302,7 @@ function AdminMenu() {
               </label>
 
               <div className="grid grid-cols-2 gap-2 pt-2">
-                <button onClick={() => setEditing(null)} className="rounded-xl bg-secondary py-2.5 text-sm font-bold">Cancel</button>
+                <button onClick={() => { clearItemDraft(); setEditing(null); }} className="rounded-xl bg-secondary py-2.5 text-sm font-bold">Cancel</button>
                 <button onClick={save} disabled={saving} className="inline-flex items-center justify-center rounded-xl bg-primary py-2.5 text-sm font-bold text-primary-foreground disabled:opacity-60">
                   {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   {editing.id ? "Update Item" : "Add Menu Item"}
