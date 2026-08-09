@@ -142,7 +142,9 @@ function CheckoutPage() {
       address: form.address, landmark: form.landmark || null,
       latitude: coords.lat, longitude: coords.lng,
     }, { onConflict: "id" });
+    clearDraft();
     clear();
+
     navigate({ to: "/order/$id", params: { id: data as unknown as string } });
   };
 
