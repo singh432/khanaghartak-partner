@@ -198,9 +198,16 @@ function RiderDashboard({
 
     const rIds = [...new Set(mineList.map((o) => o.restaurant_id).filter(Boolean))] as string[];
     if (rIds.length) {
-      const { data: rs } = await supabase.from("restaurants").select("id,name,address,phone").in("id", rIds);
+      const { data: rs } = await supabase.from("restaurants").select("id,name,address").in("id", rIds);
       const map: Record<string, Restaurant> = {};
-      (rs ?? []).forEach((r: any) => { map[r.id] = r; });
+      (rs ?? []).forEach((r: any) => { map[r.id] = { ...r, phone: null }; });
+      // Contact number is only released to the rider assigned to that order
+      await Promise.all(
+        rIds.map(async (id) => {
+          const { data: ph } = await supabase.rpc("get_restaurant_phone" as any, { _restaurant_id: id });
+          if (map[id]) map[id].phone = (ph as string | null) ?? null;
+        }),
+      );
       setRestaurants(map);
     }
   };
