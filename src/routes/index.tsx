@@ -303,9 +303,9 @@ function Landing() {
                 <p className="font-display mt-2 text-lg break-all">help@khanaghartak.in</p>
                 <p className="mt-1 text-xs text-muted-foreground">Replies within 24 hours</p>
               </a>
-              <a href="tel:+918009253547" className="group rounded-2xl border bg-card p-6 transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft)]">
+              <a href="tel:+919711720846" className="group rounded-2xl border bg-card p-6 transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft)]">
                 <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground">Call us</p>
-                <p className="font-display mt-2 text-lg">+91 80092 53547</p>
+                <p className="font-display mt-2 text-lg">+91 97117 20846</p>
                 <p className="mt-1 text-xs text-muted-foreground">Mon – Sun · 9am to 10pm</p>
               </a>
             </div>

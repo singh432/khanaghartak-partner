@@ -9,7 +9,7 @@ KhanaGharTak connects customers with local partner kitchens. Delivery is charged
 - [Home](/): What KhanaGharTak is, how ordering works, and how to get started.
 - [Restaurants](/restaurants): Verified partner restaurants and home kitchens currently delivering.
 - [About](/about): Our story, service area and honest pricing approach.
-- [Contact](/contact): Support email help@khanaghartak.in and phone +91 80092 53547.
+- [Contact](/contact): Support email help@khanaghartak.in and phone +91 97117 20846.
 
 ## Optional
 
