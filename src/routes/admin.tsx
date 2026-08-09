@@ -6,6 +6,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { LayoutDashboard, ClipboardList, UtensilsCrossed, BarChart3, Settings as SettingsIcon, LogOut, Bell, Loader2, Navigation, MapPin } from "lucide-react";
 import { getCurrentLocation } from "@/lib/geolocate";
+import { useFormDraft } from "@/hooks/useFormDraft";
+
 
 export const Route = createFileRoute("/admin")({ component: AdminLayout });
 
@@ -164,6 +166,12 @@ function RestaurantSetup({ userId, onSignOut }: { userId: string; onSignOut: () 
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [form, setForm] = useState({ name: "", tagline: "", phone: "", address: "" });
 
+  const clearDraft = useFormDraft(`kgt-draft-restaurant-${userId}`, { form, coords }, (d) => {
+    if (d.form) setForm((cur) => ({ ...cur, ...d.form }));
+    if (d.coords) setCoords(d.coords);
+  });
+
+
   const pinLocation = async () => {
     setLocating(true);
     try {
@@ -207,7 +215,9 @@ function RestaurantSetup({ userId, onSignOut }: { userId: string; onSignOut: () 
       { restaurant_id: data.id, name: "Snacks", priority: 2 },
       { restaurant_id: data.id, name: "Beverages", priority: 3 },
     ]);
+    clearDraft();
     toast.success("Restaurant submitted for approval");
+
     window.location.href = "/admin";
   };
 

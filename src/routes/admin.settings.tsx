@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useFormDraft } from "@/hooks/useFormDraft";
+
 import { khanaGharTakLogoUrl } from "@/assets/brand";
 import { Loader2, Navigation } from "lucide-react";
 import { getCurrentLocation } from "@/lib/geolocate";
@@ -24,6 +26,11 @@ function AdminSettings() {
   const [loadingRestaurant, setLoadingRestaurant] = useState(true);
   const [saving, setSaving] = useState(false);
   const [locating, setLocating] = useState(false);
+
+  const draftKey = r ? `kgt-draft-settings-${r.id}` : null;
+  const clearDraft = useFormDraft(draftKey, r, (d) => {
+    if (d) setR((cur) => (cur ? { ...cur, ...d } : cur));
+  });
 
   useEffect(() => {
     if (!user) return;
@@ -50,8 +57,10 @@ function AdminSettings() {
       latitude: r.latitude, longitude: r.longitude,
     }).eq("id", r.id);
     setSaving(false);
-    if (error) toast.error(error.message); else toast.success("Saved");
+    if (error) toast.error(error.message);
+    else { clearDraft(); toast.success("Saved"); }
   };
+
 
   const uploadLogo = async (file: File) => {
     if (!r) return;

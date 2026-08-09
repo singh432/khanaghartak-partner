@@ -4,6 +4,8 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Plus, Pencil, Trash2, Upload, X, Loader2 } from "lucide-react";
 import { isPieceCategory, isThaliCategory, isSinglePriceCategory } from "@/lib/portions";
+import { useFormDraft } from "@/hooks/useFormDraft";
+
 
 export const Route = createFileRoute("/admin/menu")({ component: AdminMenu });
 
@@ -50,11 +52,37 @@ function AdminMenu() {
     return () => { supabase.removeChannel(ch); };
   }, []);
 
-  const startAdd = () => setEditing({ ...EMPTY, category_id: categories[0]?.id ?? "" });
+  const draftKey = restaurantId ? `kgt-draft-menu-item-${restaurantId}` : null;
+
+  // Restore an unfinished "add item" draft, and keep saving it as they type.
+  const startAdd = () => {
+    let base: FormState = { ...EMPTY, category_id: categories[0]?.id ?? "" };
+    if (draftKey) {
+      try {
+        const raw = localStorage.getItem(draftKey);
+        if (raw) base = { ...base, ...(JSON.parse(raw) as FormState), id: undefined };
+      } catch { /* ignore */ }
+    }
+    setEditing(base);
+  };
+
+  useEffect(() => {
+    if (!draftKey || !editing || editing.id) return;
+    const t = setTimeout(() => {
+      try { localStorage.setItem(draftKey, JSON.stringify(editing)); } catch { /* ignore */ }
+    }, 200);
+    return () => clearTimeout(t);
+  }, [editing, draftKey]);
+
+  const clearItemDraft = () => {
+    if (draftKey) { try { localStorage.removeItem(draftKey); } catch { /* ignore */ } }
+  };
+
   const startEdit = (m: MenuItem) => setEditing({
     id: m.id, name: m.name, category_id: m.category_id, description: m.description ?? "",
     price: String(m.price), half_price: m.half_price == null ? "" : String(m.half_price), image_url: m.image_url ?? "", veg_type: m.veg_type, is_available: m.is_available,
   });
+
 
   const toggleAvailable = async (m: MenuItem) => {
     const { error } = await supabase.from("menu_items").update({ is_available: !m.is_available }).eq("id", m.id);
@@ -98,7 +126,9 @@ function AdminMenu() {
       : await supabase.from("menu_items").insert(payload);
     setSaving(false);
     if (error) return toast.error(error.message);
+    if (!editing.id) clearItemDraft();
     toast.success(editing.id ? "Item updated" : "Item added");
+
     setEditing(null);
   };
 
@@ -110,6 +140,9 @@ function AdminMenu() {
   };
 
   const [addingCat, setAddingCat] = useState(false);
+  const clearCatDraft = useFormDraft("kgt-draft-category", { newCat }, (d) => {
+    if (d?.newCat) setNewCat(d.newCat);
+  });
   const addCategory = async () => {
     const name = newCat.trim();
     if (name.length < 2) return toast.error("Category name must be at least 2 characters");
@@ -118,8 +151,9 @@ function AdminMenu() {
     setAddingCat(true);
     const { error } = await supabase.from("categories").insert({ name, priority: categories.length, restaurant_id: restaurantId });
     setAddingCat(false);
-    if (error) toast.error(error.message); else { toast.success("Category added"); setNewCat(""); load(); }
+    if (error) toast.error(error.message); else { toast.success("Category added"); setNewCat(""); clearCatDraft(); load(); }
   };
+
 
   const grouped = categories.map((c) => ({ cat: c, list: items.filter((i) => i.category_id === c.id) }));
 
@@ -202,7 +236,7 @@ function AdminMenu() {
       ))}
 
       {editing && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 md:items-center" onClick={() => setEditing(null)}>
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 md:items-center">
           <div className="w-full max-w-md max-h-[92vh] overflow-y-auto rounded-t-2xl bg-card p-5 shadow-xl md:rounded-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <h3 className="text-base font-bold">{editing.id ? "Edit menu item" : "Add menu item"}</h3>
@@ -274,7 +308,7 @@ function AdminMenu() {
               </label>
 
               <div className="grid grid-cols-2 gap-2 pt-2">
-                <button onClick={() => setEditing(null)} className="rounded-xl bg-secondary py-2.5 text-sm font-bold">Cancel</button>
+                <button onClick={() => { clearItemDraft(); setEditing(null); }} className="rounded-xl bg-secondary py-2.5 text-sm font-bold">Cancel</button>
                 <button onClick={save} disabled={saving} className="inline-flex items-center justify-center rounded-xl bg-primary py-2.5 text-sm font-bold text-primary-foreground disabled:opacity-60">
                   {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   {editing.id ? "Update Item" : "Add Menu Item"}

@@ -5,6 +5,8 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useCart } from "@/hooks/useCart";
+import { useFormDraft } from "@/hooks/useFormDraft";
+
 import { usePricingSettings, computeDeliveryFee, ROAD_FACTOR } from "@/hooks/usePricingSettings";
 import { distanceKm as haversineKm } from "@/lib/geo";
 import { BrandHeader } from "@/components/BrandHeader";
@@ -45,6 +47,12 @@ function CheckoutPage() {
   const [restaurantCoords, setRestaurantCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [placing, setPlacing] = useState(false);
 
+  const draftKey = user ? `kgt-draft-checkout-${user.id}` : null;
+  const clearDraft = useFormDraft(draftKey, { form, coords }, (d) => {
+    if (d.form) setForm((cur) => ({ ...cur, ...d.form }));
+    if (d.coords) setCoords(d.coords);
+  });
+
   useEffect(() => { if (!loading && !user) navigate({ to: "/login" }); }, [user, loading, navigate]);
   useEffect(() => { if (!loading && ready && items.length === 0) navigate({ to: "/menu" }); }, [items, loading, ready, navigate]);
 
@@ -54,14 +62,21 @@ function CheckoutPage() {
     withTimeout(supabase.from("profiles").select("full_name, phone, address, landmark, latitude, longitude")
       .eq("id", user.id).maybeSingle().then(({ data }) => {
         if (data) {
-          setForm({
-            name: data.full_name ?? "", phone: data.phone ?? "",
-            address: data.address ?? "", landmark: data.landmark ?? "", notes: "",
-          });
-          if (data.latitude && data.longitude) setCoords({ lat: data.latitude, lng: data.longitude });
+          // keep anything the user already typed (restored draft or live input)
+          setForm((cur) => ({
+            name: cur.name || data.full_name || "",
+            phone: cur.phone || data.phone || "",
+            address: cur.address || data.address || "",
+            landmark: cur.landmark || data.landmark || "",
+            notes: cur.notes,
+          }));
+          if (data.latitude && data.longitude) {
+            setCoords((cur) => cur ?? { lat: data.latitude!, lng: data.longitude! });
+          }
         }
       })).catch(() => {});
   }, [user]);
+
 
   // Fetch restaurant coords from first cart item
   useEffect(() => {
@@ -127,7 +142,9 @@ function CheckoutPage() {
       address: form.address, landmark: form.landmark || null,
       latitude: coords.lat, longitude: coords.lng,
     }, { onConflict: "id" });
+    clearDraft();
     clear();
+
     navigate({ to: "/order/$id", params: { id: data as unknown as string } });
   };
 
