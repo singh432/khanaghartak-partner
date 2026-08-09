@@ -36,6 +36,17 @@ function LocationPage() {
   const [locating, setLocating] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  const draftKey = user ? `kgt-draft-location-${user.id}` : null;
+  const clearDraft = useFormDraft(
+    draftKey,
+    { address, landmark, coords },
+    (d) => {
+      if (d.address) setAddress(d.address);
+      if (d.landmark) setLandmark(d.landmark);
+      if (d.coords) setCoords(d.coords);
+    },
+  );
+
   useEffect(() => { if (!loading && !user) navigate({ to: "/login" }); }, [user, loading, navigate]);
 
   useEffect(() => {
@@ -44,9 +55,12 @@ function LocationPage() {
       .eq("id", user.id).maybeSingle()
       .then(({ data }) => {
         if (data) {
-          setAddress(data.address ?? "");
-          setLandmark(data.landmark ?? "");
-          if (data.latitude && data.longitude) setCoords({ lat: data.latitude, lng: data.longitude });
+          // never overwrite what the user has already typed (draft/live input)
+          setAddress((cur) => cur || data.address || "");
+          setLandmark((cur) => cur || data.landmark || "");
+          if (data.latitude && data.longitude) {
+            setCoords((cur) => cur ?? { lat: data.latitude!, lng: data.longitude! });
+          }
         }
       });
   }, [user]);
@@ -76,9 +90,11 @@ function LocationPage() {
     }, { onConflict: "id" });
     setSaving(false);
     if (error) return toast.error(error.message);
+    clearDraft();
     toast.success("Address saved");
     navigate({ to: "/home" });
   };
+
 
   return (
     <div className="pb-24">
