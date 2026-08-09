@@ -50,7 +50,7 @@ function HomePage() {
     let active = true;
     setRestaurantLoading(true);
     setRestaurantError(null);
-    withTimeout(supabase.from("restaurants").select("*").eq("status", "active"))
+    withTimeout(supabase.from("restaurants").select("id, name, tagline, image_url, banner_url, rating, rating_count, delivery_time, is_open, address, opening_time, closing_time, min_order_value, delivery_charges, status, latitude, longitude, created_at").eq("status", "active"))
       .then(({ data, error }) => {
         if (!active) return;
         if (error) throw error;

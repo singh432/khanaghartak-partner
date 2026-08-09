@@ -17,8 +17,11 @@ function SuperRestaurants() {
   const [counts, setCounts] = useState<Record<string, number>>({});
 
   const load = async () => {
-    const { data } = await supabase.from("restaurants").select("*").order("created_at", { ascending: false });
-    setRows((data ?? []) as R[]);
+    const { data } = await supabase.from("restaurants").select("id,name,owner_id,address,status,is_open,created_at").order("created_at", { ascending: false });
+    const { data: phones } = await supabase.rpc("super_list_restaurant_phones" as any);
+    const pmap: Record<string, string | null> = {};
+    ((phones ?? []) as any[]).forEach((p) => { pmap[p.id] = p.phone; });
+    setRows(((data ?? []) as any[]).map((r) => ({ ...r, phone: pmap[r.id] ?? null })) as R[]);
     const { data: oc } = await supabase.from("orders").select("restaurant_id");
     const map: Record<string, number> = {};
     (oc ?? []).forEach((o: any) => { if (o.restaurant_id) map[o.restaurant_id] = (map[o.restaurant_id] ?? 0) + 1; });

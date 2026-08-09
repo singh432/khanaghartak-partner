@@ -573,6 +573,10 @@ export type Database = {
             Args: { _full_name?: string; _phone?: string; _vehicle?: string }
             Returns: undefined
           }
+      get_restaurant_phone: {
+        Args: { _restaurant_id: string }
+        Returns: string
+      }
       owner_order_update_safe: {
         Args: {
           _new: Database["public"]["Tables"]["orders"]["Row"]
@@ -632,6 +636,13 @@ export type Database = {
       super_assign_rider: {
         Args: { _order_id: string; _rider_id: string }
         Returns: undefined
+      }
+      super_list_restaurant_phones: {
+        Args: never
+        Returns: {
+          id: string
+          phone: string
+        }[]
       }
     }
     Enums: {
