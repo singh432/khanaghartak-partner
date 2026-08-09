@@ -4,6 +4,8 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Plus, Pencil, Trash2, Upload, X, Loader2 } from "lucide-react";
 import { isPieceCategory, isThaliCategory, isSinglePriceCategory } from "@/lib/portions";
+import { useFormDraft } from "@/hooks/useFormDraft";
+
 
 export const Route = createFileRoute("/admin/menu")({ component: AdminMenu });
 
@@ -138,6 +140,9 @@ function AdminMenu() {
   };
 
   const [addingCat, setAddingCat] = useState(false);
+  const clearCatDraft = useFormDraft("kgt-draft-category", { newCat }, (d) => {
+    if (d?.newCat) setNewCat(d.newCat);
+  });
   const addCategory = async () => {
     const name = newCat.trim();
     if (name.length < 2) return toast.error("Category name must be at least 2 characters");
@@ -146,8 +151,9 @@ function AdminMenu() {
     setAddingCat(true);
     const { error } = await supabase.from("categories").insert({ name, priority: categories.length, restaurant_id: restaurantId });
     setAddingCat(false);
-    if (error) toast.error(error.message); else { toast.success("Category added"); setNewCat(""); load(); }
+    if (error) toast.error(error.message); else { toast.success("Category added"); setNewCat(""); clearCatDraft(); load(); }
   };
+
 
   const grouped = categories.map((c) => ({ cat: c, list: items.filter((i) => i.category_id === c.id) }));
 
