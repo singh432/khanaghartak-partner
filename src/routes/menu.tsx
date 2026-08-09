@@ -121,9 +121,12 @@ function MenuPage() {
 
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
-    if (!term) return menu;
-    return menu.filter((i) => i.name.toLowerCase().includes(term) || (i.description ?? "").toLowerCase().includes(term));
-  }, [menu, q]);
+    let list = menu;
+    if (dietFilter !== "all") list = list.filter((i) => i.veg_type === dietFilter);
+    if (!term) return list;
+    return list.filter((i) => i.name.toLowerCase().includes(term) || (i.description ?? "").toLowerCase().includes(term));
+  }, [menu, q, dietFilter]);
+
 
   const grouped = useMemo(() => {
     const map = new Map<string, MenuItem[]>();
