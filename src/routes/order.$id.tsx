@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { PageError, PageSpinner } from "@/components/PageState";
+import { RiderLiveTracker } from "@/components/RiderLiveTracker";
 import { withTimeout } from "@/lib/supabase-query";
 import { CheckCircle2, Clock } from "lucide-react";
 
@@ -11,6 +12,7 @@ type Order = {
   id: string; status: string; total: number; subtotal: number;
   delivery_fee: number; platform_fee: number; distance_km: number | null;
   customer_name: string; created_at: string; address: string;
+  latitude: number | null; longitude: number | null;
 };
 
 function OrderSuccess() {
