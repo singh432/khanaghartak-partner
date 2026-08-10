@@ -47,6 +47,16 @@ function CheckoutPage() {
   const [restaurantCoords, setRestaurantCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [placing, setPlacing] = useState(false);
   const [placed, setPlaced] = useState(false);
+  const [promo, setPromo] = useState<{ active: boolean; remaining: number } | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    supabase.rpc("free_delivery_status").then(({ data }) => {
+      const row = Array.isArray(data) ? data[0] : data;
+      if (active && row) setPromo({ active: !!row.active, remaining: Number(row.remaining ?? 0) });
+    }, () => {});
+    return () => { active = false; };
+  }, []);
 
   const draftKey = user ? `kgt-draft-checkout-${user.id}` : null;
   const clearDraft = useFormDraft(draftKey, { form, coords }, (d) => {
