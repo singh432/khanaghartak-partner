@@ -502,6 +502,33 @@ export type Database = {
         }
         Relationships: []
       }
+      rider_locations: {
+        Row: {
+          accuracy: number | null
+          created_at: string
+          latitude: number
+          longitude: number
+          rider_id: string
+          updated_at: string
+        }
+        Insert: {
+          accuracy?: number | null
+          created_at?: string
+          latitude: number
+          longitude: number
+          rider_id: string
+          updated_at?: string
+        }
+        Update: {
+          accuracy?: number | null
+          created_at?: string
+          latitude?: number
+          longitude?: number
+          rider_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       rider_profiles: {
         Row: {
           base_latitude: number | null
@@ -585,6 +612,15 @@ export type Database = {
         Args: { _restaurant_id: string }
         Returns: string
       }
+      order_rider_location: {
+        Args: { _order_id: string }
+        Returns: {
+          latitude: number
+          longitude: number
+          rider_name: string
+          updated_at: string
+        }[]
+      }
       owner_order_update_safe: {
         Args: {
           _new: Database["public"]["Tables"]["orders"]["Row"]
@@ -635,6 +671,10 @@ export type Database = {
       rider_mark_delivered: { Args: { _order_id: string }; Returns: undefined }
       rider_set_base_location: {
         Args: { _lat: number; _lng: number }
+        Returns: undefined
+      }
+      rider_update_live_location: {
+        Args: { _accuracy?: number; _lat: number; _lng: number }
         Returns: undefined
       }
       set_rider_status: {

@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { PageError, PageSpinner } from "@/components/PageState";
+import { RiderLiveTracker } from "@/components/RiderLiveTracker";
 import { withTimeout } from "@/lib/supabase-query";
 import { CheckCircle2, Clock } from "lucide-react";
 
@@ -11,6 +12,7 @@ type Order = {
   id: string; status: string; total: number; subtotal: number;
   delivery_fee: number; platform_fee: number; distance_km: number | null;
   customer_name: string; created_at: string; address: string;
+  latitude: number | null; longitude: number | null;
 };
 
 function OrderSuccess() {
@@ -24,7 +26,7 @@ function OrderSuccess() {
     setLoading(true);
     setError(null);
     withTimeout(supabase.from("orders")
-      .select("id,status,total,subtotal,delivery_fee,platform_fee,distance_km,customer_name,created_at,address")
+      .select("id,status,total,subtotal,delivery_fee,platform_fee,distance_km,customer_name,created_at,address,latitude,longitude")
       .eq("id", id).maybeSingle()).then(({ data, error }) => {
         if (!active) return;
         if (error) throw error;
@@ -79,6 +81,8 @@ function OrderSuccess() {
           <Clock className="h-3.5 w-3.5" /> Estimated delivery: 30–40 min
         </p>
       </div>
+
+      <RiderLiveTracker orderId={id} dropLat={order?.latitude} dropLng={order?.longitude} />
 
       <Link to="/home" className="mt-8 rounded-full bg-primary px-6 py-2.5 text-sm font-bold text-primary-foreground">
         Back to home

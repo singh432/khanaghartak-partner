@@ -65,7 +65,7 @@ function CheckoutPage() {
   });
 
   useEffect(() => { if (!loading && !user) navigate({ to: "/login" }); }, [user, loading, navigate]);
-  useEffect(() => { if (!placed && !loading && ready && items.length === 0) navigate({ to: "/menu" }); }, [items, loading, ready, navigate, placed]);
+  useEffect(() => { if (!placed && !loading && ready && items.length === 0) navigate({ to: "/menu", search: { r: undefined } }); }, [items, loading, ready, navigate, placed]);
 
   // Load saved profile
   useEffect(() => {
