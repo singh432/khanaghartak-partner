@@ -319,7 +319,7 @@ function AdminMenu() {
                   </Field>
                   <p className="-mt-1 text-[11px] text-muted-foreground">
                     {isPieceCategory(categories.find((c) => c.id === editing.category_id)?.name)
-                      ? "Breads like roti and paratha are sold per piece — no half plate."
+                      ? "Items like pizza, burger, sandwich, roti and paratha are sold per piece — no half plate."
                       : "Thali has a single fixed price — no full or half."}
                   </p>
                 </>
