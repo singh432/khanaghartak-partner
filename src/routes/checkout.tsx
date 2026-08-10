@@ -220,8 +220,19 @@ function CheckoutPage() {
           <Row label="Items total" value={`₹${subtotal.toFixed(0)}`} />
           <Row
             label={distanceKm != null ? `Delivery charge (${distanceKm.toFixed(1)} km × ₹${pricing.delivery_per_km})` : "Delivery charge"}
-            value={distanceKm != null ? (outOfRange ? "—" : `₹${deliveryFee.toFixed(0)}`) : "Pin location"}
+            value={
+              distanceKm != null
+                ? outOfRange
+                  ? "—"
+                  : freeDelivery
+                    ? "FREE"
+                    : `₹${deliveryFee.toFixed(0)}`
+                : "Pin location"
+            }
           />
+          {freeDelivery && distanceKm != null && !outOfRange && baseDeliveryFee > 0 && (
+            <p className="text-xs font-semibold text-success">Launch offer applied · you saved ₹{baseDeliveryFee.toFixed(0)}</p>
+          )}
           <Row label="Platform fee" value={`₹${pricing.platform_fee.toFixed(0)}`} />
           <div className="my-2 h-px bg-border" />
           <Row label="Grand total" value={outOfRange ? "—" : `₹${grand.toFixed(0)}`} bold />
