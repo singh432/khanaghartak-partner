@@ -125,7 +125,7 @@ function CheckoutPage() {
   const pinLocation = () => {
     if (!navigator.geolocation) return toast.error("Geolocation not supported");
     navigator.geolocation.getCurrentPosition(
-      (p) => { setCoords({ lat: p.coords.latitude, lng: p.coords.longitude }); toast.success("Location pinned"); },
+      (p) => { setCoords({ lat: p.coords.latitude, lng: p.coords.longitude }); toast.success("Current location saved"); },
       (e) => toast.error(e.message),
       { enableHighAccuracy: true, timeout: 10000 }
     );
@@ -134,7 +134,7 @@ function CheckoutPage() {
   const placeOrder = async () => {
     const parsed = schema.safeParse(form);
     if (!parsed.success) return toast.error(parsed.error.issues[0].message);
-    if (!coords) return toast.error("Please pin your delivery location");
+    if (!coords) return toast.error("Please share your current location");
     if (outOfRange) return toast.error("Sorry, this restaurant does not deliver to your selected location.");
     if (!user) return;
     setPlacing(true);
@@ -225,7 +225,7 @@ function CheckoutPage() {
                   : freeDelivery
                     ? "FREE"
                     : `₹${deliveryFee.toFixed(0)}`
-                : "Pin location"
+                : "Share location"
             }
           />
           {freeDelivery && distanceKm != null && !outOfRange && baseDeliveryFee > 0 && (
@@ -252,7 +252,7 @@ function CheckoutPage() {
         <button onClick={placeOrder} disabled={placing || !coords || outOfRange}
           className="flex h-12 w-full items-center justify-center rounded-2xl bg-primary text-sm font-bold text-primary-foreground shadow-[var(--shadow-soft)] disabled:opacity-60">
           {placing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          {!coords ? "Pin location to continue" : outOfRange ? "Outside delivery area" : `Place Order · ₹${grand.toFixed(0)}`}
+          {!coords ? "Share location to continue" : outOfRange ? "Outside delivery area" : `Place Order · ₹${grand.toFixed(0)}`}
         </button>
       </div>
 
