@@ -46,6 +46,7 @@ function CheckoutPage() {
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [restaurantCoords, setRestaurantCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [placing, setPlacing] = useState(false);
+  const [placed, setPlaced] = useState(false);
 
   const draftKey = user ? `kgt-draft-checkout-${user.id}` : null;
   const clearDraft = useFormDraft(draftKey, { form, coords }, (d) => {
@@ -54,7 +55,7 @@ function CheckoutPage() {
   });
 
   useEffect(() => { if (!loading && !user) navigate({ to: "/login" }); }, [user, loading, navigate]);
-  useEffect(() => { if (!loading && ready && items.length === 0) navigate({ to: "/menu" }); }, [items, loading, ready, navigate]);
+  useEffect(() => { if (!placed && !loading && ready && items.length === 0) navigate({ to: "/menu" }); }, [items, loading, ready, navigate, placed]);
 
   // Load saved profile
   useEffect(() => {
@@ -137,15 +138,17 @@ function CheckoutPage() {
     });
     setPlacing(false);
     if (error || !data) return toast.error(error?.message ?? "Could not place order");
-    await supabase.from("profiles").upsert({
+    setPlaced(true);
+    clearDraft();
+    clear();
+    navigate({ to: "/order/$id", params: { id: data as unknown as string } });
+
+    // fire-and-forget: saving the profile must never block the redirect
+    supabase.from("profiles").upsert({
       id: user.id, full_name: form.name, phone: form.phone,
       address: form.address, landmark: form.landmark || null,
       latitude: coords.lat, longitude: coords.lng,
-    }, { onConflict: "id" });
-    clearDraft();
-    clear();
-
-    navigate({ to: "/order/$id", params: { id: data as unknown as string } });
+    }, { onConflict: "id" }).then(() => {}, () => {});
   };
 
   return (
