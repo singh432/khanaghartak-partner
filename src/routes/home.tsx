@@ -89,6 +89,8 @@ function HomePage() {
       <RatingPrompt userId={user.id} />
 
       <div className="px-4 pt-4">
+        <FreeDeliveryBanner />
+
         {!profileAddress && (
           <Link to="/location"
             className="mb-4 flex items-center gap-3 rounded-2xl border bg-accent/50 p-3 text-sm">
