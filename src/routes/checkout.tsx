@@ -113,7 +113,9 @@ function CheckoutPage() {
     return haversineKm(restaurantCoords, coords) * ROAD_FACTOR;
   }, [coords, restaurantCoords]);
 
-  const deliveryFee = distanceKm != null ? computeDeliveryFee(distanceKm, pricing.delivery_per_km) : 0;
+  const freeDelivery = !!promo?.active;
+  const baseDeliveryFee = distanceKm != null ? computeDeliveryFee(distanceKm, pricing.delivery_per_km) : 0;
+  const deliveryFee = freeDelivery ? 0 : baseDeliveryFee;
   const outOfRange = distanceKm != null && distanceKm > pricing.max_delivery_radius_km;
   const grand = subtotal + (distanceKm != null && !outOfRange ? deliveryFee : 0) + pricing.platform_fee;
 
