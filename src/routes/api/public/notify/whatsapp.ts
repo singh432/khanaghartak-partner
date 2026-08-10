@@ -214,7 +214,10 @@ export const Route = createFileRoute("/api/public/notify/whatsapp")({
           .eq("id", order.restaurant_id as string)
           .maybeSingle();
 
-        const orderRef = shortId(order.id as string);
+        // Brand every message body so recipients recognise the sender even when
+        // the number is not saved in their contacts.
+        const BRAND = "KhanaGharTak.in";
+        const orderRef = `${BRAND} · #${shortId(order.id as string)}`;
         const total = `₹${Number(order.total ?? 0).toFixed(0)}`;
         const dropArea = clean((order.landmark as string | null) || (order.address as string));
         const recipients: Recipient[] = [];
