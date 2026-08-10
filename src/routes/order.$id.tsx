@@ -26,7 +26,7 @@ function OrderSuccess() {
     setLoading(true);
     setError(null);
     withTimeout(supabase.from("orders")
-      .select("id,status,total,subtotal,delivery_fee,platform_fee,distance_km,customer_name,created_at,address")
+      .select("id,status,total,subtotal,delivery_fee,platform_fee,distance_km,customer_name,created_at,address,latitude,longitude")
       .eq("id", id).maybeSingle()).then(({ data, error }) => {
         if (!active) return;
         if (error) throw error;
@@ -81,6 +81,8 @@ function OrderSuccess() {
           <Clock className="h-3.5 w-3.5" /> Estimated delivery: 30–40 min
         </p>
       </div>
+
+      <RiderLiveTracker orderId={id} dropLat={order?.latitude} dropLng={order?.longitude} />
 
       <Link to="/home" className="mt-8 rounded-full bg-primary px-6 py-2.5 text-sm font-bold text-primary-foreground">
         Back to home
