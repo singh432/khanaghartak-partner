@@ -179,7 +179,7 @@ function CheckoutPage() {
             <input className="ck-input" value={form.name} maxLength={80}
               onChange={(e) => setForm({ ...form, name: e.target.value })} />
           </Field>
-          <Field label="Phone">
+          <Field label="Contact number">
             <input className="ck-input" value={form.phone} maxLength={15} inputMode="tel"
               onChange={(e) => setForm({ ...form, phone: e.target.value })} />
           </Field>
@@ -187,26 +187,18 @@ function CheckoutPage() {
             <textarea className="ck-input" rows={3} value={form.address} maxLength={300}
               onChange={(e) => setForm({ ...form, address: e.target.value })} />
           </Field>
-          <Field label="Landmark">
-            <input className="ck-input" value={form.landmark} maxLength={120}
-              onChange={(e) => setForm({ ...form, landmark: e.target.value })} />
-          </Field>
-          <Field label="Delivery notes">
-            <input className="ck-input" placeholder="e.g. ring the bell, less spicy"
-              value={form.notes} maxLength={200}
-              onChange={(e) => setForm({ ...form, notes: e.target.value })} />
-          </Field>
 
           <button onClick={pinLocation}
             className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-primary/40 bg-accent/40 py-3 text-sm font-semibold text-primary">
             <Navigation className="h-4 w-4" />
-            {coords ? `Re-pin location (${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)})` : "Pin exact delivery location"}
+            {coords ? "Update my current location" : "Use my current location"}
           </button>
           {coords && distanceKm != null && !outOfRange && (
             <div className="flex items-center gap-1 text-xs text-success">
-              <MapPin className="h-3.5 w-3.5" /> Location pinned · ~{distanceKm.toFixed(1)} km from kitchen
+              <MapPin className="h-3.5 w-3.5" /> Current location saved · ~{distanceKm.toFixed(1)} km from kitchen
             </div>
           )}
+
           {outOfRange && (
             <div className="flex items-start gap-2 rounded-xl border-2 border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
