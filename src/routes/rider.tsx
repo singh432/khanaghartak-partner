@@ -220,6 +220,30 @@ function RiderDashboard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [riderId]);
 
+  // Broadcast live location to the customer while a delivery is in progress
+  const onDelivery = mineOrders.length > 0;
+  useEffect(() => {
+    if (!onDelivery || typeof navigator === "undefined" || !navigator.geolocation) return;
+    let last = 0;
+    const push = (pos: GeolocationPosition) => {
+      const now = Date.now();
+      if (now - last < 8000) return;
+      last = now;
+      supabase.rpc("rider_update_live_location" as any, {
+        _lat: pos.coords.latitude,
+        _lng: pos.coords.longitude,
+        _accuracy: pos.coords.accuracy ?? null,
+      });
+    };
+    const id = navigator.geolocation.watchPosition(push, () => {}, {
+      enableHighAccuracy: true,
+      maximumAge: 5000,
+      timeout: 20000,
+    });
+    return () => navigator.geolocation.clearWatch(id);
+  }, [onDelivery]);
+
+
   const accept = async (id: string) => {
     const { error } = await supabase.rpc("rider_accept_order" as any, { _order_id: id });
     if (error) { toast.error(error.message); return; }
