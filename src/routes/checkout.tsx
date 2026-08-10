@@ -47,6 +47,16 @@ function CheckoutPage() {
   const [restaurantCoords, setRestaurantCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [placing, setPlacing] = useState(false);
   const [placed, setPlaced] = useState(false);
+  const [promo, setPromo] = useState<{ active: boolean; remaining: number } | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    supabase.rpc("free_delivery_status").then(({ data }) => {
+      const row = Array.isArray(data) ? data[0] : data;
+      if (active && row) setPromo({ active: !!row.active, remaining: Number(row.remaining ?? 0) });
+    }, () => {});
+    return () => { active = false; };
+  }, []);
 
   const draftKey = user ? `kgt-draft-checkout-${user.id}` : null;
   const clearDraft = useFormDraft(draftKey, { form, coords }, (d) => {
@@ -103,7 +113,9 @@ function CheckoutPage() {
     return haversineKm(restaurantCoords, coords) * ROAD_FACTOR;
   }, [coords, restaurantCoords]);
 
-  const deliveryFee = distanceKm != null ? computeDeliveryFee(distanceKm, pricing.delivery_per_km) : 0;
+  const freeDelivery = !!promo?.active;
+  const baseDeliveryFee = distanceKm != null ? computeDeliveryFee(distanceKm, pricing.delivery_per_km) : 0;
+  const deliveryFee = freeDelivery ? 0 : baseDeliveryFee;
   const outOfRange = distanceKm != null && distanceKm > pricing.max_delivery_radius_km;
   const grand = subtotal + (distanceKm != null && !outOfRange ? deliveryFee : 0) + pricing.platform_fee;
 
@@ -156,6 +168,12 @@ function CheckoutPage() {
       <BrandHeader subtitle="Checkout" />
       <div className="px-4 pt-4 space-y-5">
         <h1 className="text-xl font-extrabold tracking-tight">Checkout</h1>
+        {freeDelivery && (
+          <div className="rounded-2xl border-2 border-success/40 bg-success/10 p-3 text-sm font-semibold text-success">
+            🎉 FREE delivery — launch offer from 15 August for the first 50 orders
+            {promo?.remaining ? ` (${promo.remaining} left)` : ""}
+          </div>
+        )}
         <Section title="Delivery details">
           <Field label="Name">
             <input className="ck-input" value={form.name} maxLength={80}
@@ -208,8 +226,19 @@ function CheckoutPage() {
           <Row label="Items total" value={`₹${subtotal.toFixed(0)}`} />
           <Row
             label={distanceKm != null ? `Delivery charge (${distanceKm.toFixed(1)} km × ₹${pricing.delivery_per_km})` : "Delivery charge"}
-            value={distanceKm != null ? (outOfRange ? "—" : `₹${deliveryFee.toFixed(0)}`) : "Pin location"}
+            value={
+              distanceKm != null
+                ? outOfRange
+                  ? "—"
+                  : freeDelivery
+                    ? "FREE"
+                    : `₹${deliveryFee.toFixed(0)}`
+                : "Pin location"
+            }
           />
+          {freeDelivery && distanceKm != null && !outOfRange && baseDeliveryFee > 0 && (
+            <p className="text-xs font-semibold text-success">Launch offer applied · you saved ₹{baseDeliveryFee.toFixed(0)}</p>
+          )}
           <Row label="Platform fee" value={`₹${pricing.platform_fee.toFixed(0)}`} />
           <div className="my-2 h-px bg-border" />
           <Row label="Grand total" value={outOfRange ? "—" : `₹${grand.toFixed(0)}`} bold />

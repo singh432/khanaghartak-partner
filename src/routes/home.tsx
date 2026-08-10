@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useLocationGate } from "@/hooks/useLocationGate";
 import { distanceKm as haversineKm } from "@/lib/geo";
 import { BrandHeader } from "@/components/BrandHeader";
+import { FreeDeliveryBanner } from "@/components/FreeDeliveryBanner";
 import { PageError, PageSpinner } from "@/components/PageState";
 import { RatingPrompt } from "@/components/RatingPrompt";
 import { withTimeout } from "@/lib/supabase-query";
@@ -89,6 +90,8 @@ function HomePage() {
       <RatingPrompt userId={user.id} />
 
       <div className="px-4 pt-4">
+        <FreeDeliveryBanner />
+
         {!profileAddress && (
           <Link to="/location"
             className="mb-4 flex items-center gap-3 rounded-2xl border bg-accent/50 p-3 text-sm">

@@ -573,6 +573,14 @@ export type Database = {
             Args: { _full_name?: string; _phone?: string; _vehicle?: string }
             Returns: undefined
           }
+      free_delivery_status: {
+        Args: never
+        Returns: {
+          active: boolean
+          remaining: number
+          starts_at: string
+        }[]
+      }
       get_restaurant_phone: {
         Args: { _restaurant_id: string }
         Returns: string
