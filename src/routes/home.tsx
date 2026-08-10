@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useLocationGate } from "@/hooks/useLocationGate";
 import { distanceKm as haversineKm } from "@/lib/geo";
 import { BrandHeader } from "@/components/BrandHeader";
+import { FreeDeliveryBanner } from "@/components/FreeDeliveryBanner";
 import { PageError, PageSpinner } from "@/components/PageState";
 import { RatingPrompt } from "@/components/RatingPrompt";
 import { withTimeout } from "@/lib/supabase-query";
