@@ -87,13 +87,23 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         type: "application/ld+json",
         children: JSON.stringify({
           "@context": "https://schema.org",
-          "@type": "Restaurant",
+          "@type": "Organization",
           name: "KhanaGharTak",
-          description: "Home-style food delivered fast with Cash on Delivery.",
-          servesCuisine: ["Indian", "Home-style"],
+          alternateName: "KhanaGharTak.in",
+          description: "Order home-style food from trusted local kitchens and restaurants. Fast delivery, Cash on Delivery.",
           url: "https://khanaghartak.in",
+          logo: "https://khanaghartak.in/khanaghartak-logo.png",
           image: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/91b140d3-d27b-4b4b-9a74-f5b323a08933",
-          priceRange: "₹₹",
+          sameAs: [
+            "https://www.instagram.com/khanaghartak",
+            "https://www.facebook.com/khanaghartak",
+          ],
+          contactPoint: {
+            "@type": "ContactPoint",
+            telephone: "+91-97117-20846",
+            contactType: "customer support",
+            availableLanguage: ["English", "Hindi"],
+          },
         }),
       },
       {
@@ -103,6 +113,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           "@type": "WebSite",
           name: "KhanaGharTak",
           url: "https://khanaghartak.in",
+          potentialAction: {
+            "@type": "SearchAction",
+            target: {
+              "@type": "EntryPoint",
+              urlTemplate: "https://khanaghartak.in/restaurants?q={search_term_string}",
+            },
+            "query-input": "required name=search_term_string",
+          },
         }),
       },
     ],
