@@ -62,6 +62,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
       { name: "theme-color", content: "#F45D2C" },
+      { name: "google-site-verification", content: "SI5AbdXyWeB0NKsDLCW1ktx6X3sc0ZRRMflYPxFw3bI" },
       { title: "KhanaGharTak — Jo Dil Chahe, Wahi Order Karo" },
       { name: "description", content: "Order delicious home-style food from KhanaGharTak. Fast local delivery, Cash on Delivery." },
       { property: "og:title", content: "KhanaGharTak — Jo Dil Chahe, Wahi Order Karo" },
