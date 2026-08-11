@@ -95,10 +95,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           url: "https://khanaghartak.in",
           logo: "https://khanaghartak.in/__l5e/assets-v1/8863a66e-7115-4037-ab62-8765b7ae09f3/khanaghartak-logo.png",
           image: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/91b140d3-d27b-4b4b-9a74-f5b323a08933",
-          sameAs: [
-            "https://www.instagram.com/khanaghartak",
-            "https://www.facebook.com/khanaghartak",
-          ],
           contactPoint: {
             "@type": "ContactPoint",
             telephone: "+91-97117-20846",
