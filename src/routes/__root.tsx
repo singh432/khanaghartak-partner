@@ -62,6 +62,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
       { name: "theme-color", content: "#F45D2C" },
+      { name: "google-site-verification", content: "SI5AbdXyWeB0NKsDLCW1ktx6X3sc0ZRRMflYPxFw3bI" },
       { title: "KhanaGharTak — Jo Dil Chahe, Wahi Order Karo" },
       { name: "description", content: "Order delicious home-style food from KhanaGharTak. Fast local delivery, Cash on Delivery." },
       { property: "og:title", content: "KhanaGharTak — Jo Dil Chahe, Wahi Order Karo" },
@@ -92,12 +93,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           alternateName: "KhanaGharTak.in",
           description: "Order home-style food from trusted local kitchens and restaurants. Fast delivery, Cash on Delivery.",
           url: "https://khanaghartak.in",
-          logo: "https://khanaghartak.in/khanaghartak-logo.png",
+          logo: "https://khanaghartak.in/__l5e/assets-v1/8863a66e-7115-4037-ab62-8765b7ae09f3/khanaghartak-logo.png",
           image: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/91b140d3-d27b-4b4b-9a74-f5b323a08933",
-          sameAs: [
-            "https://www.instagram.com/khanaghartak",
-            "https://www.facebook.com/khanaghartak",
-          ],
           contactPoint: {
             "@type": "ContactPoint",
             telephone: "+91-97117-20846",
