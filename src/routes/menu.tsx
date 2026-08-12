@@ -236,9 +236,11 @@ function MenuPage() {
         <div className="mt-6 space-y-8">
           {categories.map((cat) => {
             const list = grouped.get(cat.id) ?? [];
-            const sweet = isSweetCategory(cat.name);
-            const byPiece = isPieceCategory(cat.name);
-            const singlePrice = !sweet && isSinglePriceCategory(cat.name);
+            const cake = isCakeCategory(cat.name);
+            const sweet = !cake && isSweetCategory(cat.name);
+            const byPiece = !cake && isPieceCategory(cat.name);
+            const singlePrice = !sweet && !cake && isSinglePriceCategory(cat.name);
+
             if (list.length === 0) return null;
             return (
               <section key={cat.id} data-cat={cat.id}
