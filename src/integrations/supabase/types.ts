@@ -654,6 +654,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      owns_restaurant_folder: { Args: { _folder: string }; Returns: boolean }
       place_order: {
         Args: {
           _address: string
