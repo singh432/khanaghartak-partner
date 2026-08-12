@@ -39,12 +39,15 @@ function AdminSettings() {
     (async () => {
       const { data } = await supabase.from("restaurants").select("id, name, tagline, address, delivery_time, is_open, opening_time, closing_time, min_order_value, delivery_charges, image_url, latitude, longitude").eq("owner_id", user.id).limit(1).maybeSingle();
       let phone: string | null = null;
+      let phone_alt: string | null = null;
       if (data?.id) {
-        const { data: ph } = await supabase.rpc("get_restaurant_phone" as any, { _restaurant_id: data.id });
-        phone = (ph as string | null) ?? null;
+        const { data: ph } = await supabase.rpc("get_restaurant_contacts" as any, { _restaurant_id: data.id });
+        const row = Array.isArray(ph) ? (ph[0] as any) : (ph as any);
+        phone = row?.phone ?? null;
+        phone_alt = row?.phone_alt ?? null;
       }
       if (active) {
-        setR(data ? ({ ...data, phone } as Restaurant) : null);
+        setR(data ? ({ ...data, phone, phone_alt } as Restaurant) : null);
         setLoadingRestaurant(false);
       }
     })();
