@@ -79,7 +79,7 @@ function AdminSettings() {
     const patch = kind === "logo" ? { image_url: data.publicUrl } : { banner_url: data.publicUrl };
     const { error: e2 } = await supabase.from("restaurants").update(patch).eq("id", r.id);
     if (e2) return toast.error(e2.message);
-    setR({ ...r, [field]: data.publicUrl });
+    setR({ ...r, ...patch });
     toast.success(kind === "logo" ? "Logo updated" : "Cover photo updated");
   };
 
