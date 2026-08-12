@@ -16,7 +16,7 @@ type Restaurant = {
   phone: string | null; phone_alt: string | null; delivery_time: string | null; is_open: boolean | null;
   opening_time: string | null; closing_time: string | null;
   min_order_value: number; delivery_charges: number;
-  image_url: string | null;
+  image_url: string | null; banner_url: string | null;
   latitude: number | null; longitude: number | null;
 };
 
@@ -37,7 +37,7 @@ function AdminSettings() {
     let active = true;
     setLoadingRestaurant(true);
     (async () => {
-      const { data } = await supabase.from("restaurants").select("id, name, tagline, address, delivery_time, is_open, opening_time, closing_time, min_order_value, delivery_charges, image_url, latitude, longitude").eq("owner_id", user.id).limit(1).maybeSingle();
+      const { data } = await supabase.from("restaurants").select("id, name, tagline, address, delivery_time, is_open, opening_time, closing_time, min_order_value, delivery_charges, image_url, banner_url, latitude, longitude").eq("owner_id", user.id).limit(1).maybeSingle();
       let phone: string | null = null;
       let phone_alt: string | null = null;
       if (data?.id) {
