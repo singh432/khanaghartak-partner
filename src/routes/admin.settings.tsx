@@ -26,6 +26,7 @@ function AdminSettings() {
   const [loadingRestaurant, setLoadingRestaurant] = useState(true);
   const [saving, setSaving] = useState(false);
   const [locating, setLocating] = useState(false);
+  const [uploading, setUploading] = useState<"logo" | "banner" | null>(null);
 
   const draftKey = r ? `kgt-draft-settings-${r.id}` : null;
   const clearDraft = useFormDraft(draftKey, r, (d) => {
