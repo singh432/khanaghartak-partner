@@ -14,9 +14,18 @@ const PER_PIECE_WORDS = [
 ];
 
 
+/** Cake categories are sold by pound (½ lb / 1 lb / 2 lb). */
+export function isCakeCategory(categoryName?: string | null): boolean {
+  const n = (categoryName ?? "").toLowerCase();
+  if (!n) return false;
+  if (n.includes("pastry") || n.includes("pastries")) return false;
+  return n.includes("cake") || n.includes("cakes");
+}
+
 export function isPieceCategory(categoryName?: string | null): boolean {
   const n = (categoryName ?? "").toLowerCase();
   if (!n) return false;
+  if (isCakeCategory(n)) return false;
   return BREAD_WORDS.some((w) => n.includes(w)) || PER_PIECE_WORDS.some((w) => n.includes(w));
 }
 
@@ -35,10 +44,13 @@ export function isSinglePriceCategory(categoryName?: string | null): boolean {
 export function isSweetCategory(categoryName?: string | null): boolean {
   const n = (categoryName ?? "").toLowerCase();
   if (!n) return false;
+  if (isCakeCategory(n)) return false;
   return ["sweet", "sweets", "mithai", "mithaai", "misthan", "dessert", "desserts", "halwai"]
     .some((w) => n.includes(w));
 }
 
 export const PORTION_LABELS: Record<string, string> = {
   full: "Full", half: "Half", kg: "1 kg", g500: "500 g", g250: "250 g", piece: "Per piece",
+  lb_half: "½ pound", lb: "1 pound", lb2: "2 pound",
 };
+
