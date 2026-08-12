@@ -8,10 +8,11 @@ const BREAD_WORDS = [
 /** Snacks / fast food that are always priced per piece, never full/half plate. */
 const PER_PIECE_WORDS = [
   "pizza", "burger", "sandwich", "sandwhich", "roll", "wrap", "momo", "momos",
-  "samosa", "kachori", "patty", "puff", "pastry", "cake", "shake", "frankie",
+  "samosa", "kachori", "patty", "puff", "pastry", "pastries", "shake", "frankie",
   "hot dog", "hotdog", "bun", "pav", "vada", "idli", "dosa", "uttapam", "cutlet",
   "egg", "omelette", "omelet", "spring roll", "nugget", "fries",
 ];
+
 
 export function isPieceCategory(categoryName?: string | null): boolean {
   const n = (categoryName ?? "").toLowerCase();
