@@ -95,7 +95,21 @@ function OrderSuccess() {
         </p>
       </div>
 
+      {contact?.phone && (
+        <div className="mt-4 w-full max-w-sm rounded-2xl border bg-card p-4 text-left shadow-[var(--shadow-card)]">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Issue with your items?</p>
+          <p className="mt-1 text-sm font-semibold">{contact.restaurant_name}</p>
+          <a
+            href={`tel:${contact.phone}`}
+            className="mt-3 inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-bold text-primary-foreground"
+          >
+            <Phone className="h-4 w-4" /> Call restaurant
+          </a>
+        </div>
+      )}
+
       <RiderLiveTracker orderId={id} dropLat={order?.latitude} dropLng={order?.longitude} />
+
 
       <Link to="/home" className="mt-8 rounded-full bg-primary px-6 py-2.5 text-sm font-bold text-primary-foreground">
         Back to home
