@@ -13,7 +13,7 @@ export const Route = createFileRoute("/admin/settings")({ component: AdminSettin
 
 type Restaurant = {
   id: string; name: string; tagline: string | null; address: string | null;
-  phone: string | null; delivery_time: string | null; is_open: boolean | null;
+  phone: string | null; phone_alt: string | null; delivery_time: string | null; is_open: boolean | null;
   opening_time: string | null; closing_time: string | null;
   min_order_value: number; delivery_charges: number;
   image_url: string | null;
