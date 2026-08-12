@@ -123,7 +123,7 @@ function HomePage() {
                 className="block overflow-hidden rounded-3xl bg-card shadow-[var(--shadow-card)] fade-in"
               >
                 <div className="relative h-48 w-full overflow-hidden">
-                  <img src={restaurant.banner_url ?? hero} alt={restaurant.name}
+                  <img src={restaurant.banner_url ?? restaurant.image_url ?? hero} alt={restaurant.name}
                     className="h-full w-full object-cover" width={1600} height={900} loading="lazy" />
                   <span className={`absolute left-3 top-3 rounded-full px-3 py-1 text-xs font-semibold ${restaurant.is_open ? "bg-success text-success-foreground" : "bg-destructive text-destructive-foreground"}`}>
                     {restaurant.is_open ? "Open" : "Closed"}

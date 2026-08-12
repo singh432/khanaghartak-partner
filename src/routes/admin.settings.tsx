@@ -16,7 +16,7 @@ type Restaurant = {
   phone: string | null; phone_alt: string | null; delivery_time: string | null; is_open: boolean | null;
   opening_time: string | null; closing_time: string | null;
   min_order_value: number; delivery_charges: number;
-  image_url: string | null;
+  image_url: string | null; banner_url: string | null;
   latitude: number | null; longitude: number | null;
 };
 
@@ -37,7 +37,7 @@ function AdminSettings() {
     let active = true;
     setLoadingRestaurant(true);
     (async () => {
-      const { data } = await supabase.from("restaurants").select("id, name, tagline, address, delivery_time, is_open, opening_time, closing_time, min_order_value, delivery_charges, image_url, latitude, longitude").eq("owner_id", user.id).limit(1).maybeSingle();
+      const { data } = await supabase.from("restaurants").select("id, name, tagline, address, delivery_time, is_open, opening_time, closing_time, min_order_value, delivery_charges, image_url, banner_url, latitude, longitude").eq("owner_id", user.id).limit(1).maybeSingle();
       let phone: string | null = null;
       let phone_alt: string | null = null;
       if (data?.id) {
@@ -70,16 +70,17 @@ function AdminSettings() {
   };
 
 
-  const uploadLogo = async (file: File) => {
+  const uploadImage = async (file: File, kind: "logo" | "banner") => {
     if (!r) return;
-    const path = `${r.id}/logo-${Date.now()}.${file.name.split(".").pop()}`;
+    const path = `${r.id}/${kind}-${Date.now()}.${file.name.split(".").pop()}`;
     const { error } = await supabase.storage.from("menu-images").upload(path, file, { upsert: true });
     if (error) return toast.error(error.message);
     const { data } = supabase.storage.from("menu-images").getPublicUrl(path);
-    const { error: e2 } = await supabase.from("restaurants").update({ image_url: data.publicUrl }).eq("id", r.id);
+    const patch = kind === "logo" ? { image_url: data.publicUrl } : { banner_url: data.publicUrl };
+    const { error: e2 } = await supabase.from("restaurants").update(patch).eq("id", r.id);
     if (e2) return toast.error(e2.message);
-    setR({ ...r, image_url: data.publicUrl });
-    toast.success("Logo updated");
+    setR({ ...r, ...patch });
+    toast.success(kind === "logo" ? "Logo updated" : "Cover photo updated");
   };
 
   if (loadingRestaurant) return <div className="p-8 text-center text-sm text-muted-foreground">Loading…</div>;
@@ -102,12 +103,24 @@ function AdminSettings() {
       </header>
 
       <div className="space-y-3 rounded-2xl border bg-card p-5 shadow-sm">
-        <div className="flex items-center gap-4">
-          {r.image_url ? <img src={r.image_url} alt="" className="h-16 w-16 rounded-xl object-cover" /> : <div className="h-16 w-16 rounded-xl bg-secondary" />}
-          <label className="cursor-pointer rounded-xl bg-secondary px-3 py-2 text-sm font-semibold">
-            Upload Logo
-            <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && uploadLogo(e.target.files[0])} />
-          </label>
+        <div className="space-y-3">
+          <div className="relative h-40 w-full overflow-hidden rounded-2xl border bg-secondary">
+            {r.banner_url ? <img src={r.banner_url} alt="Restaurant cover" className="h-full w-full object-cover" /> : (
+              <div className="flex h-full w-full items-center justify-center text-sm text-muted-foreground">No cover photo yet</div>
+            )}
+            <label className="absolute bottom-3 right-3 cursor-pointer rounded-xl bg-primary px-3 py-2 text-sm font-bold text-primary-foreground shadow">
+              {r.banner_url ? "Change cover photo" : "Upload cover photo"}
+              <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && uploadImage(e.target.files[0], "banner")} />
+            </label>
+          </div>
+          <p className="text-xs text-muted-foreground">This photo is shown to customers on the home page. Use a wide food/shop photo (1600×900).</p>
+          <div className="flex items-center gap-4">
+            {r.image_url ? <img src={r.image_url} alt="" className="h-16 w-16 rounded-xl object-cover" /> : <div className="h-16 w-16 rounded-xl bg-secondary" />}
+            <label className="cursor-pointer rounded-xl bg-secondary px-3 py-2 text-sm font-semibold">
+              Upload Logo
+              <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && uploadImage(e.target.files[0], "logo")} />
+            </label>
+          </div>
         </div>
 
         <div className="grid gap-3 md:grid-cols-2">
