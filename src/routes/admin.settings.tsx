@@ -26,6 +26,7 @@ function AdminSettings() {
   const [loadingRestaurant, setLoadingRestaurant] = useState(true);
   const [saving, setSaving] = useState(false);
   const [locating, setLocating] = useState(false);
+  const [uploading, setUploading] = useState<"logo" | "banner" | null>(null);
 
   const draftKey = r ? `kgt-draft-settings-${r.id}` : null;
   const clearDraft = useFormDraft(draftKey, r, (d) => {
@@ -72,15 +73,39 @@ function AdminSettings() {
 
   const uploadImage = async (file: File, kind: "logo" | "banner") => {
     if (!r) return;
-    const path = `${r.id}/${kind}-${Date.now()}.${file.name.split(".").pop()}`;
-    const { error } = await supabase.storage.from("menu-images").upload(path, file, { upsert: true });
-    if (error) return toast.error(error.message);
-    const { data } = supabase.storage.from("menu-images").getPublicUrl(path);
-    const patch = kind === "logo" ? { image_url: data.publicUrl } : { banner_url: data.publicUrl };
-    const { error: e2 } = await supabase.from("restaurants").update(patch).eq("id", r.id);
-    if (e2) return toast.error(e2.message);
-    setR({ ...r, ...patch });
-    toast.success(kind === "logo" ? "Logo updated" : "Cover photo updated");
+    if (!file.type.startsWith("image/")) return toast.error("Please choose an image file");
+    if (file.size > 8 * 1024 * 1024) return toast.error("Image is too large. Please use a photo under 8 MB.");
+
+    setUploading(kind);
+    const toastId = toast.loading(kind === "logo" ? "Uploading logo…" : "Uploading cover photo…");
+    try {
+      const extFromName = file.name.includes(".") ? file.name.split(".").pop()!.toLowerCase().replace(/[^a-z0-9]/g, "") : "";
+      const extFromType = (file.type.split("/")[1] || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "");
+      const ext = extFromName || extFromType || "jpg";
+      const path = `${r.id}/${kind}-${Date.now()}.${ext}`;
+
+      const { error } = await supabase.storage
+        .from("menu-images")
+        .upload(path, file, { upsert: true, contentType: file.type || "image/jpeg", cacheControl: "3600" });
+      if (error) {
+        toast.error(`Upload failed: ${error.message}`, { id: toastId });
+        return;
+      }
+
+      const { data } = supabase.storage.from("menu-images").getPublicUrl(path);
+      const patch = kind === "logo" ? { image_url: data.publicUrl } : { banner_url: data.publicUrl };
+      const { error: e2 } = await supabase.from("restaurants").update(patch).eq("id", r.id);
+      if (e2) {
+        toast.error(`Could not save image: ${e2.message}`, { id: toastId });
+        return;
+      }
+      setR((cur) => (cur ? { ...cur, ...patch } : cur));
+      toast.success(kind === "logo" ? "Logo updated" : "Cover photo updated", { id: toastId });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Upload failed", { id: toastId });
+    } finally {
+      setUploading(null);
+    }
   };
 
   if (loadingRestaurant) return <div className="p-8 text-center text-sm text-muted-foreground">Loading…</div>;
@@ -108,18 +133,23 @@ function AdminSettings() {
             {r.banner_url ? <img src={r.banner_url} alt="Restaurant cover" className="h-full w-full object-cover" /> : (
               <div className="flex h-full w-full items-center justify-center text-sm text-muted-foreground">No cover photo yet</div>
             )}
-            <label className="absolute bottom-3 right-3 cursor-pointer rounded-xl bg-primary px-3 py-2 text-sm font-bold text-primary-foreground shadow">
-              {r.banner_url ? "Change cover photo" : "Upload cover photo"}
-              <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && uploadImage(e.target.files[0], "banner")} />
+            <label className="absolute bottom-3 right-3 inline-flex cursor-pointer items-center gap-1.5 rounded-xl bg-primary px-3 py-2 text-sm font-bold text-primary-foreground shadow">
+              {uploading === "banner" && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              {uploading === "banner" ? "Uploading…" : r.banner_url ? "Change cover photo" : "Upload cover photo"}
+              <input type="file" accept="image/*" className="hidden" disabled={uploading !== null}
+                onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) uploadImage(f, "banner"); }} />
             </label>
           </div>
           <p className="text-xs text-muted-foreground">This photo is shown to customers on the home page. Use a wide food/shop photo (1600×900).</p>
           <div className="flex items-center gap-4">
             {r.image_url ? <img src={r.image_url} alt="" className="h-16 w-16 rounded-xl object-cover" /> : <div className="h-16 w-16 rounded-xl bg-secondary" />}
-            <label className="cursor-pointer rounded-xl bg-secondary px-3 py-2 text-sm font-semibold">
-              Upload Logo
-              <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && uploadImage(e.target.files[0], "logo")} />
+            <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl bg-secondary px-3 py-2 text-sm font-semibold">
+              {uploading === "logo" && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              {uploading === "logo" ? "Uploading…" : "Upload Logo"}
+              <input type="file" accept="image/*" className="hidden" disabled={uploading !== null}
+                onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) uploadImage(f, "logo"); }} />
             </label>
+
           </div>
         </div>
 
