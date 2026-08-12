@@ -70,16 +70,17 @@ function AdminSettings() {
   };
 
 
-  const uploadLogo = async (file: File) => {
+  const uploadImage = async (file: File, kind: "logo" | "banner") => {
     if (!r) return;
-    const path = `${r.id}/logo-${Date.now()}.${file.name.split(".").pop()}`;
+    const path = `${r.id}/${kind}-${Date.now()}.${file.name.split(".").pop()}`;
     const { error } = await supabase.storage.from("menu-images").upload(path, file, { upsert: true });
     if (error) return toast.error(error.message);
     const { data } = supabase.storage.from("menu-images").getPublicUrl(path);
-    const { error: e2 } = await supabase.from("restaurants").update({ image_url: data.publicUrl }).eq("id", r.id);
+    const field = kind === "logo" ? "image_url" : "banner_url";
+    const { error: e2 } = await supabase.from("restaurants").update({ [field]: data.publicUrl }).eq("id", r.id);
     if (e2) return toast.error(e2.message);
-    setR({ ...r, image_url: data.publicUrl });
-    toast.success("Logo updated");
+    setR({ ...r, [field]: data.publicUrl });
+    toast.success(kind === "logo" ? "Logo updated" : "Cover photo updated");
   };
 
   if (loadingRestaurant) return <div className="p-8 text-center text-sm text-muted-foreground">Loading…</div>;
