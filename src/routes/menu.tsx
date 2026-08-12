@@ -5,7 +5,7 @@ import { BrandHeader } from "@/components/BrandHeader";
 import { useCart, cartKey, type Portion } from "@/hooks/useCart";
 import { useAuth } from "@/hooks/useAuth";
 
-import { isPieceCategory, isSinglePriceCategory, isSweetCategory, PORTION_LABELS } from "@/lib/portions";
+import { isCakeCategory, isPieceCategory, isSinglePriceCategory, isSweetCategory, PORTION_LABELS } from "@/lib/portions";
 import { PageError, PageSpinner } from "@/components/PageState";
 import { withTimeout } from "@/lib/supabase-query";
 import { Plus, Minus, Search, Star, Clock } from "lucide-react";
@@ -34,11 +34,20 @@ type MenuItem = {
   id: string; restaurant_id: string; category_id: string; name: string; description: string | null;
   price: number; offer_price: number | null; half_price: number | null; half_offer_price: number | null;
   price_kg: number | null; price_500g: number | null; price_250g: number | null; price_piece: number | null;
+  price_half_pound: number | null; price_pound: number | null; price_2pound: number | null;
   image_url: string | null; veg_type: "veg" | "nonveg"; is_available: boolean;
 };
 
-function portionsOf(item: MenuItem, opts: { singlePrice?: boolean; sweet?: boolean } = {}): { portion: Portion; price: number }[] {
+function portionsOf(item: MenuItem, opts: { singlePrice?: boolean; sweet?: boolean; cake?: boolean } = {}): { portion: Portion; price: number }[] {
   const full = Number(item.offer_price ?? item.price);
+  if (opts.cake) {
+    const list: { portion: Portion; price: number }[] = [];
+    if (item.price_half_pound != null) list.push({ portion: "lb_half", price: Number(item.price_half_pound) });
+    if (item.price_pound != null) list.push({ portion: "lb", price: Number(item.price_pound) });
+    if (item.price_2pound != null) list.push({ portion: "lb2", price: Number(item.price_2pound) });
+    if (list.length > 0) return list;
+    return [{ portion: "lb", price: full }];
+  }
   if (opts.sweet) {
     const list: { portion: Portion; price: number }[] = [];
     if (item.price_250g != null) list.push({ portion: "g250", price: Number(item.price_250g) });
@@ -54,6 +63,7 @@ function portionsOf(item: MenuItem, opts: { singlePrice?: boolean; sweet?: boole
   if (half != null) list.unshift({ portion: "half", price: Number(half) });
   return list.reverse();
 }
+
 type Restaurant = {
   id: string; name: string; rating: number; delivery_time: string;
   latitude: number | null; longitude: number | null; status: string | null;
@@ -226,9 +236,11 @@ function MenuPage() {
         <div className="mt-6 space-y-8">
           {categories.map((cat) => {
             const list = grouped.get(cat.id) ?? [];
-            const sweet = isSweetCategory(cat.name);
-            const byPiece = isPieceCategory(cat.name);
-            const singlePrice = !sweet && isSinglePriceCategory(cat.name);
+            const cake = isCakeCategory(cat.name);
+            const sweet = !cake && isSweetCategory(cat.name);
+            const byPiece = !cake && isPieceCategory(cat.name);
+            const singlePrice = !sweet && !cake && isSinglePriceCategory(cat.name);
+
             if (list.length === 0) return null;
             return (
               <section key={cat.id} data-cat={cat.id}
@@ -247,12 +259,13 @@ function MenuPage() {
                         <p className="mt-1 text-xs leading-snug text-muted-foreground line-clamp-2">{item.description}</p>
 
                         <div className="mt-2 space-y-2">
-                          {portionsOf(item, { singlePrice, sweet }).map((p) => {
+                          {portionsOf(item, { singlePrice, sweet, cake }).map((p) => {
                             const key = cartKey(item.id, p.portion);
                             const qty = qtyInCart(key);
-                            const opts = portionsOf(item, { singlePrice, sweet });
-                            const showLabel = sweet || byPiece || (!singlePrice && opts.length > 1);
+                            const opts = portionsOf(item, { singlePrice, sweet, cake });
+                            const showLabel = sweet || cake || byPiece || (!singlePrice && opts.length > 1);
                             const label = byPiece && !sweet ? "Per piece" : PORTION_LABELS[p.portion];
+
                             return (
                               <div key={p.portion} className="flex items-center gap-2">
                                 {showLabel ? (

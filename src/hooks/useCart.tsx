@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 
-export type Portion = "full" | "half" | "kg" | "g500" | "g250" | "piece";
+export type Portion = "full" | "half" | "kg" | "g500" | "g250" | "piece" | "lb_half" | "lb" | "lb2";
 
 export type CartItem = {
   /** composite key: `${menu_item_id}:${portion}` */

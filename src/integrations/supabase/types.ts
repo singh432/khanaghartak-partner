@@ -116,9 +116,12 @@ export type Database = {
           offer_price: number | null
           price: number
           price_250g: number | null
+          price_2pound: number | null
           price_500g: number | null
+          price_half_pound: number | null
           price_kg: number | null
           price_piece: number | null
+          price_pound: number | null
           restaurant_id: string | null
           veg_type: string
         }
@@ -136,9 +139,12 @@ export type Database = {
           offer_price?: number | null
           price: number
           price_250g?: number | null
+          price_2pound?: number | null
           price_500g?: number | null
+          price_half_pound?: number | null
           price_kg?: number | null
           price_piece?: number | null
+          price_pound?: number | null
           restaurant_id?: string | null
           veg_type?: string
         }
@@ -156,9 +162,12 @@ export type Database = {
           offer_price?: number | null
           price?: number
           price_250g?: number | null
+          price_2pound?: number | null
           price_500g?: number | null
+          price_half_pound?: number | null
           price_kg?: number | null
           price_piece?: number | null
+          price_pound?: number | null
           restaurant_id?: string | null
           veg_type?: string
         }
