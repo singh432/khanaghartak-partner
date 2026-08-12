@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { PageError, PageSpinner } from "@/components/PageState";
 import { RiderLiveTracker } from "@/components/RiderLiveTracker";
 import { withTimeout } from "@/lib/supabase-query";
-import { CheckCircle2, Clock } from "lucide-react";
+import { CheckCircle2, Clock, Phone } from "lucide-react";
+
 
 export const Route = createFileRoute("/order/$id")({ component: OrderSuccess });
 
