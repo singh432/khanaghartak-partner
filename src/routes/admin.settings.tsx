@@ -72,15 +72,39 @@ function AdminSettings() {
 
   const uploadImage = async (file: File, kind: "logo" | "banner") => {
     if (!r) return;
-    const path = `${r.id}/${kind}-${Date.now()}.${file.name.split(".").pop()}`;
-    const { error } = await supabase.storage.from("menu-images").upload(path, file, { upsert: true });
-    if (error) return toast.error(error.message);
-    const { data } = supabase.storage.from("menu-images").getPublicUrl(path);
-    const patch = kind === "logo" ? { image_url: data.publicUrl } : { banner_url: data.publicUrl };
-    const { error: e2 } = await supabase.from("restaurants").update(patch).eq("id", r.id);
-    if (e2) return toast.error(e2.message);
-    setR({ ...r, ...patch });
-    toast.success(kind === "logo" ? "Logo updated" : "Cover photo updated");
+    if (!file.type.startsWith("image/")) return toast.error("Please choose an image file");
+    if (file.size > 8 * 1024 * 1024) return toast.error("Image is too large. Please use a photo under 8 MB.");
+
+    setUploading(kind);
+    const toastId = toast.loading(kind === "logo" ? "Uploading logo…" : "Uploading cover photo…");
+    try {
+      const extFromName = file.name.includes(".") ? file.name.split(".").pop()!.toLowerCase().replace(/[^a-z0-9]/g, "") : "";
+      const extFromType = (file.type.split("/")[1] || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "");
+      const ext = extFromName || extFromType || "jpg";
+      const path = `${r.id}/${kind}-${Date.now()}.${ext}`;
+
+      const { error } = await supabase.storage
+        .from("menu-images")
+        .upload(path, file, { upsert: true, contentType: file.type || "image/jpeg", cacheControl: "3600" });
+      if (error) {
+        toast.error(`Upload failed: ${error.message}`, { id: toastId });
+        return;
+      }
+
+      const { data } = supabase.storage.from("menu-images").getPublicUrl(path);
+      const patch = kind === "logo" ? { image_url: data.publicUrl } : { banner_url: data.publicUrl };
+      const { error: e2 } = await supabase.from("restaurants").update(patch).eq("id", r.id);
+      if (e2) {
+        toast.error(`Could not save image: ${e2.message}`, { id: toastId });
+        return;
+      }
+      setR((cur) => (cur ? { ...cur, ...patch } : cur));
+      toast.success(kind === "logo" ? "Logo updated" : "Cover photo updated", { id: toastId });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Upload failed", { id: toastId });
+    } finally {
+      setUploading(null);
+    }
   };
 
   if (loadingRestaurant) return <div className="p-8 text-center text-sm text-muted-foreground">Loading…</div>;
