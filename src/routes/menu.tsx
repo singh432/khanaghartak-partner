@@ -259,12 +259,13 @@ function MenuPage() {
                         <p className="mt-1 text-xs leading-snug text-muted-foreground line-clamp-2">{item.description}</p>
 
                         <div className="mt-2 space-y-2">
-                          {portionsOf(item, { singlePrice, sweet }).map((p) => {
+                          {portionsOf(item, { singlePrice, sweet, cake }).map((p) => {
                             const key = cartKey(item.id, p.portion);
                             const qty = qtyInCart(key);
-                            const opts = portionsOf(item, { singlePrice, sweet });
-                            const showLabel = sweet || byPiece || (!singlePrice && opts.length > 1);
+                            const opts = portionsOf(item, { singlePrice, sweet, cake });
+                            const showLabel = sweet || cake || byPiece || (!singlePrice && opts.length > 1);
                             const label = byPiece && !sweet ? "Per piece" : PORTION_LABELS[p.portion];
+
                             return (
                               <div key={p.portion} className="flex items-center gap-2">
                                 {showLabel ? (
