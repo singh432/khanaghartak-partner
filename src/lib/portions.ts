@@ -18,8 +18,9 @@ const PER_PIECE_WORDS = [
 export function isCakeCategory(categoryName?: string | null): boolean {
   const n = (categoryName ?? "").toLowerCase();
   if (!n) return false;
-  if (n.includes("pastry") || n.includes("pastries")) return false;
-  return n.includes("cake") || n.includes("cakes");
+  // "cake" always wins, even in mixed names like "Cakes & Pastries".
+  if (n.includes("cake")) return true;
+  return false;
 }
 
 export function isPieceCategory(categoryName?: string | null): boolean {
