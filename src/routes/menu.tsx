@@ -5,7 +5,7 @@ import { BrandHeader } from "@/components/BrandHeader";
 import { useCart, cartKey, type Portion } from "@/hooks/useCart";
 import { useAuth } from "@/hooks/useAuth";
 
-import { isPieceCategory, isSinglePriceCategory, isSweetCategory, PORTION_LABELS } from "@/lib/portions";
+import { isCakeCategory, isPieceCategory, isSinglePriceCategory, isSweetCategory, PORTION_LABELS } from "@/lib/portions";
 import { PageError, PageSpinner } from "@/components/PageState";
 import { withTimeout } from "@/lib/supabase-query";
 import { Plus, Minus, Search, Star, Clock } from "lucide-react";
