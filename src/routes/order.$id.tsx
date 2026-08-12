@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { PageError, PageSpinner } from "@/components/PageState";
 import { RiderLiveTracker } from "@/components/RiderLiveTracker";
 import { withTimeout } from "@/lib/supabase-query";
-import { CheckCircle2, Clock } from "lucide-react";
+import { CheckCircle2, Clock, Phone } from "lucide-react";
+
 
 export const Route = createFileRoute("/order/$id")({ component: OrderSuccess });
 
@@ -20,6 +21,18 @@ function OrderSuccess() {
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [contact, setContact] = useState<{ restaurant_name: string; phone: string | null } | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    supabase.rpc("order_restaurant_contact", { _order_id: id }).then(({ data }) => {
+      if (!active) return;
+      const row = Array.isArray(data) ? data[0] : null;
+      if (row) setContact(row as { restaurant_name: string; phone: string | null });
+    });
+    return () => { active = false; };
+  }, [id]);
+
 
   useEffect(() => {
     let active = true;
@@ -82,7 +95,21 @@ function OrderSuccess() {
         </p>
       </div>
 
+      {contact?.phone && (
+        <div className="mt-4 w-full max-w-sm rounded-2xl border bg-card p-4 text-left shadow-[var(--shadow-card)]">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Issue with your items?</p>
+          <p className="mt-1 text-sm font-semibold">{contact.restaurant_name}</p>
+          <a
+            href={`tel:${contact.phone}`}
+            className="mt-3 inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-bold text-primary-foreground"
+          >
+            <Phone className="h-4 w-4" /> Call restaurant
+          </a>
+        </div>
+      )}
+
       <RiderLiveTracker orderId={id} dropLat={order?.latitude} dropLng={order?.longitude} />
+
 
       <Link to="/home" className="mt-8 rounded-full bg-primary px-6 py-2.5 text-sm font-bold text-primary-foreground">
         Back to home

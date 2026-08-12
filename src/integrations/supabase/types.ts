@@ -622,6 +622,13 @@ export type Database = {
         Args: { _restaurant_id: string }
         Returns: string
       }
+      order_restaurant_contact: {
+        Args: { _order_id: string }
+        Returns: {
+          phone: string
+          restaurant_name: string
+        }[]
+      }
       order_rider_location: {
         Args: { _order_id: string }
         Returns: {
