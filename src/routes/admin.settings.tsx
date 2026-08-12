@@ -76,8 +76,8 @@ function AdminSettings() {
     const { error } = await supabase.storage.from("menu-images").upload(path, file, { upsert: true });
     if (error) return toast.error(error.message);
     const { data } = supabase.storage.from("menu-images").getPublicUrl(path);
-    const field = kind === "logo" ? "image_url" : "banner_url";
-    const { error: e2 } = await supabase.from("restaurants").update({ [field]: data.publicUrl }).eq("id", r.id);
+    const patch = kind === "logo" ? { image_url: data.publicUrl } : { banner_url: data.publicUrl };
+    const { error: e2 } = await supabase.from("restaurants").update(patch).eq("id", r.id);
     if (e2) return toast.error(e2.message);
     setR({ ...r, [field]: data.publicUrl });
     toast.success(kind === "logo" ? "Logo updated" : "Cover photo updated");
