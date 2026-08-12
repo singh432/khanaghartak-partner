@@ -58,7 +58,7 @@ function AdminSettings() {
     if (!r) return;
     setSaving(true);
     const { error } = await supabase.from("restaurants").update({
-      name: r.name, tagline: r.tagline, address: r.address, phone: r.phone,
+      name: r.name, tagline: r.tagline, address: r.address, phone: r.phone, phone_alt: r.phone_alt,
       opening_time: r.opening_time, closing_time: r.closing_time,
       min_order_value: r.min_order_value, delivery_charges: r.delivery_charges,
       delivery_time: r.delivery_time, is_open: r.is_open,
