@@ -113,7 +113,8 @@ function AdminSettings() {
         <div className="grid gap-3 md:grid-cols-2">
           <Field label="Restaurant Name"><input className="ai" value={r.name} maxLength={80} onChange={(e) => setR({ ...r, name: e.target.value })} /></Field>
           <Field label="Tagline"><input className="ai" value={r.tagline ?? ""} maxLength={120} onChange={(e) => setR({ ...r, tagline: e.target.value })} /></Field>
-          <Field label="Phone"><input className="ai" value={r.phone ?? ""} onChange={(e) => setR({ ...r, phone: e.target.value })} /></Field>
+          <Field label="Primary Phone"><input className="ai" inputMode="tel" maxLength={15} value={r.phone ?? ""} onChange={(e) => setR({ ...r, phone: e.target.value })} /></Field>
+          <Field label="Alternate Phone (optional)"><input className="ai" inputMode="tel" maxLength={15} value={r.phone_alt ?? ""} onChange={(e) => setR({ ...r, phone_alt: e.target.value })} /></Field>
           <Field label="Delivery Time"><input className="ai" value={r.delivery_time ?? ""} onChange={(e) => setR({ ...r, delivery_time: e.target.value })} /></Field>
           <Field label="Opening Time"><input type="time" className="ai" value={r.opening_time ?? ""} onChange={(e) => setR({ ...r, opening_time: e.target.value })} /></Field>
           <Field label="Closing Time"><input type="time" className="ai" value={r.closing_time ?? ""} onChange={(e) => setR({ ...r, closing_time: e.target.value })} /></Field>
