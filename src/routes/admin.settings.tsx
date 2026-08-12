@@ -133,18 +133,23 @@ function AdminSettings() {
             {r.banner_url ? <img src={r.banner_url} alt="Restaurant cover" className="h-full w-full object-cover" /> : (
               <div className="flex h-full w-full items-center justify-center text-sm text-muted-foreground">No cover photo yet</div>
             )}
-            <label className="absolute bottom-3 right-3 cursor-pointer rounded-xl bg-primary px-3 py-2 text-sm font-bold text-primary-foreground shadow">
-              {r.banner_url ? "Change cover photo" : "Upload cover photo"}
-              <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && uploadImage(e.target.files[0], "banner")} />
+            <label className="absolute bottom-3 right-3 inline-flex cursor-pointer items-center gap-1.5 rounded-xl bg-primary px-3 py-2 text-sm font-bold text-primary-foreground shadow">
+              {uploading === "banner" && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              {uploading === "banner" ? "Uploading…" : r.banner_url ? "Change cover photo" : "Upload cover photo"}
+              <input type="file" accept="image/*" className="hidden" disabled={uploading !== null}
+                onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) uploadImage(f, "banner"); }} />
             </label>
           </div>
           <p className="text-xs text-muted-foreground">This photo is shown to customers on the home page. Use a wide food/shop photo (1600×900).</p>
           <div className="flex items-center gap-4">
             {r.image_url ? <img src={r.image_url} alt="" className="h-16 w-16 rounded-xl object-cover" /> : <div className="h-16 w-16 rounded-xl bg-secondary" />}
-            <label className="cursor-pointer rounded-xl bg-secondary px-3 py-2 text-sm font-semibold">
-              Upload Logo
-              <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && uploadImage(e.target.files[0], "logo")} />
+            <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl bg-secondary px-3 py-2 text-sm font-semibold">
+              {uploading === "logo" && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              {uploading === "logo" ? "Uploading…" : "Upload Logo"}
+              <input type="file" accept="image/*" className="hidden" disabled={uploading !== null}
+                onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) uploadImage(f, "logo"); }} />
             </label>
+
           </div>
         </div>
 
