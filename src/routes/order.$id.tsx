@@ -21,6 +21,18 @@ function OrderSuccess() {
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [contact, setContact] = useState<{ restaurant_name: string; phone: string | null } | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    supabase.rpc("order_restaurant_contact", { _order_id: id }).then(({ data }) => {
+      if (!active) return;
+      const row = Array.isArray(data) ? data[0] : null;
+      if (row) setContact(row as { restaurant_name: string; phone: string | null });
+    });
+    return () => { active = false; };
+  }, [id]);
+
 
   useEffect(() => {
     let active = true;
