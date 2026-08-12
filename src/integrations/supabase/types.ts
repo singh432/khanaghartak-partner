@@ -448,6 +448,7 @@ export type Database = {
           opening_time: string | null
           owner_id: string | null
           phone: string | null
+          phone_alt: string | null
           rating: number | null
           rating_count: number
           status: string
@@ -471,6 +472,7 @@ export type Database = {
           opening_time?: string | null
           owner_id?: string | null
           phone?: string | null
+          phone_alt?: string | null
           rating?: number | null
           rating_count?: number
           status?: string
@@ -494,6 +496,7 @@ export type Database = {
           opening_time?: string | null
           owner_id?: string | null
           phone?: string | null
+          phone_alt?: string | null
           rating?: number | null
           rating_count?: number
           status?: string
@@ -606,6 +609,13 @@ export type Database = {
           active: boolean
           remaining: number
           starts_at: string
+        }[]
+      }
+      get_restaurant_contacts: {
+        Args: { _restaurant_id: string }
+        Returns: {
+          phone: string
+          phone_alt: string
         }[]
       }
       get_restaurant_phone: {

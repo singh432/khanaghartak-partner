@@ -13,7 +13,7 @@ export const Route = createFileRoute("/admin/settings")({ component: AdminSettin
 
 type Restaurant = {
   id: string; name: string; tagline: string | null; address: string | null;
-  phone: string | null; delivery_time: string | null; is_open: boolean | null;
+  phone: string | null; phone_alt: string | null; delivery_time: string | null; is_open: boolean | null;
   opening_time: string | null; closing_time: string | null;
   min_order_value: number; delivery_charges: number;
   image_url: string | null;
@@ -39,12 +39,15 @@ function AdminSettings() {
     (async () => {
       const { data } = await supabase.from("restaurants").select("id, name, tagline, address, delivery_time, is_open, opening_time, closing_time, min_order_value, delivery_charges, image_url, latitude, longitude").eq("owner_id", user.id).limit(1).maybeSingle();
       let phone: string | null = null;
+      let phone_alt: string | null = null;
       if (data?.id) {
-        const { data: ph } = await supabase.rpc("get_restaurant_phone" as any, { _restaurant_id: data.id });
-        phone = (ph as string | null) ?? null;
+        const { data: ph } = await supabase.rpc("get_restaurant_contacts" as any, { _restaurant_id: data.id });
+        const row = Array.isArray(ph) ? (ph[0] as any) : (ph as any);
+        phone = row?.phone ?? null;
+        phone_alt = row?.phone_alt ?? null;
       }
       if (active) {
-        setR(data ? ({ ...data, phone } as Restaurant) : null);
+        setR(data ? ({ ...data, phone, phone_alt } as Restaurant) : null);
         setLoadingRestaurant(false);
       }
     })();
@@ -55,7 +58,7 @@ function AdminSettings() {
     if (!r) return;
     setSaving(true);
     const { error } = await supabase.from("restaurants").update({
-      name: r.name, tagline: r.tagline, address: r.address, phone: r.phone,
+      name: r.name, tagline: r.tagline, address: r.address, phone: r.phone, phone_alt: r.phone_alt,
       opening_time: r.opening_time, closing_time: r.closing_time,
       min_order_value: r.min_order_value, delivery_charges: r.delivery_charges,
       delivery_time: r.delivery_time, is_open: r.is_open,
@@ -110,7 +113,8 @@ function AdminSettings() {
         <div className="grid gap-3 md:grid-cols-2">
           <Field label="Restaurant Name"><input className="ai" value={r.name} maxLength={80} onChange={(e) => setR({ ...r, name: e.target.value })} /></Field>
           <Field label="Tagline"><input className="ai" value={r.tagline ?? ""} maxLength={120} onChange={(e) => setR({ ...r, tagline: e.target.value })} /></Field>
-          <Field label="Phone"><input className="ai" value={r.phone ?? ""} onChange={(e) => setR({ ...r, phone: e.target.value })} /></Field>
+          <Field label="Primary Phone"><input className="ai" inputMode="tel" maxLength={15} value={r.phone ?? ""} onChange={(e) => setR({ ...r, phone: e.target.value })} /></Field>
+          <Field label="Alternate Phone (optional)"><input className="ai" inputMode="tel" maxLength={15} value={r.phone_alt ?? ""} onChange={(e) => setR({ ...r, phone_alt: e.target.value })} /></Field>
           <Field label="Delivery Time"><input className="ai" value={r.delivery_time ?? ""} onChange={(e) => setR({ ...r, delivery_time: e.target.value })} /></Field>
           <Field label="Opening Time"><input type="time" className="ai" value={r.opening_time ?? ""} onChange={(e) => setR({ ...r, opening_time: e.target.value })} /></Field>
           <Field label="Closing Time"><input type="time" className="ai" value={r.closing_time ?? ""} onChange={(e) => setR({ ...r, closing_time: e.target.value })} /></Field>
