@@ -158,7 +158,10 @@ async function sendCode(to: string, code: string): Promise<{ delivered: boolean;
   const candidates: Tpl[] = [];
   if (tpl) candidates.push(tpl);
   if (!candidates.some((t) => t.name === OTP_TEMPLATE)) {
-    candidates.unshift({ name: OTP_TEMPLATE, language: "en", bodyVars: 1, auth: true, hasButton: true });
+    candidates.unshift(
+      { name: OTP_TEMPLATE, language: "en", bodyVars: 1, auth: true, hasButton: true },
+      { name: OTP_TEMPLATE, language: "en_US", bodyVars: 1, auth: true, hasButton: true },
+    );
   }
   if (!tpl) {
     console.error(
