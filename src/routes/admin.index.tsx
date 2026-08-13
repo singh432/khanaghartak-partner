@@ -5,26 +5,45 @@ import { TrendingUp, ShoppingBag, CheckCircle2, XCircle, Clock, IndianRupee } fr
 
 export const Route = createFileRoute("/admin/")({ component: AdminDashboard });
 
-type Stats = { total: number; placed: number; accepted: number; preparing: number; out: number; delivered: number; rejected: number; revenue: number };
+type Stats = { total: number; placed: number; accepted: number; preparing: number; out: number; delivered: number; rejected: number; revenue: number; foodSales: number; platformCut: number; deliveryFees: number };
+type Lifetime = { orders: number; revenue: number; foodSales: number; platformCut: number };
 
 function AdminDashboard() {
   const [stats, setStats] = useState<Stats | null>(null);
+  const [lifetime, setLifetime] = useState<Lifetime | null>(null);
 
   const load = async () => {
     const start = new Date(); start.setHours(0, 0, 0, 0);
-    const { data } = await supabase.from("orders").select("status,total,created_at")
+    const { data } = await supabase.from("orders").select("status,total,subtotal,platform_fee,delivery_fee,created_at")
       .gte("created_at", start.toISOString());
     const rows = data ?? [];
-    const s: Stats = { total: rows.length, placed: 0, accepted: 0, preparing: 0, out: 0, delivered: 0, rejected: 0, revenue: 0 };
+    const s: Stats = { total: rows.length, placed: 0, accepted: 0, preparing: 0, out: 0, delivered: 0, rejected: 0, revenue: 0, foodSales: 0, platformCut: 0, deliveryFees: 0 };
     for (const r of rows) {
       if (r.status === "placed") s.placed++;
       else if (r.status === "accepted") s.accepted++;
       else if (r.status === "preparing") s.preparing++;
       else if (r.status === "out_for_delivery") s.out++;
-      else if (r.status === "delivered") { s.delivered++; s.revenue += Number(r.total); }
+      else if (r.status === "delivered") {
+        s.delivered++;
+        s.revenue += Number(r.total);
+        s.foodSales += Number(r.subtotal ?? 0);
+        s.platformCut += Number(r.platform_fee ?? 0);
+        s.deliveryFees += Number(r.delivery_fee ?? 0);
+      }
       else if (r.status === "rejected") s.rejected++;
     }
     setStats(s);
+
+    const { data: allRows } = await supabase.from("orders")
+      .select("total,subtotal,platform_fee").eq("status", "delivered");
+    const lt: Lifetime = { orders: 0, revenue: 0, foodSales: 0, platformCut: 0 };
+    for (const r of allRows ?? []) {
+      lt.orders++;
+      lt.revenue += Number(r.total);
+      lt.foodSales += Number(r.subtotal ?? 0);
+      lt.platformCut += Number(r.platform_fee ?? 0);
+    }
+    setLifetime(lt);
   };
 
   useEffect(() => {
@@ -66,6 +85,19 @@ function AdminDashboard() {
       </div>
 
       <div className="rounded-2xl border bg-card p-5 shadow-sm">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Earnings (all time, delivered orders)</p>
+        <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-4">
+          <Money label="Total Revenue" value={lifetime?.revenue ?? 0} strong />
+          <Money label="Your Food Sales" value={lifetime?.foodSales ?? 0} />
+          <Money label="KhanaGharTak Cut" value={lifetime?.platformCut ?? 0} tone="text-destructive" />
+          <Money label="Your Net Payout" value={(lifetime?.foodSales ?? 0)} tone="text-success" />
+        </div>
+        <p className="mt-3 text-[11px] text-muted-foreground">
+          Total revenue includes food, delivery fee and platform fee collected. KhanaGharTak keeps the platform fee; delivery fee goes to the rider. Today's platform fee: ₹{Number(stats?.platformCut ?? 0).toFixed(0)}.
+        </p>
+      </div>
+
+      <div className="rounded-2xl border bg-card p-5 shadow-sm">
         <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Pipeline</p>
         <div className="grid grid-cols-2 gap-3 text-sm md:grid-cols-5">
           <Pill label="New" value={stats?.placed ?? 0} color="bg-primary/15 text-primary" />
@@ -96,6 +128,15 @@ function StatCard({ label, value, icon: Icon, tone, pulse }: { label: string; va
         </span>
       </div>
       <p className="mt-2 text-2xl font-extrabold tracking-tight">{value}</p>
+    </div>
+  );
+}
+
+function Money({ label, value, tone, strong }: { label: string; value: number; tone?: string; strong?: boolean }) {
+  return (
+    <div className="rounded-xl border bg-muted/30 p-3">
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className={`mt-1 ${strong ? "text-2xl" : "text-xl"} font-extrabold tracking-tight ${tone ?? ""}`}>₹{Number(value).toFixed(0)}</p>
     </div>
   );
 }
