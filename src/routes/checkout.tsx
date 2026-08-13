@@ -212,6 +212,16 @@ function CheckoutPage() {
             <input className="ck-input" value={form.phone} maxLength={15} inputMode="tel"
               onChange={(e) => setForm({ ...form, phone: e.target.value })} />
           </Field>
+          {gate?.blocked && (
+            <div className="flex items-start gap-2 rounded-xl border-2 border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>This phone number has been blocked by our team. Please contact support on +91 97117 20846.</span>
+            </div>
+          )}
+          {gate && gate.needs_otp && !gate.blocked && phoneDigits.length === 10 && (
+            <PhoneVerification phone={phoneDigits} verified={gate.phone_verified} onVerified={refreshGate} />
+          )}
+
           <Field label="Address">
             <textarea className="ck-input" rows={3} value={form.address} maxLength={300}
               onChange={(e) => setForm({ ...form, address: e.target.value })} />
