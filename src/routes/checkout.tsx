@@ -139,7 +139,6 @@ function CheckoutPage() {
   const deliveryFee = freeDelivery ? 0 : baseDeliveryFee;
   const outOfRange = distanceKm != null && distanceKm > pricing.max_delivery_radius_km;
   const grand = subtotal + (distanceKm != null && !outOfRange ? deliveryFee : 0) + pricing.platform_fee;
-  const needsVerification = false; // OTP temporarily disabled
   const codBlocked = !!gate && (!gate.cod_allowed || gate.blocked);
 
 
@@ -162,7 +161,6 @@ function CheckoutPage() {
     if (restaurantClosed) return toast.error("This restaurant is closed right now. Please order when it reopens.");
     if (gate?.blocked) return toast.error("This phone number is blocked. Please contact support.");
     if (gate && !gate.cod_allowed) return toast.error("Cash on Delivery is temporarily disabled for your account.");
-    if (needsVerification) return toast.error("Please verify your mobile number with the OTP first");
     if (!coords) return toast.error("Please share your current location");
     if (outOfRange) return toast.error("Sorry, this restaurant does not deliver to your selected location.");
     if (!user) return;
@@ -308,18 +306,16 @@ function CheckoutPage() {
       </div>
 
       <div className="fixed bottom-0 left-1/2 z-30 w-full max-w-[480px] -translate-x-1/2 border-t bg-background p-4">
-        <button onClick={placeOrder} disabled={placing || !coords || outOfRange || restaurantClosed || needsVerification || codBlocked}
+        <button onClick={placeOrder} disabled={placing || !coords || outOfRange || restaurantClosed || codBlocked}
           className="flex h-12 w-full items-center justify-center rounded-2xl bg-primary text-sm font-bold text-primary-foreground shadow-[var(--shadow-soft)] disabled:opacity-60">
           {placing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           {codBlocked
             ? "Cash on Delivery unavailable"
-            : needsVerification
-              ? "Verify your mobile number"
-              : !coords
-                ? "Share location to continue"
-                : outOfRange
-                  ? "Outside delivery area"
-                  : `Place Order · ₹${grand.toFixed(0)}`}
+            : !coords
+              ? "Share location to continue"
+              : outOfRange
+                ? "Outside delivery area"
+                : `Place Order · ₹${grand.toFixed(0)}`}
         </button>
       </div>
 
