@@ -237,9 +237,11 @@ export function PhoneVerification({ phone, onVerified }: Props) {
       }
       try {
         localStorage.removeItem(storeKey);
+        localStorage.removeItem(reqKey);
       } catch {
         /* ignore */
       }
+
       toast.success("Number verified");
       onVerified();
     } catch (err) {
