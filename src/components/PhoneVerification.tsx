@@ -19,6 +19,19 @@ export function PhoneVerification({ phone, onVerified }: Props) {
 
   const digits = phone.replace(/[^0-9]/g, "").slice(-10);
   const valid = digits.length === 10;
+  const storeKey = `kgt_otp_sent_${digits}`;
+
+  // Keep the "enter code" step open when the user switches to WhatsApp to read
+  // the code and comes back (the page may remount and lose state).
+  useEffect(() => {
+    if (!valid) return;
+    try {
+      const raw = localStorage.getItem(storeKey);
+      if (raw && Date.now() - Number(raw) < 10 * 60 * 1000) setSent(true);
+    } catch {
+      /* ignore */
+    }
+  }, [storeKey, valid]);
 
   const send = async () => {
     if (!valid) return toast.error("Enter a valid 10-digit mobile number");
@@ -27,6 +40,11 @@ export function PhoneVerification({ phone, onVerified }: Props) {
       const res = await sendOtp({ data: { phone: digits } });
       if (res.ok) {
         setSent(true);
+        try {
+          localStorage.setItem(storeKey, String(Date.now()));
+        } catch {
+          /* ignore */
+        }
         toast.success("Verification code sent on WhatsApp");
       } else {
         toast.error(res.error ?? "Could not send the code");
