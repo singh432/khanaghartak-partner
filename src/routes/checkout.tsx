@@ -12,6 +12,8 @@ import { distanceKm as haversineKm } from "@/lib/geo";
 import { BrandHeader } from "@/components/BrandHeader";
 
 import { PageSpinner } from "@/components/PageState";
+import { PhoneVerification } from "@/components/PhoneVerification";
+
 import { withTimeout } from "@/lib/supabase-query";
 import { MapPin, Navigation, Loader2, Wallet, AlertTriangle } from "lucide-react";
 
