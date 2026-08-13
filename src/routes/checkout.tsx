@@ -260,7 +260,7 @@ function CheckoutPage() {
       </div>
 
       <div className="fixed bottom-0 left-1/2 z-30 w-full max-w-[480px] -translate-x-1/2 border-t bg-background p-4">
-        <button onClick={placeOrder} disabled={placing || !coords || outOfRange}
+        <button onClick={placeOrder} disabled={placing || !coords || outOfRange || restaurantClosed}
           className="flex h-12 w-full items-center justify-center rounded-2xl bg-primary text-sm font-bold text-primary-foreground shadow-[var(--shadow-soft)] disabled:opacity-60">
           {placing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           {!coords ? "Share location to continue" : outOfRange ? "Outside delivery area" : `Place Order · ₹${grand.toFixed(0)}`}
