@@ -80,6 +80,23 @@ function payloadMessage(data: unknown): string {
   return "";
 }
 
+/**
+ * MSG91 returns the request id under different keys depending on SDK version
+ * (`message`, `reqId`, `requestId`, `req_id`, or a nested `data`).
+ */
+function payloadReqId(data: unknown): string {
+  if (typeof data === "string") return data;
+  if (!data || typeof data !== "object") return "";
+  const obj = data as Record<string, unknown>;
+  for (const key of ["reqId", "requestId", "req_id", "message"]) {
+    const v = obj[key];
+    if (typeof v === "string" && v.trim()) return v.trim();
+  }
+  const nested = obj["data"];
+  if (nested && nested !== data) return payloadReqId(nested);
+  return "";
+}
+
 export function PhoneVerification({ phone, onVerified }: Props) {
   const confirm = useServerFn(confirmPhoneVerification);
   const [sending, setSending] = useState(false);
@@ -87,10 +104,12 @@ export function PhoneVerification({ phone, onVerified }: Props) {
   const [cooldown, setCooldown] = useState(0);
   const [code, setCode] = useState("");
   const reqIdRef = useRef<string>("");
+  const [reqId, setReqId] = useState("");
 
   const digits = phone.replace(/[^0-9]/g, "").slice(-10);
   const valid = /^[6-9]\d{9}$/.test(digits);
   const storeKey = `kgt_otp_sent_${digits}`;
+  const reqKey = `kgt_otp_req_${digits}`;
 
   const [sent, setSent] = useState(() => {
     if (typeof window === "undefined") return false;
@@ -99,9 +118,22 @@ export function PhoneVerification({ phone, onVerified }: Props) {
     return Boolean(raw && Date.now() - Number(raw) < 15 * 60 * 1000);
   });
 
+  /** Persists the latest reqId so it survives re-renders and remounts. */
+  const rememberReqId = (id: string) => {
+    if (!id) return;
+    reqIdRef.current = id;
+    setReqId(id);
+    try {
+      localStorage.setItem(reqKey, id);
+    } catch {
+      /* ignore */
+    }
+  };
+
   useEffect(() => {
     void loadMsg91().catch(() => {});
   }, []);
+
 
   useEffect(() => {
     if (cooldown <= 0) return;
