@@ -136,6 +136,7 @@ function CheckoutPage() {
   const placeOrder = async () => {
     const parsed = schema.safeParse(form);
     if (!parsed.success) return toast.error(parsed.error.issues[0].message);
+    if (restaurantClosed) return toast.error("This restaurant is closed right now. Please order when it reopens.");
     if (!coords) return toast.error("Please share your current location");
     if (outOfRange) return toast.error("Sorry, this restaurant does not deliver to your selected location.");
     if (!user) return;
@@ -201,6 +202,13 @@ function CheckoutPage() {
             </div>
           )}
 
+          {restaurantClosed && (
+            <div className="flex items-start gap-2 rounded-xl border-2 border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>This kitchen is closed right now, so orders can’t be placed. Please try again when it reopens.</span>
+            </div>
+          )}
+
           {outOfRange && (
             <div className="flex items-start gap-2 rounded-xl border-2 border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -208,6 +216,7 @@ function CheckoutPage() {
             </div>
           )}
         </Section>
+
 
         <Section title="Order summary">
           {items.map((it) => (
