@@ -4,6 +4,7 @@ import { ShieldCheck, Loader2 } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { requestPhoneOtp } from "@/lib/otp.functions";
+import { Button } from "@/components/ui/button";
 
 type Props = {
   phone: string;
@@ -14,7 +15,12 @@ export function PhoneVerification({ phone, onVerified }: Props) {
   const sendOtp = useServerFn(requestPhoneOtp);
   const [sending, setSending] = useState(false);
   const [verifying, setVerifying] = useState(false);
-  const [sent, setSent] = useState(false);
+  const [sent, setSent] = useState(() => {
+    if (typeof window === "undefined") return false;
+    const initialDigits = phone.replace(/[^0-9]/g, "").slice(-10);
+    const raw = localStorage.getItem(`kgt_otp_sent_${initialDigits}`);
+    return Boolean(raw && Date.now() - Number(raw) < 10 * 60 * 1000);
+  });
   const [code, setCode] = useState("");
 
   const digits = phone.replace(/[^0-9]/g, "").slice(-10);
@@ -25,12 +31,17 @@ export function PhoneVerification({ phone, onVerified }: Props) {
   // the code and comes back (the page may remount and lose state).
   useEffect(() => {
     if (!valid) return;
-    try {
+    const restorePendingStep = () => {
       const raw = localStorage.getItem(storeKey);
-      if (raw && Date.now() - Number(raw) < 10 * 60 * 1000) setSent(true);
-    } catch {
-      /* ignore */
-    }
+      setSent(Boolean(raw && Date.now() - Number(raw) < 10 * 60 * 1000));
+    };
+    try { restorePendingStep(); } catch { /* ignore */ }
+    window.addEventListener("pageshow", restorePendingStep);
+    document.addEventListener("visibilitychange", restorePendingStep);
+    return () => {
+      window.removeEventListener("pageshow", restorePendingStep);
+      document.removeEventListener("visibilitychange", restorePendingStep);
+    };
   }, [storeKey, valid]);
 
   const send = async () => {
@@ -85,14 +96,14 @@ export function PhoneVerification({ phone, onVerified }: Props) {
       </div>
 
       {!sent ? (
-        <button
+        <Button
           onClick={send}
           disabled={sending || !valid}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-bold text-primary-foreground disabled:opacity-60"
+          className="h-12 w-full font-bold"
         >
           {sending && <Loader2 className="h-4 w-4 animate-spin" />}
           Send code on WhatsApp
-        </button>
+        </Button>
       ) : (
         <div className="space-y-2">
           <input
@@ -103,17 +114,17 @@ export function PhoneVerification({ phone, onVerified }: Props) {
             value={code}
             onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
           />
-          <button
+          <Button
             onClick={verify}
             disabled={verifying}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-bold text-primary-foreground disabled:opacity-60"
+            className="h-12 w-full font-bold"
           >
             {verifying && <Loader2 className="h-4 w-4 animate-spin" />}
             Verify number
-          </button>
-          <button onClick={send} disabled={sending} className="w-full text-xs font-semibold text-primary underline">
+          </Button>
+          <Button variant="link" onClick={send} disabled={sending} className="h-auto w-full text-xs font-semibold">
             Resend code
-          </button>
+          </Button>
         </div>
       )}
     </div>

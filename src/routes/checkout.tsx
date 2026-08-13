@@ -52,7 +52,7 @@ function CheckoutPage() {
   const [placing, setPlacing] = useState(false);
   const [placed, setPlaced] = useState(false);
   const [promo, setPromo] = useState<{ active: boolean; remaining: number } | null>(null);
-  const [gate, setGate] = useState<{ needs_otp: boolean; phone_verified: boolean; cod_allowed: boolean; disabled_until: string | null; blocked: boolean } | null>(null);
+  const [gate, setGate] = useState<({ needs_otp: boolean; phone_verified: boolean; cod_allowed: boolean; disabled_until: string | null; blocked: boolean } & { phone: string }) | null>(null);
 
 
   useEffect(() => {
@@ -66,10 +66,14 @@ function CheckoutPage() {
 
   const phoneDigits = form.phone.replace(/[^0-9]/g, "").slice(-10);
   const refreshGate = () => {
-    if (!user) return;
-    supabase.rpc("cod_status", { _phone: phoneDigits }).then(({ data }) => {
+    if (!user || phoneDigits.length !== 10) {
+      setGate(null);
+      return;
+    }
+    const requestedPhone = phoneDigits;
+    supabase.rpc("cod_status", { _phone: requestedPhone }).then(({ data }) => {
       const row = Array.isArray(data) ? data[0] : data;
-      if (row) setGate(row as typeof gate);
+      if (row) setGate({ ...row, phone: requestedPhone });
     }, () => {});
   };
   useEffect(() => {
@@ -141,7 +145,8 @@ function CheckoutPage() {
   const deliveryFee = freeDelivery ? 0 : baseDeliveryFee;
   const outOfRange = distanceKm != null && distanceKm > pricing.max_delivery_radius_km;
   const grand = subtotal + (distanceKm != null && !outOfRange ? deliveryFee : 0) + pricing.platform_fee;
-  const codBlocked = !!gate && (!gate.cod_allowed || gate.blocked);
+  const currentGate = gate?.phone === phoneDigits ? gate : null;
+  const codBlocked = !!currentGate && (!currentGate.cod_allowed || currentGate.blocked);
 
 
 
@@ -161,9 +166,9 @@ function CheckoutPage() {
     const parsed = schema.safeParse(form);
     if (!parsed.success) return toast.error(parsed.error.issues[0].message);
     if (restaurantClosed) return toast.error("This restaurant is closed right now. Please order when it reopens.");
-    if (gate?.blocked) return toast.error("This phone number is blocked. Please contact support.");
-    if (gate?.needs_otp) return toast.error("Please verify your phone number to place the order.");
-    if (gate && !gate.cod_allowed) return toast.error("Cash on Delivery is temporarily disabled for your account.");
+    if (currentGate?.blocked) return toast.error("This phone number is blocked. Please contact support.");
+    if (currentGate?.needs_otp) return toast.error("Please verify your phone number to place the order.");
+    if (currentGate && !currentGate.cod_allowed) return toast.error("Cash on Delivery is temporarily disabled for your account.");
 
     if (!coords) return toast.error("Please share your current location");
     if (outOfRange) return toast.error("Sorry, this restaurant does not deliver to your selected location.");
@@ -215,13 +220,13 @@ function CheckoutPage() {
             <input className="ck-input" value={form.phone} maxLength={15} inputMode="tel"
               onChange={(e) => setForm({ ...form, phone: e.target.value })} />
           </Field>
-          {gate?.blocked && (
+          {currentGate?.blocked && (
             <div className="flex items-start gap-2 rounded-xl border-2 border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
               <span>This phone number has been blocked by our team. Please contact support on +91 97117 20846.</span>
             </div>
           )}
-          {!gate?.blocked && gate?.needs_otp && (
+          {!currentGate?.blocked && currentGate?.needs_otp && (
             <PhoneVerification phone={form.phone} onVerified={refreshGate} />
           )}
 
@@ -300,12 +305,12 @@ function CheckoutPage() {
             </div>
             {!codBlocked && <span className="h-4 w-4 rounded-full border-4 border-primary" />}
           </div>
-          {gate && !gate.cod_allowed && (
+          {currentGate && !currentGate.cod_allowed && (
             <div className="flex items-start gap-2 rounded-xl border-2 border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
               <span>
                 Cash on Delivery is paused for your account after repeated undelivered orders
-                {gate.disabled_until ? ` until ${new Date(gate.disabled_until).toLocaleDateString("en-IN")}` : ""}.
+                {currentGate.disabled_until ? ` until ${new Date(currentGate.disabled_until).toLocaleDateString("en-IN")}` : ""}.
                 Prepaid orders only — please contact support on +91 97117 20846.
               </span>
             </div>
