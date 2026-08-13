@@ -74,7 +74,7 @@ export function PhoneVerification({
     <div className="space-y-3 rounded-xl border-2 border-primary/40 bg-accent/40 p-3">
       <div className="flex items-start gap-2 text-xs text-foreground/80">
         <MessageCircle className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-        <span>First order — verify your mobile number with a one-time code on WhatsApp before we confirm Cash on Delivery.</span>
+        <span>First order — verify your mobile number with a one-time code sent by SMS before we confirm Cash on Delivery.</span>
       </div>
 
       {sent && (
