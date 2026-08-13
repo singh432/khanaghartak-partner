@@ -110,14 +110,21 @@ async function trySend(
   phoneNumberId: string,
   to: string,
   code: string,
-  tpl: { name: string; language: string },
+  tpl: Tpl,
 ): Promise<{ delivered: boolean; error: string }> {
+  // An authentication template takes the bare code; any other approved template
+  // carries a readable sentence in its first variable and filler in the rest.
+  const first = tpl.auth ? code : `verification code ${code} (valid 10 minutes)`;
+  const params = [first, "KhanaGharTak.in", "KhanaGharTak.in"]
+    .slice(0, Math.max(tpl.bodyVars, 1))
+    .map((text) => ({ type: "text", text }));
+
   const variants = [
     [
-      { type: "body", parameters: [{ type: "text", text: code }] },
+      { type: "body", parameters: params },
       { type: "button", sub_type: "url", index: "0", parameters: [{ type: "text", text: code }] },
     ],
-    [{ type: "body", parameters: [{ type: "text", text: code }] }],
+    [{ type: "body", parameters: params }],
   ];
   let lastError = "Could not send the code";
   for (const components of variants) {
@@ -140,28 +147,20 @@ async function sendCode(to: string, code: string): Promise<{ delivered: boolean;
   if (!token || !phoneNumberId) return { delivered: false, error: "WhatsApp messaging is not configured" };
 
   const waba = await getWabaId(token, phoneNumberId);
-  if (!waba) {
-    console.error("Could not resolve WhatsApp Business Account id for the configured phone number");
-    return { delivered: false, error: "WhatsApp account is not reachable right now" };
-  }
-
-  const tpls = await listTemplates(token, waba);
-  let tpl = pickTemplate(tpls);
+  const tpls = waba ? await listTemplates(token, waba) : [];
+  const tpl = pickTemplate(tpls);
 
   if (!tpl) {
     console.error(
-      `No OTP template approved. Approved templates: ${
+      `No usable WhatsApp template. Approved: ${
         tpls.map((t) => `${t.name}(${t.bodyVars})`).join(", ") || "none"
-      } — creating "${OTP_TEMPLATE}".`,
+      }`,
     );
-    const language = await createAuthTemplate(token, waba);
-    if (language) tpl = { name: OTP_TEMPLATE, language, bodyVars: 1, auth: true, hasButton: true };
-  }
-
-  if (tpl) {
+  } else {
     const sent = await trySend(token, phoneNumberId, to, code, tpl);
     if (sent.delivered) return { delivered: true, error: null };
   }
+
 
   // Plain text only reaches a customer who messaged the business in the last 24h,
   // so it is the last resort, never the primary path.
