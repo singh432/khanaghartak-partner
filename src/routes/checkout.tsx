@@ -305,12 +305,12 @@ function CheckoutPage() {
             </div>
             {!codBlocked && <span className="h-4 w-4 rounded-full border-4 border-primary" />}
           </div>
-          {gate && !gate.cod_allowed && (
+          {currentGate && !currentGate.cod_allowed && (
             <div className="flex items-start gap-2 rounded-xl border-2 border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
               <span>
                 Cash on Delivery is paused for your account after repeated undelivered orders
-                {gate.disabled_until ? ` until ${new Date(gate.disabled_until).toLocaleDateString("en-IN")}` : ""}.
+                {currentGate.disabled_until ? ` until ${new Date(currentGate.disabled_until).toLocaleDateString("en-IN")}` : ""}.
                 Prepaid orders only — please contact support on +91 97117 20846.
               </span>
             </div>
