@@ -61,6 +61,22 @@ function CheckoutPage() {
     return () => { active = false; };
   }, []);
 
+  const phoneDigits = form.phone.replace(/[^0-9]/g, "").slice(-10);
+  const refreshGate = () => {
+    if (!user) return;
+    supabase.rpc("cod_status", { _phone: phoneDigits }).then(({ data }) => {
+      const row = Array.isArray(data) ? data[0] : data;
+      if (row) setGate(row as typeof gate);
+    }, () => {});
+  };
+  useEffect(() => {
+    if (!user) return;
+    const t = setTimeout(refreshGate, 350);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, phoneDigits]);
+
+
   const draftKey = user ? `kgt-draft-checkout-${user.id}` : null;
   const clearDraft = useFormDraft(draftKey, { form, coords }, (d) => {
     if (d.form) setForm((cur) => ({ ...cur, ...d.form }));
