@@ -65,6 +65,11 @@ export function PhoneVerification({ phone, onVerified }: Props) {
     setVerifying(false);
     if (error) return toast.error(error.message);
     if (data === true) {
+      try {
+        localStorage.removeItem(storeKey);
+      } catch {
+        /* ignore */
+      }
       toast.success("Number verified");
       onVerified();
     } else {
