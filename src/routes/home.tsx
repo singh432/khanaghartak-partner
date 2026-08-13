@@ -39,9 +39,12 @@ function HomePage() {
   const { user, loading, signOut } = useAuth();
   const { coords } = useLocationGate();
   const [restaurants, setRestaurants] = useState<Array<Restaurant & { distance: number | null }>>([]);
+  const [categoryMap, setCategoryMap] = useState<Record<string, string[]>>({});
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [profileAddress, setProfileAddress] = useState<string>("");
   const [restaurantLoading, setRestaurantLoading] = useState(true);
   const [restaurantError, setRestaurantError] = useState<string | null>(null);
+
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/login" });
