@@ -6,6 +6,7 @@ const schema = z.object({ phone: z.string().trim().min(7).max(15) });
 
 const GRAPH = "https://graph.facebook.com/v21.0";
 /** Approved template used to carry the code while the account cannot create an auth template. */
+const OTP_TEMPLATE = "kgt_otp";
 const CARRIER_TEMPLATE = "kgt_order_delivered";
 
 function normPhone(raw: string): string {
@@ -88,6 +89,7 @@ async function listTemplates(token: string, waba: string): Promise<Tpl[]> {
  */
 function pickTemplate(tpls: Tpl[]): Tpl | null {
   return (
+    tpls.find((t) => t.name === OTP_TEMPLATE) ??
     tpls.find((t) => t.auth) ??
     tpls.find((t) => /otp|verif|code/i.test(t.name) && t.bodyVars === 1) ??
     tpls.find((t) => t.name === CARRIER_TEMPLATE) ??
@@ -151,14 +153,25 @@ async function sendCode(to: string, code: string): Promise<{ delivered: boolean;
   const tpls = waba ? await listTemplates(token, waba) : [];
   const tpl = pickTemplate(tpls);
 
+  // Always attempt the dedicated OTP template first, even when the template
+  // list could not be read (token scope) — it is an authentication template.
+  const candidates: Tpl[] = [];
+  if (tpl) candidates.push(tpl);
+  if (!candidates.some((t) => t.name === OTP_TEMPLATE)) {
+    candidates.unshift(
+      { name: OTP_TEMPLATE, language: "en", bodyVars: 1, auth: true, hasButton: true },
+      { name: OTP_TEMPLATE, language: "en_US", bodyVars: 1, auth: true, hasButton: true },
+    );
+  }
   if (!tpl) {
     console.error(
-      `No usable WhatsApp template. Approved: ${
+      `No usable WhatsApp template from list. Approved: ${
         tpls.map((t) => `${t.name}(${t.bodyVars})`).join(", ") || "none"
       }`,
     );
-  } else {
-    const sent = await trySend(token, phoneNumberId, to, code, tpl);
+  }
+  for (const c of candidates) {
+    const sent = await trySend(token, phoneNumberId, to, code, c);
     if (sent.delivered) return { delivered: true, error: null };
   }
 
