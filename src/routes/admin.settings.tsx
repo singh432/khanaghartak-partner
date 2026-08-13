@@ -79,14 +79,15 @@ function AdminSettings() {
     setUploading(kind);
     const toastId = toast.loading(kind === "logo" ? "Uploading logo…" : "Uploading cover photo…");
     try {
-      const extFromName = file.name.includes(".") ? file.name.split(".").pop()!.toLowerCase().replace(/[^a-z0-9]/g, "") : "";
+      const fileExtension = file.name.includes(".") ? file.name.split(".").pop() : undefined;
+      const extFromName = fileExtension?.toLowerCase().replace(/[^a-z0-9]/g, "") ?? "";
       const extFromType = (file.type.split("/")[1] || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "");
       const ext = extFromName || extFromType || "jpg";
       const path = `${r.id}/${kind}-${Date.now()}.${ext}`;
 
       const { error } = await supabase.storage
         .from("menu-images")
-        .upload(path, file, { upsert: true, contentType: file.type || "image/jpeg", cacheControl: "3600" });
+        .upload(path, file, { upsert: false, contentType: file.type || "image/jpeg", cacheControl: "3600" });
       if (error) {
         toast.error(`Upload failed: ${error.message}`, { id: toastId });
         return;
