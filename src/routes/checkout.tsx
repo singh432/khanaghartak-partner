@@ -45,6 +45,7 @@ function CheckoutPage() {
   const [form, setForm] = useState({ name: "", phone: "", address: "", landmark: "", notes: "" });
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [restaurantCoords, setRestaurantCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [restaurantClosed, setRestaurantClosed] = useState(false);
   const [placing, setPlacing] = useState(false);
   const [placed, setPlaced] = useState(false);
   const [promo, setPromo] = useState<{ active: boolean; remaining: number } | null>(null);
@@ -89,18 +90,19 @@ function CheckoutPage() {
   }, [user]);
 
 
-  // Fetch restaurant coords from first cart item
+  // Fetch restaurant coords + open state from first cart item
   useEffect(() => {
     if (!ready || items.length === 0) return;
     let active = true;
     (async () => {
       const { data } = await supabase
         .from("menu_items")
-        .select("restaurants:restaurant_id(latitude, longitude)")
+        .select("restaurants:restaurant_id(latitude, longitude, is_open)")
         .eq("id", items[0].menu_item_id)
         .maybeSingle();
       if (!active) return;
-      const r = (data as { restaurants: { latitude: number | null; longitude: number | null } | null } | null)?.restaurants;
+      const r = (data as { restaurants: { latitude: number | null; longitude: number | null; is_open: boolean | null } | null } | null)?.restaurants;
+      setRestaurantClosed(!!r && r.is_open !== true);
       if (r?.latitude != null && r?.longitude != null) {
         setRestaurantCoords({ lat: r.latitude, lng: r.longitude });
       }
