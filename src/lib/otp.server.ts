@@ -19,34 +19,28 @@ export function generateOtp(): string {
   return n.toString().padStart(6, "0");
 }
 
-type Attempt = { template: string; language: string; params: string[]; withUrlButton?: boolean };
+type Attempt = { language: string; withCopyCodeButton: boolean };
 
-/**
- * Delivery attempts in priority order. `kgt_otp` is the dedicated
- * AUTHENTICATION template; when it is not approved yet we fall back to an
- * approved utility template that can carry the code in its single variable.
- */
-function attempts(code: string): Attempt[] {
-  const carrier = `KhanaGharTak.in verification code ${code} (valid 10 minutes)`;
+/** Only the approved AUTHENTICATION template is valid for OTP delivery. */
+function attempts(): Attempt[] {
   return [
-    { template: "kgt_otp", language: "en", params: [code], withUrlButton: true },
-    { template: "kgt_otp", language: "en_US", params: [code], withUrlButton: true },
-    { template: "kgt_otp", language: "en", params: [code] },
-    { template: "kgt_otp", language: "en_US", params: [code] },
-    { template: "kgt_order_delivered", language: "en", params: [carrier] },
+    { language: "en", withCopyCodeButton: true },
+    { language: "en_US", withCopyCodeButton: true },
+    { language: "en", withCopyCodeButton: false },
+    { language: "en_US", withCopyCodeButton: false },
   ];
 }
 
-async function post(phoneNumberId: string, token: string, to: string, a: Attempt) {
+async function post(phoneNumberId: string, token: string, to: string, code: string, a: Attempt) {
   const components: Record<string, unknown>[] = [
-    { type: "body", parameters: a.params.map((p) => ({ type: "text", text: p })) },
+    { type: "body", parameters: [{ type: "text", text: code }] },
   ];
-  if (a.withUrlButton) {
+  if (a.withCopyCodeButton) {
     components.push({
       type: "button",
       sub_type: "url",
       index: "0",
-      parameters: [{ type: "text", text: a.params[0] }],
+      parameters: [{ type: "text", text: code }],
     });
   }
   const res = await fetch(`https://graph.facebook.com/v21.0/${phoneNumberId}/messages`, {
@@ -56,7 +50,7 @@ async function post(phoneNumberId: string, token: string, to: string, a: Attempt
       messaging_product: "whatsapp",
       to: to.replace(/^\+/, ""),
       type: "template",
-      template: { name: a.template, language: { code: a.language }, components },
+      template: { name: "kgt_otp", language: { code: a.language }, components },
     }),
   });
   return { ok: res.ok, text: await res.text() };
@@ -73,9 +67,9 @@ export async function sendOtpWhatsApp(toDigits: string, code: string): Promise<O
   }
 
   let lastError = "Unknown error";
-  for (const a of attempts(code)) {
+  for (const a of attempts()) {
     try {
-      const { ok, text } = await post(phoneNumberId, token, toDigits, a);
+      const { ok, text } = await post(phoneNumberId, token, toDigits, code, a);
       if (ok) {
         let sid: string | null = null;
         try {
@@ -83,7 +77,7 @@ export async function sendOtpWhatsApp(toDigits: string, code: string): Promise<O
         } catch {
           /* ignore */
         }
-        return { ok: true, sid, error: null, template: a.template };
+        return { ok: true, sid, error: null, template: "kgt_otp" };
       }
       try {
         const e = (JSON.parse(text) as { error?: { message?: string; code?: number } }).error;

@@ -2,11 +2,9 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 
-const input = z.object({ phone: z.string().min(7).max(20) });
-
 export const requestPhoneOtp = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: unknown) => input.parse(data))
+  .inputValidator((data: unknown) => z.object({ phone: z.string().min(7).max(20) }).parse(data))
   .handler(async ({ data, context }) => {
     const { normPhone, hashOtp, generateOtp, sendOtpWhatsApp } = await import("./otp.server");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -39,23 +37,25 @@ export const requestPhoneOtp = createServerFn({ method: "POST" })
     } as never);
     if (insertError) return { ok: false, error: "Could not create a verification code" };
 
-    const sent = await sendOtpWhatsApp(`91${phone10}`, code);
+    const recipient = `91${phone10}`;
+    const sent = await sendOtpWhatsApp(recipient, code);
 
     // Log every OTP send against the exact recipient number so delivery
     // problems on specific numbers are visible instead of silent.
-    await supabaseAdmin.from("notification_log").insert({
+    const { error: logError } = await supabaseAdmin.from("notification_log").insert({
       event: "otp",
       recipient_type: "customer",
-      phone: phone10,
+      phone: recipient,
       status: sent.ok ? "sent" : "failed",
       provider_sid: sent.sid,
       error: sent.ok ? null : sent.error,
     } as never);
+    if (logError) console.error(`Could not record OTP delivery: ${logError.message}`);
 
     if (!sent.ok) {
       return {
         ok: false,
-        error: "WhatsApp verification is temporarily unavailable. Please try again shortly.",
+        error: "WhatsApp OTP is temporarily unavailable. Please try again shortly.",
       };
     }
     return { ok: true, error: null };
