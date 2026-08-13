@@ -41,6 +41,7 @@ import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
 import { Route as AdminOrdersRouteImport } from './routes/admin.orders'
 import { Route as AdminMenuRouteImport } from './routes/admin.menu'
 import { Route as AdminAnalyticsRouteImport } from './routes/admin.analytics'
+import { Route as ApiPublicNotifyWhatsappStatusRouteImport } from './routes/api/public/notify/whatsapp-status'
 import { Route as ApiPublicNotifyWhatsappRouteImport } from './routes/api/public/notify/whatsapp'
 
 const TermsAndConditionsRoute = TermsAndConditionsRouteImport.update({
@@ -203,6 +204,12 @@ const AdminAnalyticsRoute = AdminAnalyticsRouteImport.update({
   path: '/analytics',
   getParentRoute: () => AdminRoute,
 } as any)
+const ApiPublicNotifyWhatsappStatusRoute =
+  ApiPublicNotifyWhatsappStatusRouteImport.update({
+    id: '/api/public/notify/whatsapp-status',
+    path: '/api/public/notify/whatsapp-status',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicNotifyWhatsappRoute = ApiPublicNotifyWhatsappRouteImport.update({
   id: '/api/public/notify/whatsapp',
   path: '/api/public/notify/whatsapp',
@@ -243,6 +250,7 @@ export interface FileRoutesByFullPath {
   '/admin/': typeof AdminIndexRoute
   '/super/': typeof SuperIndexRoute
   '/api/public/notify/whatsapp': typeof ApiPublicNotifyWhatsappRoute
+  '/api/public/notify/whatsapp-status': typeof ApiPublicNotifyWhatsappStatusRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -276,6 +284,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminIndexRoute
   '/super': typeof SuperIndexRoute
   '/api/public/notify/whatsapp': typeof ApiPublicNotifyWhatsappRoute
+  '/api/public/notify/whatsapp-status': typeof ApiPublicNotifyWhatsappStatusRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -312,6 +321,7 @@ export interface FileRoutesById {
   '/admin/': typeof AdminIndexRoute
   '/super/': typeof SuperIndexRoute
   '/api/public/notify/whatsapp': typeof ApiPublicNotifyWhatsappRoute
+  '/api/public/notify/whatsapp-status': typeof ApiPublicNotifyWhatsappStatusRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -349,6 +359,7 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/super/'
     | '/api/public/notify/whatsapp'
+    | '/api/public/notify/whatsapp-status'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -382,6 +393,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/super'
     | '/api/public/notify/whatsapp'
+    | '/api/public/notify/whatsapp-status'
   id:
     | '__root__'
     | '/'
@@ -417,6 +429,7 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/super/'
     | '/api/public/notify/whatsapp'
+    | '/api/public/notify/whatsapp-status'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -439,6 +452,7 @@ export interface RootRouteChildren {
   TermsAndConditionsRoute: typeof TermsAndConditionsRoute
   OrderIdRoute: typeof OrderIdRoute
   ApiPublicNotifyWhatsappRoute: typeof ApiPublicNotifyWhatsappRoute
+  ApiPublicNotifyWhatsappStatusRoute: typeof ApiPublicNotifyWhatsappStatusRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -667,6 +681,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAnalyticsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/api/public/notify/whatsapp-status': {
+      id: '/api/public/notify/whatsapp-status'
+      path: '/api/public/notify/whatsapp-status'
+      fullPath: '/api/public/notify/whatsapp-status'
+      preLoaderRoute: typeof ApiPublicNotifyWhatsappStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/notify/whatsapp': {
       id: '/api/public/notify/whatsapp'
       path: '/api/public/notify/whatsapp'
@@ -741,6 +762,7 @@ const rootRouteChildren: RootRouteChildren = {
   TermsAndConditionsRoute: TermsAndConditionsRoute,
   OrderIdRoute: OrderIdRoute,
   ApiPublicNotifyWhatsappRoute: ApiPublicNotifyWhatsappRoute,
+  ApiPublicNotifyWhatsappStatusRoute: ApiPublicNotifyWhatsappStatusRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

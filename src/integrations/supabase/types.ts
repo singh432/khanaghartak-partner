@@ -232,6 +232,9 @@ export type Database = {
       notification_log: {
         Row: {
           created_at: string
+          delivery_error: string | null
+          delivery_status: string | null
+          delivery_updated_at: string | null
           error: string | null
           event: string
           id: string
@@ -243,6 +246,9 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          delivery_error?: string | null
+          delivery_status?: string | null
+          delivery_updated_at?: string | null
           error?: string | null
           event: string
           id?: string
@@ -254,6 +260,9 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          delivery_error?: string | null
+          delivery_status?: string | null
+          delivery_updated_at?: string | null
           error?: string | null
           event?: string
           id?: string

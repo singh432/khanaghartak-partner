@@ -12,6 +12,8 @@ import { distanceKm as haversineKm } from "@/lib/geo";
 import { BrandHeader } from "@/components/BrandHeader";
 
 import { PageSpinner } from "@/components/PageState";
+import { PhoneVerification } from "@/components/PhoneVerification";
+
 import { withTimeout } from "@/lib/supabase-query";
 import { MapPin, Navigation, Loader2, Wallet, AlertTriangle } from "lucide-react";
 
@@ -160,7 +162,9 @@ function CheckoutPage() {
     if (!parsed.success) return toast.error(parsed.error.issues[0].message);
     if (restaurantClosed) return toast.error("This restaurant is closed right now. Please order when it reopens.");
     if (gate?.blocked) return toast.error("This phone number is blocked. Please contact support.");
+    if (gate?.needs_otp) return toast.error("Please verify your phone number to place the order.");
     if (gate && !gate.cod_allowed) return toast.error("Cash on Delivery is temporarily disabled for your account.");
+
     if (!coords) return toast.error("Please share your current location");
     if (outOfRange) return toast.error("Sorry, this restaurant does not deliver to your selected location.");
     if (!user) return;
@@ -217,6 +221,10 @@ function CheckoutPage() {
               <span>This phone number has been blocked by our team. Please contact support on +91 97117 20846.</span>
             </div>
           )}
+          {!gate?.blocked && gate?.needs_otp && (
+            <PhoneVerification phone={form.phone} onVerified={refreshGate} />
+          )}
+
 
           <Field label="Address">
             <textarea className="ck-input" rows={3} value={form.address} maxLength={300}
