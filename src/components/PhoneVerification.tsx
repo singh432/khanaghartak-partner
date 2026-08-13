@@ -45,22 +45,18 @@ export function PhoneVerification({
     const res = await send({ data: { phone: digits } }).catch((e: unknown) => ({
       ok: false,
       sent: false,
-      error: e instanceof Error ? e.message : "Could not send code",
+      error: e instanceof Error ? e.message : "Unable to send OTP right now. Please try again.",
     }));
     setSending(false);
-    // Only a confirmed authentication-template send counts as success.
+    // Only a confirmed provider-accepted send counts as success.
     if (!res.ok || !res.sent) {
-      const reason = res.error ?? "";
-      return toast.error(
-        reason.includes("authentication template")
-          ? "WhatsApp OTP is temporarily unavailable. Please try again later."
-          : reason || "Could not send code",
-      );
+      return toast.error(res.error || "Unable to send OTP right now. Please try again.");
     }
     setSent(true);
     setSeconds(45);
-    toast.success("Verification code sent on WhatsApp");
+    toast.success("Verification code sent via SMS");
   };
+
 
 
   const verify = async () => {
@@ -78,7 +74,7 @@ export function PhoneVerification({
     <div className="space-y-3 rounded-xl border-2 border-primary/40 bg-accent/40 p-3">
       <div className="flex items-start gap-2 text-xs text-foreground/80">
         <MessageCircle className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-        <span>First order — verify your mobile number with a one-time code on WhatsApp before we confirm Cash on Delivery.</span>
+        <span>First order — verify your mobile number with a one-time code sent by SMS before we confirm Cash on Delivery.</span>
       </div>
 
       {sent && (
