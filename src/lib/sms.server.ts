@@ -10,6 +10,10 @@ export type SmsResult = { sent: boolean; error: string | null };
 /** Customer-safe message; never contains provider or config details. */
 export const SMS_GENERIC_ERROR = "Unable to send OTP right now. Please try again.";
 
+/** Shown when the SMS provider credentials have not been set up yet. */
+export const SMS_NOT_CONFIGURED =
+  "SMS verification is not set up yet. Please contact support on 97117 20846.";
+
 /** 10-digit Indian mobile → E.164 (+91XXXXXXXXXX). Returns null when invalid. */
 export function normalizeIndianPhone(phone: string): string | null {
   const digits = phone.replace(/[^0-9]/g, "").slice(-10);
@@ -39,13 +43,9 @@ export async function sendSms(
   variables: Record<string, string>,
 ): Promise<SmsResult> {
   const { authKey, templateId, senderId } = config();
-  if (!authKey) {
-    console.error("SMS: MSG91_AUTH_KEY is not configured");
-    return { sent: false, error: SMS_GENERIC_ERROR };
-  }
-  if (!templateId) {
-    console.error("SMS: MSG91_TEMPLATE_ID is not configured");
-    return { sent: false, error: SMS_GENERIC_ERROR };
+  if (!authKey || !templateId) {
+    console.error("SMS: MSG91 credentials are not configured");
+    return { sent: false, error: SMS_NOT_CONFIGURED };
   }
 
   const payload: Record<string, unknown> = {
