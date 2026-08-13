@@ -2,61 +2,46 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 
-export const requestPhoneOtp = createServerFn({ method: "POST" })
+/**
+ * Confirms an MSG91 widget verification server-side and records the phone
+ * number as verified for the signed-in user.
+ */
+export const confirmPhoneVerification = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: unknown) => z.object({ phone: z.string().min(7).max(20) }).parse(data))
+  .inputValidator((data: unknown) =>
+    z
+      .object({
+        phone: z.string().min(7).max(20),
+        accessToken: z.string().min(10).max(2000),
+      })
+      .parse(data),
+  )
   .handler(async ({ data, context }) => {
-    const { normPhone, hashOtp, generateOtp, sendOtpWhatsApp } = await import("./otp.server");
+    const { verifyMsg91AccessToken } = await import("./msg91.server");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const phone10 = normPhone(data.phone);
+    const phone10 = (data.phone ?? "").replace(/[^0-9]/g, "").slice(-10);
     if (phone10.length !== 10) return { ok: false, error: "Enter a valid 10-digit mobile number" };
 
-    // Simple throttle: one code per 45 seconds per user+phone.
-    const { data: recent } = await supabaseAdmin
-      .from("phone_otps")
-      .select("created_at")
-      .eq("user_id", context.userId)
-      .eq("phone", phone10)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (recent?.created_at && Date.now() - new Date(recent.created_at as string).getTime() < 45_000) {
-      return { ok: false, error: "Please wait a few seconds before requesting a new code" };
+    const verified = await verifyMsg91AccessToken(data.accessToken);
+    if (!verified.ok) return { ok: false, error: verified.error ?? "Verification failed" };
+
+    const { error } = await supabaseAdmin
+      .from("verified_phones")
+      .upsert({ user_id: context.userId, phone: phone10 } as never, { onConflict: "user_id,phone" });
+    if (error) {
+      console.error(`Could not store verified phone: ${error.message}`);
+      return { ok: false, error: "Could not save your verification, please try again" };
     }
 
-    const code = generateOtp();
-    const code_hash = await hashOtp(code, phone10);
-    const expires_at = new Date(Date.now() + 10 * 60 * 1000).toISOString();
-
-    const { error: insertError } = await supabaseAdmin.from("phone_otps").insert({
-      user_id: context.userId,
-      phone: phone10,
-      code_hash,
-      expires_at,
-    } as never);
-    if (insertError) return { ok: false, error: "Could not create a verification code" };
-
-    const recipient = `91${phone10}`;
-    const sent = await sendOtpWhatsApp(recipient, code);
-
-    // Log every OTP send against the exact recipient number so delivery
-    // problems on specific numbers are visible instead of silent.
-    const { error: logError } = await supabaseAdmin.from("notification_log").insert({
+    await supabaseAdmin.from("notification_log").insert({
       event: "otp",
       recipient_type: "customer",
-      phone: recipient,
-      status: sent.ok ? "sent" : "failed",
-      provider_sid: sent.sid,
-      error: sent.ok ? null : sent.error,
+      phone: `91${phone10}`,
+      status: "sent",
+      provider_sid: null,
+      error: null,
     } as never);
-    if (logError) console.error(`Could not record OTP delivery: ${logError.message}`);
 
-    if (!sent.ok) {
-      return {
-        ok: false,
-        error: "WhatsApp OTP is temporarily unavailable. Please try again shortly.",
-      };
-    }
     return { ok: true, error: null };
   });
