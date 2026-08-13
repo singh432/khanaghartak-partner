@@ -11,6 +11,8 @@ type Props = {
 };
 
 const WIDGET_ID = "36686d745256313731393737";
+// Public widget token (safe for client). The MSG91 AuthKey stays server-side.
+const TOKEN_AUTH = "560401T0Fc1eDo6a7e2ec1P1";
 const SDK_SRC = "https://verify.msg91.com/otp-provider.js";
 const RESEND_SECONDS = 10;
 
@@ -42,7 +44,7 @@ function loadMsg91(): Promise<void> {
       try {
         w.initSendOTP?.({
           widgetId: WIDGET_ID,
-          tokenAuth: undefined,
+          tokenAuth: TOKEN_AUTH,
           exposeMethods: true,
           success: () => {},
           failure: () => {},
