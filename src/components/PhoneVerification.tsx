@@ -278,12 +278,18 @@ export function PhoneVerification({ phone, onVerified }: Props) {
           />
           <Button
             onClick={() => void verify()}
-            disabled={verifying}
+            disabled={verifying || !activeReqId}
             className="h-12 w-full font-bold"
           >
             {verifying && <Loader2 className="h-4 w-4 animate-spin" />}
             Verify number
           </Button>
+          {!activeReqId && (
+            <p className="text-center text-xs font-semibold text-destructive">
+              This code has expired. Tap Resend OTP to get a new one.
+            </p>
+          )}
+
           <Button
             variant="link"
             onClick={() => void send(true)}
