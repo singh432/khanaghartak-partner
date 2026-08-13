@@ -153,14 +153,22 @@ async function sendCode(to: string, code: string): Promise<{ delivered: boolean;
   const tpls = waba ? await listTemplates(token, waba) : [];
   const tpl = pickTemplate(tpls);
 
+  // Always attempt the dedicated OTP template first, even when the template
+  // list could not be read (token scope) — it is an authentication template.
+  const candidates: Tpl[] = [];
+  if (tpl) candidates.push(tpl);
+  if (!candidates.some((t) => t.name === OTP_TEMPLATE)) {
+    candidates.unshift({ name: OTP_TEMPLATE, language: "en", bodyVars: 1, auth: true, hasButton: true });
+  }
   if (!tpl) {
     console.error(
-      `No usable WhatsApp template. Approved: ${
+      `No usable WhatsApp template from list. Approved: ${
         tpls.map((t) => `${t.name}(${t.bodyVars})`).join(", ") || "none"
       }`,
     );
-  } else {
-    const sent = await trySend(token, phoneNumberId, to, code, tpl);
+  }
+  for (const c of candidates) {
+    const sent = await trySend(token, phoneNumberId, to, code, c);
     if (sent.delivered) return { delivered: true, error: null };
   }
 
