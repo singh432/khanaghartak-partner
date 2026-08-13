@@ -49,6 +49,8 @@ function CheckoutPage() {
   const [placing, setPlacing] = useState(false);
   const [placed, setPlaced] = useState(false);
   const [promo, setPromo] = useState<{ active: boolean; remaining: number } | null>(null);
+  const [gate, setGate] = useState<{ needs_otp: boolean; phone_verified: boolean; cod_allowed: boolean; disabled_until: string | null; blocked: boolean } | null>(null);
+
 
   useEffect(() => {
     let active = true;
