@@ -19,15 +19,22 @@ export async function verifyMsg91AccessToken(accessToken: string): Promise<Msg91
       body: JSON.stringify({ authkey, "access-token": accessToken }),
     });
     const text = await res.text();
-    let parsed: { type?: string; message?: string } = {};
+    let parsed: { type?: string; message?: string; code?: string } = {};
     try {
       parsed = JSON.parse(text) as typeof parsed;
     } catch {
       /* non-JSON response */
     }
     if (res.ok && parsed.type === "success") return { ok: true, error: null };
+
+    // Never log the key or the token — only MSG91's non-sensitive error code.
+    console.error(`MSG91 verifyAccessToken failed (code ${parsed.code ?? res.status})`);
+    if (parsed.message === "AuthenticationFailure") {
+      return { ok: false, error: "SMS verification is misconfigured. Please contact support." };
+    }
     return { ok: false, error: parsed.message ?? "Could not verify the code" };
   } catch {
     return { ok: false, error: "Verification service is unreachable" };
   }
 }
+
