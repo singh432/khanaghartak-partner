@@ -202,10 +202,15 @@ export function PhoneVerification({ phone, onVerified }: Props) {
     setSending(false);
   };
 
+  const activeReqId = reqId || reqIdRef.current;
+
   const verify = async () => {
     const otp = code.replace(/\D/g, "");
     if (otp.length !== 4) return toast.error("Enter the 4-digit code");
     if (verifying) return;
+    if (!activeReqId) {
+      return toast.error("This code has expired. Tap Resend OTP to get a new one.");
+    }
     setVerifying(true);
     try {
       await loadMsg91();
@@ -219,9 +224,10 @@ export function PhoneVerification({ phone, onVerified }: Props) {
             token ? resolve(token) : reject(new Error("Incorrect code, please try again"));
           },
           (err) => reject(new Error(payloadMessage(err) || "Incorrect code, please try again")),
-          reqIdRef.current || undefined,
+          activeReqId,
         );
       });
+
 
       const res = await confirm({ data: { phone: digits, accessToken } });
       if (!res.ok) {
