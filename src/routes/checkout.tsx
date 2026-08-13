@@ -286,24 +286,47 @@ function CheckoutPage() {
         </Section>
 
         <Section title="Payment">
-          <div className="flex items-center gap-3 rounded-xl border-2 border-primary bg-accent/50 p-3">
-            <Wallet className="h-5 w-5 text-primary" />
+          <div className={`flex items-center gap-3 rounded-xl border-2 p-3 ${codBlocked ? "border-destructive/40 bg-destructive/5" : "border-primary bg-accent/50"}`}>
+            <Wallet className={`h-5 w-5 ${codBlocked ? "text-destructive" : "text-primary"}`} />
             <div className="flex-1">
               <p className="text-sm font-semibold">Cash on Delivery</p>
-              <p className="text-[11px] text-muted-foreground">Pay ₹{outOfRange ? "—" : grand.toFixed(0)} when your order arrives</p>
+              <p className="text-[11px] text-muted-foreground">
+                {codBlocked
+                  ? "Temporarily unavailable for your account"
+                  : `Pay ₹${outOfRange ? "—" : grand.toFixed(0)} when your order arrives`}
+              </p>
             </div>
-            <span className="h-4 w-4 rounded-full border-4 border-primary" />
+            {!codBlocked && <span className="h-4 w-4 rounded-full border-4 border-primary" />}
           </div>
+          {gate && !gate.cod_allowed && (
+            <div className="flex items-start gap-2 rounded-xl border-2 border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>
+                Cash on Delivery is paused for your account after repeated undelivered orders
+                {gate.disabled_until ? ` until ${new Date(gate.disabled_until).toLocaleDateString("en-IN")}` : ""}.
+                Prepaid orders only — please contact support on +91 97117 20846.
+              </span>
+            </div>
+          )}
         </Section>
       </div>
 
       <div className="fixed bottom-0 left-1/2 z-30 w-full max-w-[480px] -translate-x-1/2 border-t bg-background p-4">
-        <button onClick={placeOrder} disabled={placing || !coords || outOfRange || restaurantClosed}
+        <button onClick={placeOrder} disabled={placing || !coords || outOfRange || restaurantClosed || needsVerification || codBlocked}
           className="flex h-12 w-full items-center justify-center rounded-2xl bg-primary text-sm font-bold text-primary-foreground shadow-[var(--shadow-soft)] disabled:opacity-60">
           {placing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          {!coords ? "Share location to continue" : outOfRange ? "Outside delivery area" : `Place Order · ₹${grand.toFixed(0)}`}
+          {codBlocked
+            ? "Cash on Delivery unavailable"
+            : needsVerification
+              ? "Verify your mobile number"
+              : !coords
+                ? "Share location to continue"
+                : outOfRange
+                  ? "Outside delivery area"
+                  : `Place Order · ₹${grand.toFixed(0)}`}
         </button>
       </div>
+
 
       <style>{`.ck-input { width:100%; border-radius: 12px; padding: 12px 14px; background: var(--color-input); border: 1px solid var(--color-border); font-size: 14px; outline: none; } .ck-input:focus { border-color: var(--color-ring);} `}</style>
     </div>
