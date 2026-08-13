@@ -44,14 +44,24 @@ export function PhoneVerification({
     setSending(true);
     const res = await send({ data: { phone: digits } }).catch((e: unknown) => ({
       ok: false,
+      sent: false,
       error: e instanceof Error ? e.message : "Could not send code",
     }));
     setSending(false);
-    if (!res.ok) return toast.error(res.error ?? "Could not send code");
+    // Only a confirmed authentication-template send counts as success.
+    if (!res.ok || !res.sent) {
+      const reason = res.error ?? "";
+      return toast.error(
+        reason.includes("authentication template")
+          ? "WhatsApp OTP is temporarily unavailable. Please try again later."
+          : reason || "Could not send code",
+      );
+    }
     setSent(true);
     setSeconds(45);
     toast.success("Verification code sent on WhatsApp");
   };
+
 
   const verify = async () => {
     if (code.trim().length !== 6) return toast.error("Enter the 6-digit code");
