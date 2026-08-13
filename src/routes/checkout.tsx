@@ -155,9 +155,13 @@ function CheckoutPage() {
     const parsed = schema.safeParse(form);
     if (!parsed.success) return toast.error(parsed.error.issues[0].message);
     if (restaurantClosed) return toast.error("This restaurant is closed right now. Please order when it reopens.");
+    if (gate?.blocked) return toast.error("This phone number is blocked. Please contact support.");
+    if (gate && !gate.cod_allowed) return toast.error("Cash on Delivery is temporarily disabled for your account.");
+    if (needsVerification) return toast.error("Please verify your mobile number with the OTP first");
     if (!coords) return toast.error("Please share your current location");
     if (outOfRange) return toast.error("Sorry, this restaurant does not deliver to your selected location.");
     if (!user) return;
+
     setPlacing(true);
     const { data, error } = await supabase.rpc("place_order", {
       _items: items.map((i) => ({ id: i.menu_item_id, portion: i.portion, qty: i.qty })),
