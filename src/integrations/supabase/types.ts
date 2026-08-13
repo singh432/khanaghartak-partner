@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      blocked_phones: {
+        Row: {
+          blocked_by: string | null
+          created_at: string
+          id: string
+          phone: string
+          reason: string | null
+        }
+        Insert: {
+          blocked_by?: string | null
+          created_at?: string
+          id?: string
+          phone: string
+          reason?: string | null
+        }
+        Update: {
+          blocked_by?: string | null
+          created_at?: string
+          id?: string
+          phone?: string
+          reason?: string | null
+        }
+        Relationships: []
+      }
       categories: {
         Row: {
           created_at: string
@@ -35,6 +59,30 @@ export type Database = {
           name?: string
           priority?: number
           restaurant_id?: string | null
+        }
+        Relationships: []
+      }
+      cod_restrictions: {
+        Row: {
+          created_at: string
+          disabled_until: string
+          reason: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          disabled_until: string
+          reason?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          disabled_until?: string
+          reason?: string | null
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -225,7 +273,9 @@ export type Database = {
           customer_phone: string
           delivery_fee: number
           distance_km: number | null
+          flagged_by: string | null
           id: string
+          is_fake: boolean
           items: Json
           landmark: string | null
           latitude: number | null
@@ -249,7 +299,9 @@ export type Database = {
           customer_phone: string
           delivery_fee?: number
           distance_km?: number | null
+          flagged_by?: string | null
           id?: string
+          is_fake?: boolean
           items: Json
           landmark?: string | null
           latitude?: number | null
@@ -273,7 +325,9 @@ export type Database = {
           customer_phone?: string
           delivery_fee?: number
           distance_km?: number | null
+          flagged_by?: string | null
           id?: string
+          is_fake?: boolean
           items?: Json
           landmark?: string | null
           latitude?: number | null
@@ -288,6 +342,39 @@ export type Database = {
           subtotal?: number
           total?: number
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      phone_otps: {
+        Row: {
+          attempts: number
+          code_hash: string
+          consumed_at: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          phone: string
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          code_hash: string
+          consumed_at?: string | null
+          created_at?: string
+          expires_at: string
+          id?: string
+          phone: string
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          code_hash?: string
+          consumed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          phone?: string
           user_id?: string
         }
         Relationships: []
@@ -601,6 +688,27 @@ export type Database = {
         }
         Relationships: []
       }
+      verified_phones: {
+        Row: {
+          id: string
+          phone: string
+          user_id: string
+          verified_at: string
+        }
+        Insert: {
+          id?: string
+          phone: string
+          user_id: string
+          verified_at?: string
+        }
+        Update: {
+          id?: string
+          phone?: string
+          user_id?: string
+          verified_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -612,6 +720,20 @@ export type Database = {
             Args: { _full_name?: string; _phone?: string; _vehicle?: string }
             Returns: undefined
           }
+      cod_status: {
+        Args: { _phone?: string }
+        Returns: {
+          blocked: boolean
+          cod_allowed: boolean
+          disabled_until: string
+          needs_otp: boolean
+          phone_verified: boolean
+        }[]
+      }
+      create_phone_otp: {
+        Args: { _code_hash: string; _phone: string; _user_id: string }
+        Returns: undefined
+      }
       free_delivery_status: {
         Args: never
         Returns: {
@@ -712,12 +834,24 @@ export type Database = {
         Args: { _order_id: string; _rider_id: string }
         Returns: undefined
       }
+      super_flag_fake_order: {
+        Args: { _fake: boolean; _order_id: string }
+        Returns: undefined
+      }
       super_list_restaurant_phones: {
         Args: never
         Returns: {
           id: string
           phone: string
         }[]
+      }
+      super_set_cod_restriction: {
+        Args: { _days: number; _reason?: string; _user_id: string }
+        Returns: undefined
+      }
+      verify_phone_otp: {
+        Args: { _code: string; _phone: string }
+        Returns: boolean
       }
     }
     Enums: {

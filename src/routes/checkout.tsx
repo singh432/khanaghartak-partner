@@ -10,6 +10,8 @@ import { useFormDraft } from "@/hooks/useFormDraft";
 import { usePricingSettings, computeDeliveryFee, ROAD_FACTOR } from "@/hooks/usePricingSettings";
 import { distanceKm as haversineKm } from "@/lib/geo";
 import { BrandHeader } from "@/components/BrandHeader";
+import { PhoneVerification } from "@/components/PhoneVerification";
+
 import { PageSpinner } from "@/components/PageState";
 import { withTimeout } from "@/lib/supabase-query";
 import { MapPin, Navigation, Loader2, Wallet, AlertTriangle } from "lucide-react";
@@ -49,6 +51,8 @@ function CheckoutPage() {
   const [placing, setPlacing] = useState(false);
   const [placed, setPlaced] = useState(false);
   const [promo, setPromo] = useState<{ active: boolean; remaining: number } | null>(null);
+  const [gate, setGate] = useState<{ needs_otp: boolean; phone_verified: boolean; cod_allowed: boolean; disabled_until: string | null; blocked: boolean } | null>(null);
+
 
   useEffect(() => {
     let active = true;
@@ -58,6 +62,22 @@ function CheckoutPage() {
     }, () => {});
     return () => { active = false; };
   }, []);
+
+  const phoneDigits = form.phone.replace(/[^0-9]/g, "").slice(-10);
+  const refreshGate = () => {
+    if (!user) return;
+    supabase.rpc("cod_status", { _phone: phoneDigits }).then(({ data }) => {
+      const row = Array.isArray(data) ? data[0] : data;
+      if (row) setGate(row as typeof gate);
+    }, () => {});
+  };
+  useEffect(() => {
+    if (!user) return;
+    const t = setTimeout(refreshGate, 350);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, phoneDigits]);
+
 
   const draftKey = user ? `kgt-draft-checkout-${user.id}` : null;
   const clearDraft = useFormDraft(draftKey, { form, coords }, (d) => {
@@ -120,6 +140,10 @@ function CheckoutPage() {
   const deliveryFee = freeDelivery ? 0 : baseDeliveryFee;
   const outOfRange = distanceKm != null && distanceKm > pricing.max_delivery_radius_km;
   const grand = subtotal + (distanceKm != null && !outOfRange ? deliveryFee : 0) + pricing.platform_fee;
+  const needsVerification = !!gate && gate.needs_otp && !gate.phone_verified;
+  const codBlocked = !!gate && (!gate.cod_allowed || gate.blocked);
+
+
 
   if (loading || !ready) return <PageSpinner label="Preparing checkout…" />;
   if (!user) return <PageSpinner label="Opening sign in…" />;
@@ -137,9 +161,13 @@ function CheckoutPage() {
     const parsed = schema.safeParse(form);
     if (!parsed.success) return toast.error(parsed.error.issues[0].message);
     if (restaurantClosed) return toast.error("This restaurant is closed right now. Please order when it reopens.");
+    if (gate?.blocked) return toast.error("This phone number is blocked. Please contact support.");
+    if (gate && !gate.cod_allowed) return toast.error("Cash on Delivery is temporarily disabled for your account.");
+    if (needsVerification) return toast.error("Please verify your mobile number with the OTP first");
     if (!coords) return toast.error("Please share your current location");
     if (outOfRange) return toast.error("Sorry, this restaurant does not deliver to your selected location.");
     if (!user) return;
+
     setPlacing(true);
     const { data, error } = await supabase.rpc("place_order", {
       _items: items.map((i) => ({ id: i.menu_item_id, portion: i.portion, qty: i.qty })),
@@ -186,6 +214,16 @@ function CheckoutPage() {
             <input className="ck-input" value={form.phone} maxLength={15} inputMode="tel"
               onChange={(e) => setForm({ ...form, phone: e.target.value })} />
           </Field>
+          {gate?.blocked && (
+            <div className="flex items-start gap-2 rounded-xl border-2 border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>This phone number has been blocked by our team. Please contact support on +91 97117 20846.</span>
+            </div>
+          )}
+          {gate && gate.needs_otp && !gate.blocked && phoneDigits.length === 10 && (
+            <PhoneVerification phone={phoneDigits} verified={gate.phone_verified} onVerified={refreshGate} />
+          )}
+
           <Field label="Address">
             <textarea className="ck-input" rows={3} value={form.address} maxLength={300}
               onChange={(e) => setForm({ ...form, address: e.target.value })} />
@@ -248,24 +286,47 @@ function CheckoutPage() {
         </Section>
 
         <Section title="Payment">
-          <div className="flex items-center gap-3 rounded-xl border-2 border-primary bg-accent/50 p-3">
-            <Wallet className="h-5 w-5 text-primary" />
+          <div className={`flex items-center gap-3 rounded-xl border-2 p-3 ${codBlocked ? "border-destructive/40 bg-destructive/5" : "border-primary bg-accent/50"}`}>
+            <Wallet className={`h-5 w-5 ${codBlocked ? "text-destructive" : "text-primary"}`} />
             <div className="flex-1">
               <p className="text-sm font-semibold">Cash on Delivery</p>
-              <p className="text-[11px] text-muted-foreground">Pay ₹{outOfRange ? "—" : grand.toFixed(0)} when your order arrives</p>
+              <p className="text-[11px] text-muted-foreground">
+                {codBlocked
+                  ? "Temporarily unavailable for your account"
+                  : `Pay ₹${outOfRange ? "—" : grand.toFixed(0)} when your order arrives`}
+              </p>
             </div>
-            <span className="h-4 w-4 rounded-full border-4 border-primary" />
+            {!codBlocked && <span className="h-4 w-4 rounded-full border-4 border-primary" />}
           </div>
+          {gate && !gate.cod_allowed && (
+            <div className="flex items-start gap-2 rounded-xl border-2 border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>
+                Cash on Delivery is paused for your account after repeated undelivered orders
+                {gate.disabled_until ? ` until ${new Date(gate.disabled_until).toLocaleDateString("en-IN")}` : ""}.
+                Prepaid orders only — please contact support on +91 97117 20846.
+              </span>
+            </div>
+          )}
         </Section>
       </div>
 
       <div className="fixed bottom-0 left-1/2 z-30 w-full max-w-[480px] -translate-x-1/2 border-t bg-background p-4">
-        <button onClick={placeOrder} disabled={placing || !coords || outOfRange || restaurantClosed}
+        <button onClick={placeOrder} disabled={placing || !coords || outOfRange || restaurantClosed || needsVerification || codBlocked}
           className="flex h-12 w-full items-center justify-center rounded-2xl bg-primary text-sm font-bold text-primary-foreground shadow-[var(--shadow-soft)] disabled:opacity-60">
           {placing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          {!coords ? "Share location to continue" : outOfRange ? "Outside delivery area" : `Place Order · ₹${grand.toFixed(0)}`}
+          {codBlocked
+            ? "Cash on Delivery unavailable"
+            : needsVerification
+              ? "Verify your mobile number"
+              : !coords
+                ? "Share location to continue"
+                : outOfRange
+                  ? "Outside delivery area"
+                  : `Place Order · ₹${grand.toFixed(0)}`}
         </button>
       </div>
+
 
       <style>{`.ck-input { width:100%; border-radius: 12px; padding: 12px 14px; background: var(--color-input); border: 1px solid var(--color-border); font-size: 14px; outline: none; } .ck-input:focus { border-color: var(--color-ring);} `}</style>
     </div>

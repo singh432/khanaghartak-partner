@@ -32,6 +32,7 @@ import { Route as SuperSettingsRouteImport } from './routes/super.settings'
 import { Route as SuperRidersRouteImport } from './routes/super.riders'
 import { Route as SuperRestaurantsRouteImport } from './routes/super.restaurants'
 import { Route as SuperOrdersRouteImport } from './routes/super.orders'
+import { Route as SuperFraudRouteImport } from './routes/super.fraud'
 import { Route as SuperDeliveriesRouteImport } from './routes/super.deliveries'
 import { Route as SuperCustomersRouteImport } from './routes/super.customers'
 import { Route as SuperAnalyticsRouteImport } from './routes/super.analytics'
@@ -157,6 +158,11 @@ const SuperOrdersRoute = SuperOrdersRouteImport.update({
   path: '/orders',
   getParentRoute: () => SuperRoute,
 } as any)
+const SuperFraudRoute = SuperFraudRouteImport.update({
+  id: '/fraud',
+  path: '/fraud',
+  getParentRoute: () => SuperRoute,
+} as any)
 const SuperDeliveriesRoute = SuperDeliveriesRouteImport.update({
   id: '/deliveries',
   path: '/deliveries',
@@ -229,6 +235,7 @@ export interface FileRoutesByFullPath {
   '/super/analytics': typeof SuperAnalyticsRoute
   '/super/customers': typeof SuperCustomersRoute
   '/super/deliveries': typeof SuperDeliveriesRoute
+  '/super/fraud': typeof SuperFraudRoute
   '/super/orders': typeof SuperOrdersRoute
   '/super/restaurants': typeof SuperRestaurantsRoute
   '/super/riders': typeof SuperRidersRoute
@@ -261,6 +268,7 @@ export interface FileRoutesByTo {
   '/super/analytics': typeof SuperAnalyticsRoute
   '/super/customers': typeof SuperCustomersRoute
   '/super/deliveries': typeof SuperDeliveriesRoute
+  '/super/fraud': typeof SuperFraudRoute
   '/super/orders': typeof SuperOrdersRoute
   '/super/restaurants': typeof SuperRestaurantsRoute
   '/super/riders': typeof SuperRidersRoute
@@ -296,6 +304,7 @@ export interface FileRoutesById {
   '/super/analytics': typeof SuperAnalyticsRoute
   '/super/customers': typeof SuperCustomersRoute
   '/super/deliveries': typeof SuperDeliveriesRoute
+  '/super/fraud': typeof SuperFraudRoute
   '/super/orders': typeof SuperOrdersRoute
   '/super/restaurants': typeof SuperRestaurantsRoute
   '/super/riders': typeof SuperRidersRoute
@@ -332,6 +341,7 @@ export interface FileRouteTypes {
     | '/super/analytics'
     | '/super/customers'
     | '/super/deliveries'
+    | '/super/fraud'
     | '/super/orders'
     | '/super/restaurants'
     | '/super/riders'
@@ -364,6 +374,7 @@ export interface FileRouteTypes {
     | '/super/analytics'
     | '/super/customers'
     | '/super/deliveries'
+    | '/super/fraud'
     | '/super/orders'
     | '/super/restaurants'
     | '/super/riders'
@@ -398,6 +409,7 @@ export interface FileRouteTypes {
     | '/super/analytics'
     | '/super/customers'
     | '/super/deliveries'
+    | '/super/fraud'
     | '/super/orders'
     | '/super/restaurants'
     | '/super/riders'
@@ -592,6 +604,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SuperOrdersRouteImport
       parentRoute: typeof SuperRoute
     }
+    '/super/fraud': {
+      id: '/super/fraud'
+      path: '/fraud'
+      fullPath: '/super/fraud'
+      preLoaderRoute: typeof SuperFraudRouteImport
+      parentRoute: typeof SuperRoute
+    }
     '/super/deliveries': {
       id: '/super/deliveries'
       path: '/deliveries'
@@ -680,6 +699,7 @@ interface SuperRouteChildren {
   SuperAnalyticsRoute: typeof SuperAnalyticsRoute
   SuperCustomersRoute: typeof SuperCustomersRoute
   SuperDeliveriesRoute: typeof SuperDeliveriesRoute
+  SuperFraudRoute: typeof SuperFraudRoute
   SuperOrdersRoute: typeof SuperOrdersRoute
   SuperRestaurantsRoute: typeof SuperRestaurantsRoute
   SuperRidersRoute: typeof SuperRidersRoute
@@ -691,6 +711,7 @@ const SuperRouteChildren: SuperRouteChildren = {
   SuperAnalyticsRoute: SuperAnalyticsRoute,
   SuperCustomersRoute: SuperCustomersRoute,
   SuperDeliveriesRoute: SuperDeliveriesRoute,
+  SuperFraudRoute: SuperFraudRoute,
   SuperOrdersRoute: SuperOrdersRoute,
   SuperRestaurantsRoute: SuperRestaurantsRoute,
   SuperRidersRoute: SuperRidersRoute,
