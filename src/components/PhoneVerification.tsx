@@ -147,7 +147,13 @@ export function PhoneVerification({ phone, onVerified }: Props) {
     if (!valid) return;
     const restorePendingStep = () => {
       const raw = localStorage.getItem(storeKey);
-      setSent(Boolean(raw && Date.now() - Number(raw) < 15 * 60 * 1000));
+      const fresh = Boolean(raw && Date.now() - Number(raw) < 15 * 60 * 1000);
+      setSent(fresh);
+      const savedReq = localStorage.getItem(reqKey) ?? "";
+      if (fresh && savedReq && !reqIdRef.current) {
+        reqIdRef.current = savedReq;
+        setReqId(savedReq);
+      }
     };
     try { restorePendingStep(); } catch { /* ignore */ }
     window.addEventListener("pageshow", restorePendingStep);
@@ -156,7 +162,7 @@ export function PhoneVerification({ phone, onVerified }: Props) {
       window.removeEventListener("pageshow", restorePendingStep);
       document.removeEventListener("visibilitychange", restorePendingStep);
     };
-  }, [storeKey, valid]);
+  }, [storeKey, reqKey, valid]);
 
   const send = async (isRetry: boolean) => {
     if (!valid) return toast.error("Enter a valid 10-digit mobile number");
@@ -168,8 +174,8 @@ export function PhoneVerification({ phone, onVerified }: Props) {
       const w = window as Msg91Window;
       await new Promise<void>((resolve, reject) => {
         const onSuccess = (data: unknown) => {
-          const id = payloadMessage(data);
-          if (id) reqIdRef.current = id;
+          // Keep the latest valid reqId; never clear it on an empty payload.
+          rememberReqId(payloadReqId(data));
           resolve();
         };
         const onFailure = (err: unknown) => reject(new Error(payloadMessage(err) || "Could not send the code"));
@@ -181,6 +187,7 @@ export function PhoneVerification({ phone, onVerified }: Props) {
           reject(new Error("Verification service is unavailable"));
         }
       });
+
       setSent(true);
       setCooldown(RESEND_SECONDS);
       try {
