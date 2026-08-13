@@ -10,7 +10,6 @@ import { useFormDraft } from "@/hooks/useFormDraft";
 import { usePricingSettings, computeDeliveryFee, ROAD_FACTOR } from "@/hooks/usePricingSettings";
 import { distanceKm as haversineKm } from "@/lib/geo";
 import { BrandHeader } from "@/components/BrandHeader";
-import { PhoneVerification } from "@/components/PhoneVerification";
 
 import { PageSpinner } from "@/components/PageState";
 import { withTimeout } from "@/lib/supabase-query";
@@ -140,7 +139,7 @@ function CheckoutPage() {
   const deliveryFee = freeDelivery ? 0 : baseDeliveryFee;
   const outOfRange = distanceKm != null && distanceKm > pricing.max_delivery_radius_km;
   const grand = subtotal + (distanceKm != null && !outOfRange ? deliveryFee : 0) + pricing.platform_fee;
-  const needsVerification = !!gate && gate.needs_otp && !gate.phone_verified;
+  const needsVerification = false; // OTP temporarily disabled
   const codBlocked = !!gate && (!gate.cod_allowed || gate.blocked);
 
 
@@ -219,9 +218,6 @@ function CheckoutPage() {
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
               <span>This phone number has been blocked by our team. Please contact support on +91 97117 20846.</span>
             </div>
-          )}
-          {gate && gate.needs_otp && !gate.blocked && phoneDigits.length === 10 && (
-            <PhoneVerification phone={phoneDigits} verified={gate.phone_verified} onVerified={refreshGate} />
           )}
 
           <Field label="Address">
