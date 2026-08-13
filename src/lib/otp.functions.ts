@@ -5,7 +5,8 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 const schema = z.object({ phone: z.string().trim().min(7).max(15) });
 
 const GRAPH = "https://graph.facebook.com/v21.0";
-const OTP_TEMPLATE = "kgt_otp";
+/** Approved template used to carry the code while the account cannot create an auth template. */
+const CARRIER_TEMPLATE = "kgt_order_delivered";
 
 function normPhone(raw: string): string {
   return raw.replace(/[^0-9]/g, "").slice(-10);
