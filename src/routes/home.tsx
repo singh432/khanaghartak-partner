@@ -81,11 +81,31 @@ function HomePage() {
       withTimeout(supabase.from("profiles").select("address").eq("id", user.id).maybeSingle())
         .then(({ data }) => setProfileAddress(data?.address ?? ""));
     }
+    withTimeout(supabase.from("categories").select("name, restaurant_id"))
+      .then(({ data }) => {
+        if (!active) return;
+        const map: Record<string, string[]> = {};
+        for (const row of (data ?? []) as Array<{ name: string; restaurant_id: string }>) {
+          const key = row.name.trim();
+          if (!key) continue;
+          (map[key] ||= []).push(row.restaurant_id);
+        }
+        setCategoryMap(map);
+      })
+      .catch(() => undefined);
     return () => { active = false; };
   }, [user, coords]);
 
+  const categoryNames = Object.keys(categoryMap)
+    .filter((name) => categoryMap[name].some((id) => restaurants.some((r) => r.id === id)))
+    .sort((a, b) => a.localeCompare(b));
+  const visibleRestaurants = activeCategory
+    ? restaurants.filter((r) => categoryMap[activeCategory]?.includes(r.id))
+    : restaurants;
+
   if (loading) return <PageSpinner label="Checking your session…" />;
   if (!user) return <PageSpinner label="Opening sign in…" />;
+
 
   return (
     <div className="pb-10">
