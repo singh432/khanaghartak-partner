@@ -281,7 +281,11 @@ function MenuPage() {
                                 ) : null}
                                 <span className="text-sm font-bold">₹{p.price.toFixed(0)}</span>
                                 <div className="ml-auto">
-                                  {!item.is_available ? (
+                                  {isClosed ? (
+                                    <span className="rounded-lg border-2 border-muted bg-card px-2 py-1 text-[10px] font-bold uppercase text-muted-foreground">
+                                      Closed
+                                    </span>
+                                  ) : !item.is_available ? (
                                     <span className="rounded-lg border-2 border-muted bg-card px-2 py-1 text-[10px] font-bold uppercase text-muted-foreground">
                                       Unavailable
                                     </span>
