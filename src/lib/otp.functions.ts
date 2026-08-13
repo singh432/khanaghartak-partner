@@ -5,7 +5,8 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 const schema = z.object({ phone: z.string().trim().min(7).max(15) });
 
 const GRAPH = "https://graph.facebook.com/v21.0";
-const OTP_TEMPLATE = "kgt_otp";
+/** Approved template used to carry the code while the account cannot create an auth template. */
+const CARRIER_TEMPLATE = "kgt_order_delivered";
 
 function normPhone(raw: string): string {
   return raw.replace(/[^0-9]/g, "").slice(-10);
@@ -22,13 +23,26 @@ async function sha256Hex(value: string): Promise<string> {
 
 type Tpl = { name: string; language: string; bodyVars: number; auth: boolean; hasButton: boolean };
 
+/**
+ * The phone-number node does not expose the parent account, so resolve it from
+ * the business accounts this system-user token owns and match the phone number.
+ */
 async function getWabaId(token: string, phoneNumberId: string): Promise<string | null> {
+  const envWaba = process.env["WHATSAPP_WABA_ID"];
+  if (envWaba) return envWaba;
   try {
-    const res = await fetch(
-      `${GRAPH}/${phoneNumberId}?fields=whatsapp_business_account&access_token=${token}`,
-    );
-    const json = (await res.json()) as { whatsapp_business_account?: { id?: string } };
-    return json.whatsapp_business_account?.id ?? null;
+    const bizRes = await fetch(`${GRAPH}/me/businesses?access_token=${token}`);
+    const biz = (await bizRes.json()) as { data?: { id: string }[] };
+    for (const b of biz.data ?? []) {
+      const res = await fetch(`${GRAPH}/${b.id}/owned_whatsapp_business_accounts?access_token=${token}`);
+      const json = (await res.json()) as { data?: { id: string }[] };
+      for (const waba of json.data ?? []) {
+        const pn = await fetch(`${GRAPH}/${waba.id}/phone_numbers?access_token=${token}`);
+        const pnJson = (await pn.json()) as { data?: { id: string }[] };
+        if ((pnJson.data ?? []).some((p) => p.id === phoneNumberId)) return waba.id;
+      }
+    }
+    return null;
   } catch {
     return null;
   }
@@ -66,43 +80,22 @@ async function listTemplates(token: string, waba: string): Promise<Tpl[]> {
   }
 }
 
-/** Only an authentication-style template may carry a login code. */
+/**
+ * Prefer a real authentication template. This WhatsApp account is not allowed
+ * to create templates, so fall back to an approved template that can carry the
+ * code in its first variable — that is the only way to reach a customer who has
+ * never messaged the business.
+ */
 function pickTemplate(tpls: Tpl[]): Tpl | null {
   return (
     tpls.find((t) => t.auth) ??
     tpls.find((t) => /otp|verif|code/i.test(t.name) && t.bodyVars === 1) ??
+    tpls.find((t) => t.name === CARRIER_TEMPLATE) ??
+    tpls.find((t) => t.bodyVars >= 1 && t.bodyVars <= 3) ??
     null
   );
 }
 
-/** Authentication templates are auto-approved by Meta within seconds, so self-heal. */
-async function createAuthTemplate(token: string, waba: string): Promise<string | null> {
-  try {
-    const res = await fetch(`${GRAPH}/${waba}/message_templates`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: OTP_TEMPLATE,
-        language: "en_US",
-        category: "AUTHENTICATION",
-        components: [
-          { type: "BODY", add_security_recommendation: true },
-          { type: "FOOTER", code_expiration_minutes: 10 },
-          { type: "BUTTONS", buttons: [{ type: "OTP", otp_type: "COPY_CODE", text: "Copy code" }] },
-        ],
-      }),
-    });
-    const text = await res.text();
-    if (!res.ok) {
-      console.error(`OTP template create failed: ${text.slice(0, 300)}`);
-      return null;
-    }
-    return "en_US";
-  } catch (err) {
-    console.error(`OTP template create error: ${err instanceof Error ? err.message : String(err)}`);
-    return null;
-  }
-}
 
 async function post(token: string, phoneNumberId: string, body: unknown) {
   const res = await fetch(`${GRAPH}/${phoneNumberId}/messages`, {
@@ -118,14 +111,21 @@ async function trySend(
   phoneNumberId: string,
   to: string,
   code: string,
-  tpl: { name: string; language: string },
+  tpl: Tpl,
 ): Promise<{ delivered: boolean; error: string }> {
+  // An authentication template takes the bare code; any other approved template
+  // carries a readable sentence in its first variable and filler in the rest.
+  const first = tpl.auth ? code : `verification code ${code} (valid 10 minutes)`;
+  const params = [first, "KhanaGharTak.in", "KhanaGharTak.in"]
+    .slice(0, Math.max(tpl.bodyVars, 1))
+    .map((text) => ({ type: "text", text }));
+
   const variants = [
     [
-      { type: "body", parameters: [{ type: "text", text: code }] },
+      { type: "body", parameters: params },
       { type: "button", sub_type: "url", index: "0", parameters: [{ type: "text", text: code }] },
     ],
-    [{ type: "body", parameters: [{ type: "text", text: code }] }],
+    [{ type: "body", parameters: params }],
   ];
   let lastError = "Could not send the code";
   for (const components of variants) {
@@ -148,28 +148,20 @@ async function sendCode(to: string, code: string): Promise<{ delivered: boolean;
   if (!token || !phoneNumberId) return { delivered: false, error: "WhatsApp messaging is not configured" };
 
   const waba = await getWabaId(token, phoneNumberId);
-  if (!waba) {
-    console.error("Could not resolve WhatsApp Business Account id for the configured phone number");
-    return { delivered: false, error: "WhatsApp account is not reachable right now" };
-  }
-
-  const tpls = await listTemplates(token, waba);
-  let tpl = pickTemplate(tpls);
+  const tpls = waba ? await listTemplates(token, waba) : [];
+  const tpl = pickTemplate(tpls);
 
   if (!tpl) {
     console.error(
-      `No OTP template approved. Approved templates: ${
+      `No usable WhatsApp template. Approved: ${
         tpls.map((t) => `${t.name}(${t.bodyVars})`).join(", ") || "none"
-      } — creating "${OTP_TEMPLATE}".`,
+      }`,
     );
-    const language = await createAuthTemplate(token, waba);
-    if (language) tpl = { name: OTP_TEMPLATE, language, bodyVars: 1, auth: true, hasButton: true };
-  }
-
-  if (tpl) {
+  } else {
     const sent = await trySend(token, phoneNumberId, to, code, tpl);
     if (sent.delivered) return { delivered: true, error: null };
   }
+
 
   // Plain text only reaches a customer who messaged the business in the last 24h,
   // so it is the last resort, never the primary path.
