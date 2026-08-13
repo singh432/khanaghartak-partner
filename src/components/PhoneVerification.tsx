@@ -80,6 +80,23 @@ function payloadMessage(data: unknown): string {
   return "";
 }
 
+/**
+ * MSG91 returns the request id under different keys depending on SDK version
+ * (`message`, `reqId`, `requestId`, `req_id`, or a nested `data`).
+ */
+function payloadReqId(data: unknown): string {
+  if (typeof data === "string") return data;
+  if (!data || typeof data !== "object") return "";
+  const obj = data as Record<string, unknown>;
+  for (const key of ["reqId", "requestId", "req_id", "message"]) {
+    const v = obj[key];
+    if (typeof v === "string" && v.trim()) return v.trim();
+  }
+  const nested = obj["data"];
+  if (nested && nested !== data) return payloadReqId(nested);
+  return "";
+}
+
 export function PhoneVerification({ phone, onVerified }: Props) {
   const confirm = useServerFn(confirmPhoneVerification);
   const [sending, setSending] = useState(false);
@@ -87,10 +104,12 @@ export function PhoneVerification({ phone, onVerified }: Props) {
   const [cooldown, setCooldown] = useState(0);
   const [code, setCode] = useState("");
   const reqIdRef = useRef<string>("");
+  const [reqId, setReqId] = useState("");
 
   const digits = phone.replace(/[^0-9]/g, "").slice(-10);
   const valid = /^[6-9]\d{9}$/.test(digits);
   const storeKey = `kgt_otp_sent_${digits}`;
+  const reqKey = `kgt_otp_req_${digits}`;
 
   const [sent, setSent] = useState(() => {
     if (typeof window === "undefined") return false;
@@ -99,9 +118,22 @@ export function PhoneVerification({ phone, onVerified }: Props) {
     return Boolean(raw && Date.now() - Number(raw) < 15 * 60 * 1000);
   });
 
+  /** Persists the latest reqId so it survives re-renders and remounts. */
+  const rememberReqId = (id: string) => {
+    if (!id) return;
+    reqIdRef.current = id;
+    setReqId(id);
+    try {
+      localStorage.setItem(reqKey, id);
+    } catch {
+      /* ignore */
+    }
+  };
+
   useEffect(() => {
     void loadMsg91().catch(() => {});
   }, []);
+
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -115,7 +147,13 @@ export function PhoneVerification({ phone, onVerified }: Props) {
     if (!valid) return;
     const restorePendingStep = () => {
       const raw = localStorage.getItem(storeKey);
-      setSent(Boolean(raw && Date.now() - Number(raw) < 15 * 60 * 1000));
+      const fresh = Boolean(raw && Date.now() - Number(raw) < 15 * 60 * 1000);
+      setSent(fresh);
+      const savedReq = localStorage.getItem(reqKey) ?? "";
+      if (fresh && savedReq && !reqIdRef.current) {
+        reqIdRef.current = savedReq;
+        setReqId(savedReq);
+      }
     };
     try { restorePendingStep(); } catch { /* ignore */ }
     window.addEventListener("pageshow", restorePendingStep);
@@ -124,7 +162,7 @@ export function PhoneVerification({ phone, onVerified }: Props) {
       window.removeEventListener("pageshow", restorePendingStep);
       document.removeEventListener("visibilitychange", restorePendingStep);
     };
-  }, [storeKey, valid]);
+  }, [storeKey, reqKey, valid]);
 
   const send = async (isRetry: boolean) => {
     if (!valid) return toast.error("Enter a valid 10-digit mobile number");
@@ -136,8 +174,8 @@ export function PhoneVerification({ phone, onVerified }: Props) {
       const w = window as Msg91Window;
       await new Promise<void>((resolve, reject) => {
         const onSuccess = (data: unknown) => {
-          const id = payloadMessage(data);
-          if (id) reqIdRef.current = id;
+          // Keep the latest valid reqId; never clear it on an empty payload.
+          rememberReqId(payloadReqId(data));
           resolve();
         };
         const onFailure = (err: unknown) => reject(new Error(payloadMessage(err) || "Could not send the code"));
@@ -149,6 +187,7 @@ export function PhoneVerification({ phone, onVerified }: Props) {
           reject(new Error("Verification service is unavailable"));
         }
       });
+
       setSent(true);
       setCooldown(RESEND_SECONDS);
       try {
@@ -163,10 +202,15 @@ export function PhoneVerification({ phone, onVerified }: Props) {
     setSending(false);
   };
 
+  const activeReqId = reqId || reqIdRef.current;
+
   const verify = async () => {
     const otp = code.replace(/\D/g, "");
     if (otp.length !== 4) return toast.error("Enter the 4-digit code");
     if (verifying) return;
+    if (!activeReqId) {
+      return toast.error("This code has expired. Tap Resend OTP to get a new one.");
+    }
     setVerifying(true);
     try {
       await loadMsg91();
@@ -180,9 +224,10 @@ export function PhoneVerification({ phone, onVerified }: Props) {
             token ? resolve(token) : reject(new Error("Incorrect code, please try again"));
           },
           (err) => reject(new Error(payloadMessage(err) || "Incorrect code, please try again")),
-          reqIdRef.current || undefined,
+          activeReqId,
         );
       });
+
 
       const res = await confirm({ data: { phone: digits, accessToken } });
       if (!res.ok) {
@@ -192,9 +237,11 @@ export function PhoneVerification({ phone, onVerified }: Props) {
       }
       try {
         localStorage.removeItem(storeKey);
+        localStorage.removeItem(reqKey);
       } catch {
         /* ignore */
       }
+
       toast.success("Number verified");
       onVerified();
     } catch (err) {
@@ -231,12 +278,18 @@ export function PhoneVerification({ phone, onVerified }: Props) {
           />
           <Button
             onClick={() => void verify()}
-            disabled={verifying}
+            disabled={verifying || !activeReqId}
             className="h-12 w-full font-bold"
           >
             {verifying && <Loader2 className="h-4 w-4 animate-spin" />}
             Verify number
           </Button>
+          {!activeReqId && (
+            <p className="text-center text-xs font-semibold text-destructive">
+              This code has expired. Tap Resend OTP to get a new one.
+            </p>
+          )}
+
           <Button
             variant="link"
             onClick={() => void send(true)}
