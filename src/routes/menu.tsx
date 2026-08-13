@@ -66,7 +66,7 @@ function portionsOf(item: MenuItem, opts: { singlePrice?: boolean; sweet?: boole
 
 type Restaurant = {
   id: string; name: string; rating: number; delivery_time: string;
-  latitude: number | null; longitude: number | null; status: string | null;
+  latitude: number | null; longitude: number | null; status: string | null; is_open: boolean | null;
 };
 
 function MenuPage() {
@@ -86,6 +86,7 @@ function MenuPage() {
   const [showCatPanel, setShowCatPanel] = useState(false);
   const [dataLoading, setDataLoading] = useState(true);
   const [dataError, setDataError] = useState<string | null>(null);
+  const isClosed = !!restaurant && restaurant.is_open !== true;
 
   useEffect(() => { if (!loading && !user) navigate({ to: "/login" }); }, [user, loading, navigate]);
 
@@ -96,7 +97,7 @@ function MenuPage() {
       setDataError(null);
       try {
         const [{ data: rs, error: rError }, { data: c, error: cError }, { data: m, error: mError }] = await Promise.all([
-          withTimeout(supabase.from("restaurants").select("id, name, rating, delivery_time, latitude, longitude, status").eq("status", "active")),
+          withTimeout(supabase.from("restaurants").select("id, name, rating, delivery_time, latitude, longitude, status, is_open").eq("status", "active")),
           withTimeout(supabase.from("categories").select("*").order("priority")),
           withTimeout(supabase.from("menu_items").select("*").order("name")),
         ]);
@@ -197,6 +198,11 @@ function MenuPage() {
                 <Clock className="h-3.5 w-3.5" /> {restaurant.delivery_time}
               </span>
             </div>
+            {isClosed && (
+              <p className="mt-3 rounded-xl bg-destructive/10 px-3 py-2 text-xs font-semibold text-destructive">
+                This kitchen is closed right now. You can browse the menu, but ordering will reopen when they’re back.
+              </p>
+            )}
           </div>
         )}
 
@@ -275,7 +281,11 @@ function MenuPage() {
                                 ) : null}
                                 <span className="text-sm font-bold">₹{p.price.toFixed(0)}</span>
                                 <div className="ml-auto">
-                                  {!item.is_available ? (
+                                  {isClosed ? (
+                                    <span className="rounded-lg border-2 border-muted bg-card px-2 py-1 text-[10px] font-bold uppercase text-muted-foreground">
+                                      Closed
+                                    </span>
+                                  ) : !item.is_available ? (
                                     <span className="rounded-lg border-2 border-muted bg-card px-2 py-1 text-[10px] font-bold uppercase text-muted-foreground">
                                       Unavailable
                                     </span>

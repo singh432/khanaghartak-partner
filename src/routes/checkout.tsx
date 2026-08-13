@@ -45,6 +45,7 @@ function CheckoutPage() {
   const [form, setForm] = useState({ name: "", phone: "", address: "", landmark: "", notes: "" });
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [restaurantCoords, setRestaurantCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [restaurantClosed, setRestaurantClosed] = useState(false);
   const [placing, setPlacing] = useState(false);
   const [placed, setPlaced] = useState(false);
   const [promo, setPromo] = useState<{ active: boolean; remaining: number } | null>(null);
@@ -89,18 +90,19 @@ function CheckoutPage() {
   }, [user]);
 
 
-  // Fetch restaurant coords from first cart item
+  // Fetch restaurant coords + open state from first cart item
   useEffect(() => {
     if (!ready || items.length === 0) return;
     let active = true;
     (async () => {
       const { data } = await supabase
         .from("menu_items")
-        .select("restaurants:restaurant_id(latitude, longitude)")
+        .select("restaurants:restaurant_id(latitude, longitude, is_open)")
         .eq("id", items[0].menu_item_id)
         .maybeSingle();
       if (!active) return;
-      const r = (data as { restaurants: { latitude: number | null; longitude: number | null } | null } | null)?.restaurants;
+      const r = (data as { restaurants: { latitude: number | null; longitude: number | null; is_open: boolean | null } | null } | null)?.restaurants;
+      setRestaurantClosed(!!r && r.is_open !== true);
       if (r?.latitude != null && r?.longitude != null) {
         setRestaurantCoords({ lat: r.latitude, lng: r.longitude });
       }
@@ -134,6 +136,7 @@ function CheckoutPage() {
   const placeOrder = async () => {
     const parsed = schema.safeParse(form);
     if (!parsed.success) return toast.error(parsed.error.issues[0].message);
+    if (restaurantClosed) return toast.error("This restaurant is closed right now. Please order when it reopens.");
     if (!coords) return toast.error("Please share your current location");
     if (outOfRange) return toast.error("Sorry, this restaurant does not deliver to your selected location.");
     if (!user) return;
@@ -199,6 +202,13 @@ function CheckoutPage() {
             </div>
           )}
 
+          {restaurantClosed && (
+            <div className="flex items-start gap-2 rounded-xl border-2 border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>This kitchen is closed right now, so orders can’t be placed. Please try again when it reopens.</span>
+            </div>
+          )}
+
           {outOfRange && (
             <div className="flex items-start gap-2 rounded-xl border-2 border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -206,6 +216,7 @@ function CheckoutPage() {
             </div>
           )}
         </Section>
+
 
         <Section title="Order summary">
           {items.map((it) => (
@@ -249,7 +260,7 @@ function CheckoutPage() {
       </div>
 
       <div className="fixed bottom-0 left-1/2 z-30 w-full max-w-[480px] -translate-x-1/2 border-t bg-background p-4">
-        <button onClick={placeOrder} disabled={placing || !coords || outOfRange}
+        <button onClick={placeOrder} disabled={placing || !coords || outOfRange || restaurantClosed}
           className="flex h-12 w-full items-center justify-center rounded-2xl bg-primary text-sm font-bold text-primary-foreground shadow-[var(--shadow-soft)] disabled:opacity-60">
           {placing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           {!coords ? "Share location to continue" : outOfRange ? "Outside delivery area" : `Place Order · ₹${grand.toFixed(0)}`}
