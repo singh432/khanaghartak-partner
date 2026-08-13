@@ -138,6 +138,10 @@ function CheckoutPage() {
   const deliveryFee = freeDelivery ? 0 : baseDeliveryFee;
   const outOfRange = distanceKm != null && distanceKm > pricing.max_delivery_radius_km;
   const grand = subtotal + (distanceKm != null && !outOfRange ? deliveryFee : 0) + pricing.platform_fee;
+  const needsVerification = !!gate && gate.needs_otp && !gate.phone_verified;
+  const codBlocked = !!gate && (!gate.cod_allowed || gate.blocked);
+
+
 
   if (loading || !ready) return <PageSpinner label="Preparing checkout…" />;
   if (!user) return <PageSpinner label="Opening sign in…" />;
