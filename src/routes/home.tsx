@@ -39,9 +39,12 @@ function HomePage() {
   const { user, loading, signOut } = useAuth();
   const { coords } = useLocationGate();
   const [restaurants, setRestaurants] = useState<Array<Restaurant & { distance: number | null }>>([]);
+  const [categoryMap, setCategoryMap] = useState<Record<string, string[]>>({});
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [profileAddress, setProfileAddress] = useState<string>("");
   const [restaurantLoading, setRestaurantLoading] = useState(true);
   const [restaurantError, setRestaurantError] = useState<string | null>(null);
+
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/login" });
@@ -78,11 +81,31 @@ function HomePage() {
       withTimeout(supabase.from("profiles").select("address").eq("id", user.id).maybeSingle())
         .then(({ data }) => setProfileAddress(data?.address ?? ""));
     }
+    withTimeout(supabase.from("categories").select("name, restaurant_id"))
+      .then(({ data }) => {
+        if (!active) return;
+        const map: Record<string, string[]> = {};
+        for (const row of (data ?? []) as Array<{ name: string; restaurant_id: string }>) {
+          const key = row.name.trim();
+          if (!key) continue;
+          (map[key] ||= []).push(row.restaurant_id);
+        }
+        setCategoryMap(map);
+      })
+      .catch(() => undefined);
     return () => { active = false; };
   }, [user, coords]);
 
+  const categoryNames = Object.keys(categoryMap)
+    .filter((name) => categoryMap[name].some((id) => restaurants.some((r) => r.id === id)))
+    .sort((a, b) => a.localeCompare(b));
+  const visibleRestaurants = activeCategory
+    ? restaurants.filter((r) => categoryMap[activeCategory]?.includes(r.id))
+    : restaurants;
+
   if (loading) return <PageSpinner label="Checking your session…" />;
   if (!user) return <PageSpinner label="Opening sign in…" />;
+
 
   return (
     <div className="pb-10">
@@ -101,6 +124,28 @@ function HomePage() {
           </Link>
         )}
 
+        {categoryNames.length > 0 && (
+          <div className="-mx-4 mb-5 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="flex w-max gap-2">
+              <button
+                onClick={() => setActiveCategory(null)}
+                className={`whitespace-nowrap rounded-full border px-4 py-2 text-sm font-semibold ${activeCategory === null ? "border-primary bg-primary text-primary-foreground" : "bg-card"}`}
+              >
+                All
+              </button>
+              {categoryNames.map((name) => (
+                <button
+                  key={name}
+                  onClick={() => setActiveCategory(activeCategory === name ? null : name)}
+                  className={`whitespace-nowrap rounded-full border px-4 py-2 text-sm font-semibold ${activeCategory === name ? "border-primary bg-primary text-primary-foreground" : "bg-card"}`}
+                >
+                  {name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {restaurantLoading && <PageSpinner label="Finding nearby kitchens…" />}
         {restaurantError && (
           <PageError message={restaurantError} onRetry={() => window.location.reload()} />
@@ -112,9 +157,15 @@ function HomePage() {
 
           />
         )}
-        {!restaurantLoading && !restaurantError && restaurants.length > 0 && (
+        {!restaurantLoading && !restaurantError && restaurants.length > 0 && visibleRestaurants.length === 0 && (
+          <p className="rounded-2xl border bg-card p-4 text-sm text-muted-foreground">
+            No kitchens serving {activeCategory} right now.
+          </p>
+        )}
+        {!restaurantLoading && !restaurantError && visibleRestaurants.length > 0 && (
           <div className="space-y-5">
-            {restaurants.map((restaurant) => (
+            {visibleRestaurants.map((restaurant) => (
+
               <Link
                 key={restaurant.id}
                 to="/menu"
