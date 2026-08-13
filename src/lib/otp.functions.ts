@@ -40,6 +40,18 @@ export const requestPhoneOtp = createServerFn({ method: "POST" })
     if (insertError) return { ok: false, error: "Could not create a verification code" };
 
     const sent = await sendOtpWhatsApp(`91${phone10}`, code);
+
+    // Log every OTP send against the exact recipient number so delivery
+    // problems on specific numbers are visible instead of silent.
+    await supabaseAdmin.from("notification_log").insert({
+      event: "otp",
+      recipient_type: "customer",
+      phone: phone10,
+      status: sent.ok ? "sent" : "failed",
+      provider_sid: sent.sid,
+      error: sent.ok ? null : sent.error,
+    } as never);
+
     if (!sent.ok) {
       return {
         ok: false,
