@@ -124,6 +124,28 @@ function HomePage() {
           </Link>
         )}
 
+        {categoryNames.length > 0 && (
+          <div className="-mx-4 mb-5 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="flex w-max gap-2">
+              <button
+                onClick={() => setActiveCategory(null)}
+                className={`whitespace-nowrap rounded-full border px-4 py-2 text-sm font-semibold ${activeCategory === null ? "border-primary bg-primary text-primary-foreground" : "bg-card"}`}
+              >
+                All
+              </button>
+              {categoryNames.map((name) => (
+                <button
+                  key={name}
+                  onClick={() => setActiveCategory(activeCategory === name ? null : name)}
+                  className={`whitespace-nowrap rounded-full border px-4 py-2 text-sm font-semibold ${activeCategory === name ? "border-primary bg-primary text-primary-foreground" : "bg-card"}`}
+                >
+                  {name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {restaurantLoading && <PageSpinner label="Finding nearby kitchens…" />}
         {restaurantError && (
           <PageError message={restaurantError} onRetry={() => window.location.reload()} />
@@ -135,9 +157,15 @@ function HomePage() {
 
           />
         )}
-        {!restaurantLoading && !restaurantError && restaurants.length > 0 && (
+        {!restaurantLoading && !restaurantError && restaurants.length > 0 && visibleRestaurants.length === 0 && (
+          <p className="rounded-2xl border bg-card p-4 text-sm text-muted-foreground">
+            No kitchens serving {activeCategory} right now.
+          </p>
+        )}
+        {!restaurantLoading && !restaurantError && visibleRestaurants.length > 0 && (
           <div className="space-y-5">
-            {restaurants.map((restaurant) => (
+            {visibleRestaurants.map((restaurant) => (
+
               <Link
                 key={restaurant.id}
                 to="/menu"
