@@ -6,6 +6,7 @@ const schema = z.object({ phone: z.string().trim().min(7).max(15) });
 
 const GRAPH = "https://graph.facebook.com/v21.0";
 /** Approved template used to carry the code while the account cannot create an auth template. */
+const OTP_TEMPLATE = "kgt_otp";
 const CARRIER_TEMPLATE = "kgt_order_delivered";
 
 function normPhone(raw: string): string {
@@ -88,6 +89,7 @@ async function listTemplates(token: string, waba: string): Promise<Tpl[]> {
  */
 function pickTemplate(tpls: Tpl[]): Tpl | null {
   return (
+    tpls.find((t) => t.name === OTP_TEMPLATE) ??
     tpls.find((t) => t.auth) ??
     tpls.find((t) => /otp|verif|code/i.test(t.name) && t.bodyVars === 1) ??
     tpls.find((t) => t.name === CARRIER_TEMPLATE) ??
