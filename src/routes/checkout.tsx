@@ -10,6 +10,8 @@ import { useFormDraft } from "@/hooks/useFormDraft";
 import { usePricingSettings, computeDeliveryFee, ROAD_FACTOR } from "@/hooks/usePricingSettings";
 import { distanceKm as haversineKm } from "@/lib/geo";
 import { BrandHeader } from "@/components/BrandHeader";
+import { PhoneVerification } from "@/components/PhoneVerification";
+
 import { PageSpinner } from "@/components/PageState";
 import { withTimeout } from "@/lib/supabase-query";
 import { MapPin, Navigation, Loader2, Wallet, AlertTriangle } from "lucide-react";
