@@ -12,10 +12,25 @@ const payloadSchema = z.object({
     "rider_picked_up",
     "delivered",
   ]),
-
 });
 
 type Recipient = { type: string; phone: string; template: string; params: string[] };
+
+/**
+ * Variable count of each APPROVED template in the WABA.
+ * Keep in sync with Meta — a mismatch is a hard send failure (error 132000),
+ * so we fail loudly here instead of guessing at request time.
+ */
+const TEMPLATE_VARS: Record<string, number> = {
+  kgt_new_order: 3,
+  kgt_order_accepted: 2,
+  kgt_delivery_available: 3,
+  kgt_order_picked_up: 2,
+  kgt_order_delivered: 1,
+  kgt_no_rider: 3,
+};
+
+const TEMPLATE_LANG = "en";
 
 function toE164(raw: string | null | undefined): string | null {
   if (!raw) return null;
@@ -26,6 +41,15 @@ function toE164(raw: string | null | undefined): string | null {
   if (digits.length === 12 && digits.startsWith("91")) return `+${digits}`;
   if (digits.length === 11 && digits.startsWith("0")) return `+91${digits.slice(1)}`;
   return null;
+}
+
+/** 91XXXXXXXXXX — the wire format Meta expects (no plus). */
+function toWireNumber(e164: string) {
+  return e164.replace(/^\+/, "");
+}
+
+function maskPhone(p: string) {
+  return p.length > 4 ? `${"*".repeat(p.length - 4)}${p.slice(-4)}` : "****";
 }
 
 function shortId(id: string) {
@@ -47,126 +71,112 @@ function clean(v: string | null | undefined, fallback = "-") {
   return s.length ? s.slice(0, 900) : fallback;
 }
 
-// Meta error codes raised while a template is still in review / not approved.
-const TEMPLATE_PENDING_CODES = new Set([132000, 132001, 132005, 132007, 132012, 132015, 132068, 132069]);
+type SendResult = {
+  ok: boolean;
+  wamid: string | null;
+  error: string | null;
+  errorCode: number | null;
+  errorTitle: string | null;
+  accepted: boolean;
+};
 
-function isTemplatePending(code: number | null, message: string) {
-  if (code != null && TEMPLATE_PENDING_CODES.has(code)) return true;
-  return /template/i.test(message) && /(not exist|not found|not approved|paused|disabled|rejected)/i.test(message);
-}
-
-async function postTemplate(
-  token: string,
-  phoneNumberId: string,
+async function sendWhatsApp(
+  orderId: string,
   to: string,
   template: string,
   params: string[],
-) {
-  const res = await fetch(`https://graph.facebook.com/v21.0/${phoneNumberId}/messages`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      messaging_product: "whatsapp",
-      to: to.replace(/^\+/, ""),
-      type: "template",
-      template: {
-        name: template,
-        language: { code: "en" },
-        components: params.length
-          ? [{ type: "body", parameters: params.map((p) => ({ type: "text", text: p })) }]
-          : [],
-      },
-    }),
-  });
-  const text = await res.text();
-  return { res, text };
-}
-
-/** Meta rejects a send when the body variable count differs from the approved template. */
-function isParamCountMismatch(code: number | null, message: string) {
-  return code === 132000 || /number of parameters does not match/i.test(message);
-}
-
-/** Build a param list of exactly `n` entries: trim extras, pad short lists. */
-function resize(params: string[], n: number): string[] {
-  if (n === params.length) return params;
-  if (n < params.length) return params.slice(0, n);
-  return [...params, ...Array(n - params.length).fill("-")];
-}
-
-async function sendWhatsApp(to: string, template: string, params: string[]) {
+): Promise<SendResult> {
   const token = process.env["WHATSAPP_ACCESS_TOKEN"];
   const phoneNumberId = process.env["WHATSAPP_PHONE_NUMBER_ID"];
+  const base = { ok: false, wamid: null, accepted: false } as const;
+
   if (!token || !phoneNumberId) {
-    return { ok: false, sid: null, error: "WhatsApp Cloud API is not configured", pending: false };
+    return {
+      ...base,
+      error: "WhatsApp Cloud API is not configured",
+      errorCode: null,
+      errorTitle: "not_configured",
+    };
   }
 
-  // Try the intended param count first, then other plausible counts. The approved
-  // template in Meta may use a different number of variables than we send; this
-  // keeps notifications flowing without a code change when that happens.
-  const counts = [params.length, ...[0, 1, 2, 3, 4, 5, 6].filter((n) => n !== params.length)];
+  const expected = TEMPLATE_VARS[template];
+  if (expected !== undefined && expected !== params.length) {
+    const msg = `Template "${template}" expects ${expected} variables but ${params.length} were built`;
+    console.error(`[whatsapp] order=${orderId} template=${template} config_error="${msg}"`);
+    return { ...base, error: msg, errorCode: null, errorTitle: "param_count_mismatch" };
+  }
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15000);
 
   try {
-    let lastMsg = "";
-    let lastCode: number | null = null;
+    const res = await fetch(`https://graph.facebook.com/v21.0/${phoneNumberId}/messages`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      signal: controller.signal,
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        recipient_type: "individual",
+        to: toWireNumber(to),
+        type: "template",
+        template: {
+          name: template,
+          language: { code: TEMPLATE_LANG },
+          components: params.length
+            ? [{ type: "body", parameters: params.map((p) => ({ type: "text", text: p })) }]
+            : [],
+        },
+      }),
+    });
 
-    for (const n of counts) {
-      const { res, text } = await postTemplate(token, phoneNumberId, to, template, resize(params, n));
+    const text = await res.text();
 
-      if (res.ok) {
-        let sid: string | null = null;
-        try {
-          sid = (JSON.parse(text) as { messages?: { id?: string }[] }).messages?.[0]?.id ?? null;
-        } catch {
-          /* ignore */
-        }
-        if (n !== params.length) {
-          console.warn(`WhatsApp template "${template}" expects ${n} variables (sent ${params.length}).`);
-        }
-        return { ok: true, sid, error: null, pending: false };
-      }
-
-      let msg = text.slice(0, 500);
-      let code: number | null = null;
+    if (res.ok) {
+      let wamid: string | null = null;
       try {
-        const e = (JSON.parse(text) as { error?: { message?: string; code?: number } }).error;
-        if (e?.message) {
-          code = e.code ?? null;
-          msg = `[${e.code ?? res.status}] ${e.message}`;
-        }
+        wamid = (JSON.parse(text) as { messages?: { id?: string }[] }).messages?.[0]?.id ?? null;
       } catch {
         /* ignore */
       }
-      lastMsg = msg;
-      lastCode = code;
-
-      // Only a param-count mismatch is worth retrying with a different shape.
-      if (!isParamCountMismatch(code, msg)) break;
+      // ACCEPTED by Meta — NOT proof of delivery. The status webhook confirms that.
+      console.log(
+        `[whatsapp] order=${orderId} template=${template} to=${maskPhone(to)} status=accepted wamid=${wamid ?? "none"}`,
+      );
+      return { ok: true, accepted: true, wamid, error: null, errorCode: null, errorTitle: null };
     }
 
-    const pending = isTemplatePending(lastCode, lastMsg) && !isParamCountMismatch(lastCode, lastMsg);
-    if (pending) {
-      console.warn(`WhatsApp template "${template}" not active yet: ${lastMsg}`);
-    } else {
-      console.error(`WhatsApp send failed for "${template}": ${lastMsg}`);
+    let msg = text.slice(0, 500);
+    let code: number | null = null;
+    let title: string | null = null;
+    try {
+      const e = (
+        JSON.parse(text) as {
+          error?: { message?: string; code?: number; error_subcode?: number; error_data?: { details?: string } };
+        }
+      ).error;
+      if (e) {
+        code = e.code ?? null;
+        title = e.message ?? null;
+        msg = `[${e.code ?? res.status}] ${e.message ?? ""}${
+          e.error_data?.details ? ` · ${e.error_data.details}` : ""
+        }`;
+      }
+    } catch {
+      /* ignore */
     }
-    return {
-      ok: false,
-      sid: null,
-      error: pending ? `Template "${template}" not active yet · ${lastMsg}` : lastMsg,
-      pending,
-    };
+    console.error(
+      `[whatsapp] order=${orderId} template=${template} to=${maskPhone(to)} status=rejected code=${code ?? "?"} title="${title ?? msg}"`,
+    );
+    return { ...base, error: msg, errorCode: code, errorTitle: title };
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.error(`WhatsApp request error: ${msg}`);
-    return { ok: false, sid: null, error: msg.slice(0, 500), pending: false };
+    const aborted = err instanceof Error && err.name === "AbortError";
+    const msg = aborted ? "Meta request timed out after 15s" : err instanceof Error ? err.message : String(err);
+    console.error(`[whatsapp] order=${orderId} template=${template} to=${maskPhone(to)} status=error msg="${msg}"`);
+    return { ...base, error: msg.slice(0, 500), errorCode: null, errorTitle: aborted ? "timeout" : "network_error" };
+  } finally {
+    clearTimeout(timer);
   }
 }
-
-
 
 export const Route = createFileRoute("/api/public/notify/whatsapp")({
   server: {
@@ -208,55 +218,68 @@ export const Route = createFileRoute("/api/public/notify/whatsapp")({
 
         if (cfg && cfg.whatsapp_enabled === false) return Response.json({ skipped: "disabled" });
 
+        // Duplicate guard: the same event for the same order is only sent once
+        // per 60s, so retries / concurrent triggers cannot double-message people.
+        const { data: recent } = await supabaseAdmin
+          .from("notification_log")
+          .select("id")
+          .eq("order_id", order_id)
+          .eq("event", event)
+          .in("status", ["sent", "accepted"])
+          .gte("created_at", new Date(Date.now() - 60_000).toISOString())
+          .limit(1);
+        if ((recent ?? []).length) {
+          console.log(`[whatsapp] order=${order_id} event=${event} skipped=duplicate_within_60s`);
+          return Response.json({ event, skipped: "duplicate" });
+        }
+
         const { data: restaurant } = await supabaseAdmin
           .from("restaurants")
           .select("name, phone, address")
           .eq("id", order.restaurant_id as string)
           .maybeSingle();
 
-        // Brand every message body so recipients recognise the sender even when
-        // the number is not saved in their contacts.
         const BRAND = "KhanaGharTak.in";
         const orderRef = `${BRAND} · #${shortId(order.id as string)}`;
         const total = `₹${Number(order.total ?? 0).toFixed(0)}`;
         const dropArea = clean((order.landmark as string | null) || (order.address as string));
+        const restaurantName = clean(restaurant?.name as string | null, "Restaurant");
         const recipients: Recipient[] = [];
 
         if (event === "order_placed") {
           const phone = toE164(restaurant?.phone as string | null);
           if (phone) {
+            // kgt_new_order: "Hi {{1}}, Your order {{2}} has been placed successfully. Restaurant: {{3}}"
             recipients.push({
               type: "restaurant",
               phone,
               template: "kgt_new_order",
-              params: [orderRef, itemLines(order.items), total, dropArea],
+              params: [restaurantName, `${orderRef} (${itemLines(order.items)} · ${total})`, restaurantName],
             });
           }
         } else if (event === "restaurant_accepted") {
           const phone = toE164(order.customer_phone as string);
           if (phone) {
+            // kgt_order_accepted: "Your order {{1}} from {{2}} has been accepted."
             recipients.push({
               type: "customer",
               phone,
               template: "kgt_order_accepted",
-              params: [orderRef, clean(restaurant?.name as string | null, "the kitchen")],
+              params: [orderRef, restaurantName],
             });
           }
         } else if (event === "rider_offer" || event === "ready_for_pickup") {
           const pickup = clean(
-            `${(restaurant?.name as string | null) ?? "Restaurant"}, ${(restaurant?.address as string | null) ?? ""}`,
+            `${restaurantName}, ${(restaurant?.address as string | null) ?? ""}`,
             "Restaurant",
           );
-          // Only the rider holding the currently-live offer is messaged.
           const { data: offers } = await supabaseAdmin
             .from("delivery_offers")
             .select("rider_id, distance_km, expires_at")
             .eq("order_id", order_id)
             .eq("status", "active")
             .limit(1);
-          const offer = (offers ?? [])[0] as
-            | { rider_id: string; distance_km: number | null }
-            | undefined;
+          const offer = (offers ?? [])[0] as { rider_id: string } | undefined;
           if (offer) {
             const { data: rp } = await supabaseAdmin
               .from("rider_profiles")
@@ -265,42 +288,35 @@ export const Route = createFileRoute("/api/public/notify/whatsapp")({
               .maybeSingle();
             const phone = toE164(rp?.phone as string | null);
             if (phone) {
+              // kgt_delivery_available: "Order: {{1}} Restaurant: {{2}} Drop Location: {{3}}"
               recipients.push({
                 type: "rider",
                 phone,
                 template: "kgt_delivery_available",
-                params: [orderRef, pickup, dropArea, total],
+                params: [`${orderRef} · ${total}`, pickup, dropArea],
               });
             }
           }
         } else if (event === "no_rider") {
           const phone = toE164(cfg?.support_phone ?? null);
           if (phone) {
+            // kgt_no_rider: "No delivery partner accepted Order {{1}} from {{2}}. Delivery Area: {{3}}"
             recipients.push({
               type: "admin",
               phone,
               template: "kgt_no_rider",
-              params: [orderRef, clean(restaurant?.name as string | null, "Restaurant"), dropArea],
+              params: [orderRef, restaurantName, dropArea],
             });
           }
-
         } else if (event === "rider_picked_up") {
-          let riderName = "Your rider";
-          if (order.rider_id) {
-            const { data: rp } = await supabaseAdmin
-              .from("rider_profiles")
-              .select("full_name, phone")
-              .eq("user_id", order.rider_id as string)
-              .maybeSingle();
-            if (rp?.full_name) riderName = rp.full_name as string;
-          }
           const phone = toE164(order.customer_phone as string);
           if (phone) {
+            // kgt_order_picked_up: "Your order {{1}} has been picked up from {{2}}."
             recipients.push({
               type: "customer",
               phone,
               template: "kgt_order_picked_up",
-              params: [orderRef, clean(riderName, "Your rider"), total],
+              params: [orderRef, restaurantName],
             });
           }
         } else if (event === "delivered") {
@@ -315,44 +331,86 @@ export const Route = createFileRoute("/api/public/notify/whatsapp")({
           }
         }
 
-        const results: { type: string; ok: boolean; error: string | null; pending?: boolean }[] = [];
+        const results: {
+          type: string;
+          accepted: boolean;
+          wamid: string | null;
+          error: string | null;
+          errorCode: number | null;
+        }[] = [];
         const logRows: Record<string, unknown>[] = [];
 
+        // WhatsApp forbids messaging your own business number — Meta answers (#100).
+        const ownNumber = toE164(cfg?.whatsapp_from ?? null);
+
         for (const r of recipients) {
-          const sent = await sendWhatsApp(r.phone, r.template, r.params);
+          if (ownNumber && toWireNumber(r.phone) === toWireNumber(ownNumber)) {
+            console.warn(`[whatsapp] order=${order_id} event=${event} skipped=self_send`);
+            logRows.push({
+              order_id,
+              event,
+              recipient_type: r.type,
+              phone: r.phone,
+              template: r.template,
+              status: "skipped",
+              error: "Cannot send to the business's own WhatsApp number",
+              error_title: "self_send",
+            });
+            results.push({
+              type: r.type,
+              accepted: false,
+              wamid: null,
+              error: "self_send",
+              errorCode: null,
+            });
+            continue;
+          }
+
+          const sent = await sendWhatsApp(order_id, r.phone, r.template, r.params);
 
           logRows.push({
             order_id,
             event,
             recipient_type: r.type,
             phone: r.phone,
-            status: sent.ok ? "sent" : sent.pending ? "template_pending" : "failed",
-            provider_sid: sent.sid,
+            template: r.template,
+            // "accepted" = Meta queued it. Real delivery arrives via the status webhook.
+            status: sent.accepted ? "accepted" : "failed",
+            provider_sid: sent.wamid,
             error: sent.error,
+            error_code: sent.errorCode,
+            error_title: sent.errorTitle,
           });
-          results.push({ type: r.type, ok: sent.ok, error: sent.error, pending: sent.pending });
+          results.push({
+            type: r.type,
+            accepted: sent.accepted,
+            wamid: sent.wamid,
+            error: sent.error,
+            errorCode: sent.errorCode,
+          });
         }
 
         if (recipients.length === 0) {
+          console.warn(`[whatsapp] order=${order_id} event=${event} skipped=no_recipient_phone`);
           logRows.push({
             order_id,
             event,
             recipient_type: "none",
             status: "skipped",
             error: "No valid phone numbers for this event",
+            error_title: "no_recipient",
           });
         }
 
         if (logRows.length) {
-          // Logging must never fail the request — the order workflow continues regardless.
           const { error: logError } = await supabaseAdmin
             .from("notification_log")
             .insert(logRows as never);
-          if (logError) console.error(`notification_log insert failed: ${logError.message}`);
+          if (logError) console.error(`[whatsapp] notification_log insert failed: ${logError.message}`);
         }
 
         // Always 200: notification problems must not roll back or block the order.
-        return Response.json({ event, sent: results });
+        return Response.json({ event, accepted: results });
       },
     },
   },
