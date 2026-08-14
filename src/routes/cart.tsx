@@ -27,6 +27,8 @@ function CartPage() {
   const pricing = usePricingSettings();
 
   const grand = subtotal + (subtotal > 0 ? pricing.platform_fee : 0);
+  const shortfall = Math.max(0, MIN_ORDER_VALUE - subtotal);
+  const belowMin = subtotal > 0 && shortfall > 0;
 
   if (!ready) return <PageSpinner label="Loading your cart…" />;
 
