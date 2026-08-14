@@ -4,6 +4,7 @@ import { useCart } from "@/hooks/useCart";
 import { usePricingSettings } from "@/hooks/usePricingSettings";
 import { PageSpinner } from "@/components/PageState";
 import { Plus, Minus, Trash2, ShoppingBag } from "lucide-react";
+import { MIN_ORDER_VALUE } from "@/lib/order-rules";
 
 export const Route = createFileRoute("/cart")({
   component: CartPage,
