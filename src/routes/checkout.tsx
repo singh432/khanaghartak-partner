@@ -16,6 +16,7 @@ import { PhoneVerification } from "@/components/PhoneVerification";
 
 import { withTimeout } from "@/lib/supabase-query";
 import { MapPin, Navigation, Loader2, Wallet, AlertTriangle } from "lucide-react";
+import { MIN_ORDER_VALUE } from "@/lib/order-rules";
 
 export const Route = createFileRoute("/checkout")({
   component: CheckoutPage,
@@ -145,6 +146,8 @@ function CheckoutPage() {
   const deliveryFee = freeDelivery ? 0 : baseDeliveryFee;
   const outOfRange = distanceKm != null && distanceKm > pricing.max_delivery_radius_km;
   const grand = subtotal + (distanceKm != null && !outOfRange ? deliveryFee : 0) + pricing.platform_fee;
+  const shortfall = Math.max(0, MIN_ORDER_VALUE - subtotal);
+  const belowMin = shortfall > 0;
   const currentGate = gate?.phone === phoneDigits ? gate : null;
   const codBlocked = !!currentGate && (!currentGate.cod_allowed || currentGate.blocked);
 
@@ -166,6 +169,7 @@ function CheckoutPage() {
     const parsed = schema.safeParse(form);
     if (!parsed.success) return toast.error(parsed.error.issues[0].message);
     if (restaurantClosed) return toast.error("This restaurant is closed right now. Please order when it reopens.");
+    if (belowMin) return toast.error(`Minimum order value is ₹${MIN_ORDER_VALUE}. Add ₹${shortfall.toFixed(0)} more.`);
     if (currentGate?.blocked) return toast.error("This phone number is blocked. Please contact support.");
     if (currentGate?.needs_otp) return toast.error("Please verify your phone number to place the order.");
     if (currentGate && !currentGate.cod_allowed) return toast.error("Cash on Delivery is temporarily disabled for your account.");
@@ -319,16 +323,23 @@ function CheckoutPage() {
       </div>
 
       <div className="fixed bottom-0 left-1/2 z-30 w-full max-w-[480px] -translate-x-1/2 border-t bg-background p-4">
-        <button onClick={placeOrder} disabled={placing || !coords || outOfRange || restaurantClosed || codBlocked}
+        {belowMin && (
+          <p className="mb-2 text-center text-xs font-semibold text-destructive">
+            Minimum order value is ₹{MIN_ORDER_VALUE}. Add ₹{shortfall.toFixed(0)} more to place this order.
+          </p>
+        )}
+        <button onClick={placeOrder} disabled={placing || belowMin || !coords || outOfRange || restaurantClosed || codBlocked}
           className="flex h-12 w-full items-center justify-center rounded-2xl bg-primary text-sm font-bold text-primary-foreground shadow-[var(--shadow-soft)] disabled:opacity-60">
           {placing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           {codBlocked
             ? "Cash on Delivery unavailable"
-            : !coords
-              ? "Share location to continue"
-              : outOfRange
-                ? "Outside delivery area"
-                : `Place Order · ₹${grand.toFixed(0)}`}
+            : belowMin
+              ? `Add ₹${shortfall.toFixed(0)} more to order`
+              : !coords
+                ? "Share location to continue"
+                : outOfRange
+                  ? "Outside delivery area"
+                  : `Place Order · ₹${grand.toFixed(0)}`}
         </button>
       </div>
 
