@@ -236,6 +236,8 @@ export type Database = {
           delivery_status: string | null
           delivery_updated_at: string | null
           error: string | null
+          error_code: number | null
+          error_title: string | null
           event: string
           id: string
           order_id: string | null
@@ -243,6 +245,7 @@ export type Database = {
           provider_sid: string | null
           recipient_type: string
           status: string
+          template: string | null
         }
         Insert: {
           created_at?: string
@@ -250,6 +253,8 @@ export type Database = {
           delivery_status?: string | null
           delivery_updated_at?: string | null
           error?: string | null
+          error_code?: number | null
+          error_title?: string | null
           event: string
           id?: string
           order_id?: string | null
@@ -257,6 +262,7 @@ export type Database = {
           provider_sid?: string | null
           recipient_type: string
           status?: string
+          template?: string | null
         }
         Update: {
           created_at?: string
@@ -264,6 +270,8 @@ export type Database = {
           delivery_status?: string | null
           delivery_updated_at?: string | null
           error?: string | null
+          error_code?: number | null
+          error_title?: string | null
           event?: string
           id?: string
           order_id?: string | null
@@ -271,6 +279,7 @@ export type Database = {
           provider_sid?: string | null
           recipient_type?: string
           status?: string
+          template?: string | null
         }
         Relationships: []
       }
