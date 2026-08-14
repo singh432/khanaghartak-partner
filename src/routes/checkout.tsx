@@ -169,6 +169,7 @@ function CheckoutPage() {
     const parsed = schema.safeParse(form);
     if (!parsed.success) return toast.error(parsed.error.issues[0].message);
     if (restaurantClosed) return toast.error("This restaurant is closed right now. Please order when it reopens.");
+    if (belowMin) return toast.error(`Minimum order value is ₹${MIN_ORDER_VALUE}. Add ₹${shortfall.toFixed(0)} more.`);
     if (currentGate?.blocked) return toast.error("This phone number is blocked. Please contact support.");
     if (currentGate?.needs_otp) return toast.error("Please verify your phone number to place the order.");
     if (currentGate && !currentGate.cod_allowed) return toast.error("Cash on Delivery is temporarily disabled for your account.");
