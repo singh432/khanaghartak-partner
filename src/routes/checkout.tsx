@@ -146,6 +146,8 @@ function CheckoutPage() {
   const deliveryFee = freeDelivery ? 0 : baseDeliveryFee;
   const outOfRange = distanceKm != null && distanceKm > pricing.max_delivery_radius_km;
   const grand = subtotal + (distanceKm != null && !outOfRange ? deliveryFee : 0) + pricing.platform_fee;
+  const shortfall = Math.max(0, MIN_ORDER_VALUE - subtotal);
+  const belowMin = shortfall > 0;
   const currentGate = gate?.phone === phoneDigits ? gate : null;
   const codBlocked = !!currentGate && (!currentGate.cod_allowed || currentGate.blocked);
 
