@@ -110,6 +110,13 @@ function OrderSuccess() {
         </div>
       )}
 
+      <OrderCancelWindow
+        orderId={id}
+        createdAt={order?.created_at}
+        status={order?.status}
+        items={order?.items ?? []}
+      />
+
       <RiderLiveTracker orderId={id} dropLat={order?.latitude} dropLng={order?.longitude} />
 
 
