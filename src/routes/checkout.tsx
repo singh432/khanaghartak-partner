@@ -17,6 +17,7 @@ import { PhoneVerification } from "@/components/PhoneVerification";
 import { withTimeout } from "@/lib/supabase-query";
 import { MapPin, Navigation, Loader2, Wallet, AlertTriangle } from "lucide-react";
 import { MIN_ORDER_VALUE } from "@/lib/order-rules";
+import { cartHasHandiNonVeg, HANDI_PREP_NOTE } from "@/lib/portions";
 
 export const Route = createFileRoute("/checkout")({
   component: CheckoutPage,
@@ -266,6 +267,12 @@ function CheckoutPage() {
           )}
         </Section>
 
+
+        {cartHasHandiNonVeg(items) && (
+          <p className="rounded-xl border border-primary/30 bg-accent/40 px-3 py-2 text-xs font-medium">
+            {HANDI_PREP_NOTE}
+          </p>
+        )}
 
         <Section title="Order summary">
           {items.map((it) => (
