@@ -5,6 +5,8 @@ import { TrendingUp, ShoppingBag, CheckCircle2, XCircle, Clock, IndianRupee } fr
 
 export const Route = createFileRoute("/admin/")({ component: AdminDashboard });
 
+const COMMISSION_RATE = 0.15;
+
 type Stats = { total: number; placed: number; accepted: number; preparing: number; out: number; delivered: number; rejected: number; revenue: number; foodSales: number; platformCut: number; deliveryFees: number };
 type Lifetime = { orders: number; revenue: number; foodSales: number; platformCut: number };
 
@@ -70,10 +72,10 @@ function AdminDashboard() {
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
         <div className="rounded-2xl border bg-card p-5 shadow-sm md:col-span-2">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Revenue Today</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Food Sales Today</p>
           <div className="mt-2 flex items-end gap-2">
             <IndianRupee className="mb-1 h-6 w-6 text-primary" />
-            <span className="text-4xl font-extrabold tracking-tight">{Number(stats?.revenue ?? 0).toFixed(0)}</span>
+            <span className="text-4xl font-extrabold tracking-tight">{Number(stats?.foodSales ?? 0).toFixed(0)}</span>
             <span className="mb-1 text-xs text-muted-foreground">from delivered orders</span>
           </div>
         </div>
@@ -86,16 +88,16 @@ function AdminDashboard() {
 
       <div className="rounded-2xl border bg-card p-5 shadow-sm">
         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Earnings (all time, delivered orders)</p>
-        <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-4">
-          <Money label="Total Revenue" value={lifetime?.revenue ?? 0} strong />
-          <Money label="Your Food Sales" value={lifetime?.foodSales ?? 0} />
-          <Money label="KhanaGharTak Cut" value={lifetime?.platformCut ?? 0} tone="text-destructive" />
-          <Money label="Your Net Payout" value={(lifetime?.foodSales ?? 0)} tone="text-success" />
+        <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
+          <Money label="Your Food Sales" value={lifetime?.foodSales ?? 0} strong />
+          <Money label={`KhanaGharTak Cut (${Math.round(COMMISSION_RATE * 100)}%)`} value={(lifetime?.foodSales ?? 0) * COMMISSION_RATE} tone="text-destructive" />
+          <Money label="Your Net Payout" value={(lifetime?.foodSales ?? 0) * (1 - COMMISSION_RATE)} tone="text-success" />
         </div>
         <p className="mt-3 text-[11px] text-muted-foreground">
-          Total revenue includes food, delivery fee and platform fee collected. KhanaGharTak keeps the platform fee; delivery fee goes to the rider. Today's platform fee: ₹{Number(stats?.platformCut ?? 0).toFixed(0)}.
+          KhanaGharTak keeps {Math.round(COMMISSION_RATE * 100)}% of your food value; delivery fee goes to the rider. Today's food sales: ₹{Number(stats?.foodSales ?? 0).toFixed(0)} · today's cut: ₹{((stats?.foodSales ?? 0) * COMMISSION_RATE).toFixed(0)}.
         </p>
       </div>
+
 
       <div className="rounded-2xl border bg-card p-5 shadow-sm">
         <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Pipeline</p>
