@@ -43,6 +43,7 @@ type RiderProfile = {
   vehicle: string | null;
   base_latitude: number | null;
   base_longitude: number | null;
+  is_online: boolean | null;
 };
 
 
@@ -62,7 +63,7 @@ function RiderPanel() {
     setProfileChecked(false);
     (async () => {
       const { data } = await (supabase.from("rider_profiles") as any)
-        .select("status, full_name, phone, vehicle, base_latitude, base_longitude")
+        .select("status, full_name, phone, vehicle, base_latitude, base_longitude, is_online")
         .eq("user_id", user.id)
         .maybeSingle();
       if (active) {
@@ -174,6 +175,18 @@ function RiderDashboard({
   const [offers, setOffers] = useState<Offer[]>([]);
   const [restaurants, setRestaurants] = useState<Record<string, Restaurant>>({});
   const [tab, setTab] = useState<"available" | "mine">("available");
+  const [online, setOnline] = useState(profile.is_online !== false);
+  const [togglingOnline, setTogglingOnline] = useState(false);
+
+  const toggleOnline = async (next: boolean) => {
+    setTogglingOnline(true);
+    const { error } = await supabase.rpc("rider_set_online" as any, { _online: next });
+    setTogglingOnline(false);
+    if (error) { toast.error(error.message); return; }
+    setOnline(next);
+    toast.success(next ? "You're Active — new orders will be offered to you." : "You're Inactive — you won't get new order messages.");
+  };
+
   const [hasBase, setHasBase] = useState(
     profile.base_latitude != null && profile.base_longitude != null,
   );
@@ -275,6 +288,25 @@ function RiderDashboard({
       </header>
 
       <div className="px-3 pt-3">
+        <div className={`mb-3 flex items-center justify-between rounded-2xl border p-3 ${online ? "border-primary/40 bg-primary/5" : "border-destructive/30 bg-destructive/5"}`}>
+          <div>
+            <p className="text-sm font-extrabold">{online ? "Active" : "Inactive"}</p>
+            <p className="text-[11px] text-muted-foreground">
+              {online ? "You'll receive new delivery offers on WhatsApp." : "No new delivery messages will be sent to you."}
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={online}
+            aria-label="Toggle active status"
+            disabled={togglingOnline}
+            onClick={() => toggleOnline(!online)}
+            className={`relative h-7 w-12 shrink-0 rounded-full transition-colors disabled:opacity-60 ${online ? "bg-primary" : "bg-muted-foreground/40"}`}
+          >
+            <span className={`absolute top-1 h-5 w-5 rounded-full bg-background transition-all ${online ? "left-6" : "left-1"}`} />
+          </button>
+        </div>
         <BaseLocationCard hasBase={hasBase} onSaved={() => { setHasBase(true); load(); }} />
       </div>
 
