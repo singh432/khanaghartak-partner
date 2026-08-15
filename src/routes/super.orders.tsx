@@ -98,6 +98,7 @@ function SuperOrders() {
                   <span className="rounded-full bg-secondary px-2 py-0.5 text-xs capitalize">{o.status.replace(/_/g, " ")}</span>
                   {o.is_fake && <span className="ml-1.5 rounded-full bg-destructive/15 px-2 py-0.5 text-xs font-bold text-destructive">Fake</span>}
                 </td>
+                <td className="px-4 py-3 text-muted-foreground">{o.rider_id ? riders[o.rider_id] ?? o.rider_id.slice(0, 8) : "—"}</td>
                 <td className="px-4 py-3 text-muted-foreground">{new Date(o.created_at).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" })}</td>
                 <td className="px-4 py-3 text-right">
                   <button onClick={() => flagFake(o)} title={o.is_fake ? "Unmark fake" : "Mark as fake"}
