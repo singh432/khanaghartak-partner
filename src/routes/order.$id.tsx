@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { PageError, PageSpinner } from "@/components/PageState";
 import { RiderLiveTracker } from "@/components/RiderLiveTracker";
+import { OrderCancelWindow, type OrderLine } from "@/components/OrderCancelWindow";
 import { withTimeout } from "@/lib/supabase-query";
 import { CheckCircle2, Clock, Phone } from "lucide-react";
 
