@@ -752,6 +752,7 @@ export type Database = {
         Args: { _code_hash: string; _phone: string; _user_id: string }
         Returns: undefined
       }
+      customer_cancel_order: { Args: { _order_id: string }; Returns: undefined }
       free_delivery_status: {
         Args: never
         Returns: {
