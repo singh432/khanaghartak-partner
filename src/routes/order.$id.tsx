@@ -5,7 +5,7 @@ import { PageError, PageSpinner } from "@/components/PageState";
 import { RiderLiveTracker } from "@/components/RiderLiveTracker";
 import { OrderCancelWindow, type OrderLine } from "@/components/OrderCancelWindow";
 import { withTimeout } from "@/lib/supabase-query";
-import { CheckCircle2, Clock, Phone } from "lucide-react";
+import { CheckCircle2, Clock, Phone, XCircle } from "lucide-react";
 
 
 export const Route = createFileRoute("/order/$id")({ component: OrderSuccess });
