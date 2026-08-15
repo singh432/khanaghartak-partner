@@ -55,3 +55,16 @@ export const PORTION_LABELS: Record<string, string> = {
   lb_half: "½ pound", lb: "1 pound", lb2: "2 pound",
 };
 
+
+/** Handi dishes are slow-cooked — restaurants need extra prep time. */
+export function isHandiCategory(categoryName?: string | null): boolean {
+  return (categoryName ?? "").toLowerCase().includes("handi");
+}
+
+export const HANDI_PREP_NOTE =
+  "Non-veg Handi is slow-cooked fresh — the restaurant needs about 2.5 hours to prepare it.";
+
+/** True when the cart contains a non-veg handi dish. */
+export function cartHasHandiNonVeg(items: { name: string; veg_type: "veg" | "nonveg" }[]): boolean {
+  return items.some((i) => i.veg_type === "nonveg" && i.name.toLowerCase().includes("handi"));
+}
