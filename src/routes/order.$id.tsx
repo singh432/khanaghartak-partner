@@ -41,7 +41,7 @@ function OrderSuccess() {
     setLoading(true);
     setError(null);
     withTimeout(supabase.from("orders")
-      .select("id,status,total,subtotal,delivery_fee,platform_fee,distance_km,customer_name,created_at,address,latitude,longitude")
+      .select("id,status,total,subtotal,delivery_fee,platform_fee,distance_km,customer_name,created_at,address,latitude,longitude,items")
       .eq("id", id).maybeSingle()).then(({ data, error }) => {
         if (!active) return;
         if (error) throw error;
