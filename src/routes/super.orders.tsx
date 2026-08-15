@@ -10,6 +10,7 @@ type O = {
   id: string; restaurant_id: string | null; customer_name: string;
   total: number; subtotal: number; platform_fee: number; delivery_fee: number;
   status: string; created_at: string; is_fake: boolean; user_id: string;
+  rider_id: string | null;
 };
 
 const COMMISSION_RATE = 0.15;
