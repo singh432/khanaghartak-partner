@@ -32,6 +32,13 @@ function SuperOrders() {
       (data ?? []).forEach((r: any) => { map[r.id] = r.name; });
       setRestaurants(map);
     });
+    (supabase.from("rider_profiles") as any)
+      .select("user_id,full_name")
+      .then(({ data }: { data: any[] | null }) => {
+        const map: Record<string, string> = {};
+        (data ?? []).forEach((r: any) => { map[r.user_id] = r.full_name ?? r.user_id.slice(0, 8); });
+        setRiders(map);
+      });
   }, []);
 
   useEffect(() => {
