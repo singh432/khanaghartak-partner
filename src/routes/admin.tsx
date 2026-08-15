@@ -236,7 +236,7 @@ function RestaurantSetup({ userId, onSignOut }: { userId: string; onSignOut: () 
 
           <div className="rounded-xl border bg-secondary/40 p-3">
             <p className="text-sm font-semibold">Restaurant location</p>
-            <p className="text-[11px] text-muted-foreground">We save this pin permanently and deliver within 5 km of it.</p>
+            <p className="text-[11px] text-muted-foreground">We save this pin permanently and deliver within 7 km of it.</p>
             <button type="button" onClick={pinLocation} disabled={locating}
               className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-2.5 text-xs font-bold text-primary-foreground disabled:opacity-60">
               {locating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Navigation className="h-3.5 w-3.5" />}

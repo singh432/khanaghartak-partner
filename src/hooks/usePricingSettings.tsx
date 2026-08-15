@@ -10,7 +10,7 @@ export type PricingSettings = {
 const DEFAULTS: PricingSettings = {
   platform_fee: 10,
   delivery_per_km: 10,
-  max_delivery_radius_km: 10,
+  max_delivery_radius_km: 7,
 };
 
 // Simple in-memory cache so multiple components on one page share the fetch.
