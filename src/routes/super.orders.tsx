@@ -42,7 +42,7 @@ function SuperOrders() {
   }, []);
 
   useEffect(() => {
-    let q = supabase.from("orders").select("id,restaurant_id,customer_name,total,subtotal,platform_fee,delivery_fee,status,created_at,is_fake,user_id").order("created_at", { ascending: false }).limit(500);
+    let q = supabase.from("orders").select("id,restaurant_id,customer_name,total,subtotal,platform_fee,delivery_fee,status,created_at,is_fake,user_id,rider_id").order("created_at", { ascending: false }).limit(500);
     if (range !== "all") {
       const d = new Date();
       if (range === "today") d.setHours(0, 0, 0, 0);
