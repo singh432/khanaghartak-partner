@@ -33,6 +33,7 @@ const STATUS_COLOR: Record<string, string> = {
   out_for_delivery: "bg-primary/15 text-primary",
   delivered: "bg-success/15 text-success",
   rejected: "bg-destructive/15 text-destructive",
+  cancelled: "bg-destructive/15 text-destructive",
 };
 
 function OrdersPage() {
