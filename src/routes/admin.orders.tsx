@@ -144,10 +144,8 @@ function AdminOrders() {
                   </div>
                 ))}
                 <div className="my-2 h-px bg-border" />
-                <div className="flex justify-between text-xs"><span className="text-muted-foreground">Items total</span><span>₹{Number(o.subtotal).toFixed(0)}</span></div>
-                <div className="flex justify-between text-xs"><span className="text-muted-foreground">Delivery{o.distance_km != null ? ` (${Number(o.distance_km).toFixed(1)} km)` : ""}</span><span>₹{Number(o.delivery_fee).toFixed(0)}</span></div>
-                <div className="flex justify-between text-xs"><span className="text-muted-foreground">Platform fee</span><span>₹{Number(o.platform_fee ?? 0).toFixed(0)}</span></div>
-                <div className="mt-1 flex justify-between text-sm font-bold"><span>COD total</span><span>₹{Number(o.total).toFixed(0)}</span></div>
+                <div className="flex justify-between text-sm font-bold"><span>Items total</span><span>₹{Number(o.subtotal).toFixed(0)}</span></div>
+
               </div>
 
               <div className="mt-3 grid grid-cols-2 gap-2">
