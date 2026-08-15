@@ -3,8 +3,9 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { PageError, PageSpinner } from "@/components/PageState";
 import { RiderLiveTracker } from "@/components/RiderLiveTracker";
+import { OrderCancelWindow, type OrderLine } from "@/components/OrderCancelWindow";
 import { withTimeout } from "@/lib/supabase-query";
-import { CheckCircle2, Clock, Phone } from "lucide-react";
+import { CheckCircle2, Clock, Phone, XCircle } from "lucide-react";
 
 
 export const Route = createFileRoute("/order/$id")({ component: OrderSuccess });
@@ -14,6 +15,7 @@ type Order = {
   delivery_fee: number; platform_fee: number; distance_km: number | null;
   customer_name: string; created_at: string; address: string;
   latitude: number | null; longitude: number | null;
+  items: OrderLine[] | null;
 };
 
 function OrderSuccess() {
@@ -39,7 +41,7 @@ function OrderSuccess() {
     setLoading(true);
     setError(null);
     withTimeout(supabase.from("orders")
-      .select("id,status,total,subtotal,delivery_fee,platform_fee,distance_km,customer_name,created_at,address,latitude,longitude")
+      .select("id,status,total,subtotal,delivery_fee,platform_fee,distance_km,customer_name,created_at,address,latitude,longitude,items")
       .eq("id", id).maybeSingle()).then(({ data, error }) => {
         if (!active) return;
         if (error) throw error;
@@ -62,11 +64,21 @@ function OrderSuccess() {
   return (
     <div className="flex min-h-[100dvh] flex-col items-center justify-center px-6 text-center">
       <div className="fade-in">
-        <CheckCircle2 className="mx-auto h-20 w-20 text-success" />
-        <h1 className="mt-4 text-2xl font-extrabold">Order placed!</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          The kitchen has been notified and is preparing your food.
-        </p>
+        {order?.status === "cancelled" ? (
+          <>
+            <XCircle className="mx-auto h-20 w-20 text-destructive" />
+            <h1 className="mt-4 text-2xl font-extrabold">Order cancelled</h1>
+            <p className="mt-1 text-sm text-muted-foreground">This order was cancelled. You can order again anytime.</p>
+          </>
+        ) : (
+          <>
+            <CheckCircle2 className="mx-auto h-20 w-20 text-success" />
+            <h1 className="mt-4 text-2xl font-extrabold">Order placed!</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              The kitchen has been notified and is preparing your food.
+            </p>
+          </>
+        )}
       </div>
 
       <div className="mt-8 w-full max-w-sm rounded-2xl border bg-card p-5 text-left shadow-[var(--shadow-card)]">
@@ -107,6 +119,13 @@ function OrderSuccess() {
           </a>
         </div>
       )}
+
+      <OrderCancelWindow
+        orderId={id}
+        createdAt={order?.created_at}
+        status={order?.status}
+        items={order?.items ?? []}
+      />
 
       <RiderLiveTracker orderId={id} dropLat={order?.latitude} dropLng={order?.longitude} />
 
