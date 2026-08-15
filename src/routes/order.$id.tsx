@@ -64,11 +64,21 @@ function OrderSuccess() {
   return (
     <div className="flex min-h-[100dvh] flex-col items-center justify-center px-6 text-center">
       <div className="fade-in">
-        <CheckCircle2 className="mx-auto h-20 w-20 text-success" />
-        <h1 className="mt-4 text-2xl font-extrabold">Order placed!</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          The kitchen has been notified and is preparing your food.
-        </p>
+        {order?.status === "cancelled" ? (
+          <>
+            <XCircle className="mx-auto h-20 w-20 text-destructive" />
+            <h1 className="mt-4 text-2xl font-extrabold">Order cancelled</h1>
+            <p className="mt-1 text-sm text-muted-foreground">This order was cancelled. You can order again anytime.</p>
+          </>
+        ) : (
+          <>
+            <CheckCircle2 className="mx-auto h-20 w-20 text-success" />
+            <h1 className="mt-4 text-2xl font-extrabold">Order placed!</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              The kitchen has been notified and is preparing your food.
+            </p>
+          </>
+        )}
       </div>
 
       <div className="mt-8 w-full max-w-sm rounded-2xl border bg-card p-5 text-left shadow-[var(--shadow-card)]">
