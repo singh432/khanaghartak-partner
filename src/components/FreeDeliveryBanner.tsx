@@ -27,8 +27,7 @@ export function FreeDeliveryBanner() {
       <div>
         <p className="text-sm font-bold text-success">FREE delivery on your order</p>
         <p className="text-[11px] text-muted-foreground">
-          Launch offer from 15 August · first 50 orders only
-          {promo.remaining ? ` · ${promo.remaining} left` : ""}
+          Launch offer from 15 August · first 100 orders only
         </p>
       </div>
     </div>
