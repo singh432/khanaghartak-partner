@@ -5,6 +5,7 @@ import { usePricingSettings } from "@/hooks/usePricingSettings";
 import { PageSpinner } from "@/components/PageState";
 import { Plus, Minus, Trash2, ShoppingBag } from "lucide-react";
 import { MIN_ORDER_VALUE } from "@/lib/order-rules";
+import { cartHasHandiNonVeg, HANDI_PREP_NOTE } from "@/lib/portions";
 
 export const Route = createFileRoute("/cart")({
   component: CartPage,
@@ -53,6 +54,11 @@ function CartPage() {
       <BrandHeader subtitle={`${totalQty} item${totalQty > 1 ? "s" : ""} in cart`} />
       <div className="px-4 pt-4 space-y-3">
         <h1 className="sr-only">Your cart</h1>
+        {cartHasHandiNonVeg(items) && (
+          <p className="rounded-xl border border-primary/30 bg-accent/40 px-3 py-2 text-xs font-medium">
+            {HANDI_PREP_NOTE}
+          </p>
+        )}
         {items.map((it) => (
           <div key={it.id} className="flex items-center gap-3 rounded-2xl border bg-card p-3 shadow-[var(--shadow-card)]">
             {it.image_url && (
