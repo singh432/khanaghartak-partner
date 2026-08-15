@@ -653,6 +653,7 @@ export type Database = {
           created_at: string
           full_name: string | null
           id: string
+          is_online: boolean
           phone: string | null
           status: string
           updated_at: string
@@ -665,6 +666,7 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id?: string
+          is_online?: boolean
           phone?: string | null
           status?: string
           updated_at?: string
@@ -677,6 +679,7 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id?: string
+          is_online?: boolean
           phone?: string | null
           status?: string
           updated_at?: string
@@ -841,6 +844,7 @@ export type Database = {
         Args: { _lat: number; _lng: number }
         Returns: undefined
       }
+      rider_set_online: { Args: { _online: boolean }; Returns: undefined }
       rider_update_live_location: {
         Args: { _accuracy?: number; _lat: number; _lng: number }
         Returns: undefined
