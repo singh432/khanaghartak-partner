@@ -20,6 +20,7 @@ type Range = "today" | "week" | "month" | "all";
 function SuperOrders() {
   const [orders, setOrders] = useState<O[]>([]);
   const [restaurants, setRestaurants] = useState<Record<string, string>>({});
+  const [riders, setRiders] = useState<Record<string, string>>({});
   const [range, setRange] = useState<Range>("today");
   const [rest, setRest] = useState<string>("all");
   const [status, setStatus] = useState<string>("all");
