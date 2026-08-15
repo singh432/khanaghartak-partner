@@ -15,6 +15,7 @@ type Order = {
   delivery_fee: number; platform_fee: number; distance_km: number | null;
   customer_name: string; created_at: string; address: string;
   latitude: number | null; longitude: number | null;
+  items: OrderLine[] | null;
 };
 
 function OrderSuccess() {
