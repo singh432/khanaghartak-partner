@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Store, Users, ShoppingBag, IndianRupee, CheckCircle2, Clock, TrendingUp } from "lucide-react";
+import { Store, Users, ShoppingBag, IndianRupee, CheckCircle2, Clock, TrendingUp, Bike, Wallet } from "lucide-react";
+import { sumPayouts, inr, RIDER_SHARE_RATE, COMMISSION_RATE } from "@/lib/payouts";
 
 export const Route = createFileRoute("/super/")({ component: SuperDashboard });
 
@@ -9,6 +10,8 @@ type Stats = {
   totalRestaurants: number; activeRestaurants: number; totalCustomers: number;
   totalOrders: number; totalRevenue: number;
   todayOrders: number; pendingOrders: number; deliveredOrders: number;
+  payout: ReturnType<typeof sumPayouts>;
+  perRestaurant: { id: string; name: string; orders: number; payable: number }[];
 };
 
 function SuperDashboard() {
@@ -17,15 +20,32 @@ function SuperDashboard() {
   const load = async () => {
     const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
     const [restaurants, orders, today, profiles] = await Promise.all([
-      supabase.from("restaurants").select("id,status"),
-      supabase.from("orders").select("status,total"),
+      supabase.from("restaurants").select("id,status,name"),
+      supabase.from("orders").select("status,total,subtotal,platform_fee,restaurant_id"),
       supabase.from("orders").select("status,total").gte("created_at", startOfDay.toISOString()),
       supabase.from("profiles").select("id"),
     ]);
     const rs = restaurants.data ?? [];
     const allOrders = orders.data ?? [];
     const todayOrders = today.data ?? [];
-    const revenue = allOrders.filter((o: any) => o.status === "delivered").reduce((s, o: any) => s + Number(o.total), 0);
+    const delivered = allOrders.filter((o: any) => o.status === "delivered");
+    const revenue = delivered.reduce((s, o: any) => s + Number(o.total), 0);
+    const payout = sumPayouts(delivered as any);
+
+    const nameById: Record<string, string> = {};
+    rs.forEach((r: any) => { nameById[r.id] = r.name; });
+    const byRest: Record<string, { orders: number; payable: number }> = {};
+    delivered.forEach((o: any) => {
+      const id = o.restaurant_id ?? "unknown";
+      const cur = byRest[id] ?? { orders: 0, payable: 0 };
+      cur.orders += 1;
+      cur.payable += Number(o.subtotal ?? 0) * (1 - COMMISSION_RATE);
+      byRest[id] = cur;
+    });
+    const perRestaurant = Object.entries(byRest)
+      .map(([id, v]) => ({ id, name: nameById[id] ?? "Unknown", ...v }))
+      .sort((a, b) => b.payable - a.payable);
+
     setS({
       totalRestaurants: rs.length,
       activeRestaurants: rs.filter((r: any) => r.status === "active").length,
@@ -34,11 +54,14 @@ function SuperDashboard() {
       totalRevenue: revenue,
       todayOrders: todayOrders.length,
       pendingOrders: allOrders.filter((o: any) => ["placed", "accepted", "preparing", "ready_for_pickup", "out_for_delivery"].includes(o.status)).length,
-      deliveredOrders: allOrders.filter((o: any) => o.status === "delivered").length,
+      deliveredOrders: delivered.length,
+      payout,
+      perRestaurant,
     });
   };
 
   useEffect(() => { load(); }, []);
+
 
   return (
     <div className="space-y-4 p-4 md:p-6">
