@@ -34,6 +34,17 @@ export function platformNetEarning(o: PayoutOrder) {
   return platformEarning(o) * (1 - RIDER_SHARE_RATE);
 }
 
+/** Cash the rider physically collects from the customer (COD orders only). */
+export function cashCollected(o: PayoutOrder) {
+  const method = (o.payment_method ?? "cod").toLowerCase();
+  return method === "cod" ? n(o.total) : 0;
+}
+
+/** What the rider must deposit back to KhanaGharTak: cash collected minus his earning. */
+export function riderDeposit(o: PayoutOrder) {
+  return cashCollected(o) - riderEarning(o);
+}
+
 export function sumPayouts(orders: PayoutOrder[]) {
   return orders.reduce(
     (acc, o) => {
@@ -42,10 +53,13 @@ export function sumPayouts(orders: PayoutOrder[]) {
       acc.rider += riderEarning(o);
       acc.platformNet += platformNetEarning(o);
       acc.orderTotal += n(o.total);
+      acc.cash += cashCollected(o);
+      acc.deposit += riderDeposit(o);
       return acc;
     },
-    { restaurant: 0, platformGross: 0, rider: 0, platformNet: 0, orderTotal: 0 },
+    { restaurant: 0, platformGross: 0, rider: 0, platformNet: 0, orderTotal: 0, cash: 0, deposit: 0 },
   );
 }
 
 export const inr = (v: number) => `₹${Math.round(v).toLocaleString("en-IN")}`;
+
