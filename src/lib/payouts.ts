@@ -9,7 +9,9 @@ export type PayoutOrder = {
   subtotal?: number | string | null;
   platform_fee?: number | string | null;
   total?: number | string | null;
+  payment_method?: string | null;
 };
+
 
 const n = (v: unknown) => Number(v ?? 0) || 0;
 
