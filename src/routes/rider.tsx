@@ -6,7 +6,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useFormDraft } from "@/hooks/useFormDraft";
 
 import { khanaGharTakLogoUrl } from "@/assets/brand";
-import { Bike, MapPin, Phone, Package, LogOut, CheckCircle2, Loader2, Clock } from "lucide-react";
+import { sumPayouts, inr, RIDER_SHARE_RATE } from "@/lib/payouts";
+import { Bike, MapPin, Phone, Package, LogOut, CheckCircle2, Loader2, Clock, Wallet } from "lucide-react";
 
 export const Route = createFileRoute("/rider")({
   component: RiderPanel,
@@ -174,6 +175,7 @@ function RiderDashboard({
   const [mineOrders, setMineOrders] = useState<Order[]>([]);
   const [offers, setOffers] = useState<Offer[]>([]);
   const [restaurants, setRestaurants] = useState<Record<string, Restaurant>>({});
+  const [earnings, setEarnings] = useState({ deliveries: 0, total: 0, today: 0, platformGross: 0 });
   const [tab, setTab] = useState<"available" | "mine">("available");
   const [online, setOnline] = useState(profile.is_online !== false);
   const [togglingOnline, setTogglingOnline] = useState(false);
@@ -204,10 +206,27 @@ function RiderDashboard({
     const mineList = (mine ?? []) as unknown as Order[];
     setMineOrders(mineList);
 
+    // Earnings from completed deliveries
+    const { data: done } = await supabase
+      .from("orders")
+      .select("subtotal,platform_fee,total,created_at")
+      .eq("rider_id", riderId)
+      .eq("status", "delivered")
+      .limit(1000);
+    const doneList = (done ?? []) as any[];
+    const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
+    setEarnings({
+      deliveries: doneList.length,
+      total: sumPayouts(doneList).rider,
+      today: sumPayouts(doneList.filter((o) => new Date(o.created_at) >= startOfDay)).rider,
+      platformGross: sumPayouts(doneList).platformGross,
+    });
+
     // Live offers made to this rider only — no customer PII until accepted
     const { data: offerData, error: offerErr } = await supabase.rpc("rider_list_offers" as any);
     if (offerErr) { toast.error(offerErr.message); return; }
     setOffers((offerData ?? []) as unknown as Offer[]);
+
 
     const rIds = [...new Set(mineList.map((o) => o.restaurant_id).filter(Boolean))] as string[];
     if (rIds.length) {
@@ -307,6 +326,32 @@ function RiderDashboard({
             <span className={`absolute top-1 h-5 w-5 rounded-full bg-background transition-all ${online ? "left-6" : "left-1"}`} />
           </button>
         </div>
+
+        <div className="mb-3 rounded-2xl border bg-card p-4">
+          <div className="flex items-center gap-2">
+            <Wallet className="h-4 w-4 text-primary" />
+            <p className="text-sm font-extrabold">My Earnings</p>
+          </div>
+          <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+            <div className="rounded-xl bg-secondary p-2">
+              <p className="text-[10px] font-semibold uppercase text-muted-foreground">Today</p>
+              <p className="text-base font-extrabold">{inr(earnings.today)}</p>
+            </div>
+            <div className="rounded-xl bg-primary/10 p-2">
+              <p className="text-[10px] font-semibold uppercase text-muted-foreground">Total</p>
+              <p className="text-base font-extrabold text-primary">{inr(earnings.total)}</p>
+            </div>
+            <div className="rounded-xl bg-secondary p-2">
+              <p className="text-[10px] font-semibold uppercase text-muted-foreground">Deliveries</p>
+              <p className="text-base font-extrabold">{earnings.deliveries}</p>
+            </div>
+          </div>
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            You earn {Math.round(RIDER_SHARE_RATE * 100)}% of the KhanaGharTak earning on each delivered order
+            (KhanaGharTak earning so far: {inr(earnings.platformGross)}).
+          </p>
+        </div>
+
         <BaseLocationCard hasBase={hasBase} onSaved={() => { setHasBase(true); load(); }} />
       </div>
 

@@ -1,0 +1,49 @@
+// Shared payout math for KhanaGharTak
+// Restaurant keeps 85% of food value (subtotal); KhanaGharTak takes 15% commission
+// plus the platform fee. Riders earn 70% of that KhanaGharTak earning.
+
+export const COMMISSION_RATE = 0.15;
+export const RIDER_SHARE_RATE = 0.7;
+
+export type PayoutOrder = {
+  subtotal?: number | string | null;
+  platform_fee?: number | string | null;
+  total?: number | string | null;
+};
+
+const n = (v: unknown) => Number(v ?? 0) || 0;
+
+export function restaurantPayout(o: PayoutOrder) {
+  return n(o.subtotal) * (1 - COMMISSION_RATE);
+}
+
+/** Gross KhanaGharTak earning on an order (commission + platform fee). */
+export function platformEarning(o: PayoutOrder) {
+  return n(o.subtotal) * COMMISSION_RATE + n(o.platform_fee);
+}
+
+/** Rider's cut = 70% of the KhanaGharTak earning. */
+export function riderEarning(o: PayoutOrder) {
+  return platformEarning(o) * RIDER_SHARE_RATE;
+}
+
+/** What KhanaGharTak keeps after paying the rider. */
+export function platformNetEarning(o: PayoutOrder) {
+  return platformEarning(o) * (1 - RIDER_SHARE_RATE);
+}
+
+export function sumPayouts(orders: PayoutOrder[]) {
+  return orders.reduce(
+    (acc, o) => {
+      acc.restaurant += restaurantPayout(o);
+      acc.platformGross += platformEarning(o);
+      acc.rider += riderEarning(o);
+      acc.platformNet += platformNetEarning(o);
+      acc.orderTotal += n(o.total);
+      return acc;
+    },
+    { restaurant: 0, platformGross: 0, rider: 0, platformNet: 0, orderTotal: 0 },
+  );
+}
+
+export const inr = (v: number) => `₹${Math.round(v).toLocaleString("en-IN")}`;
