@@ -98,6 +98,47 @@ function SuperDashboard() {
         <Card label="Delivered" value={s?.deliveredOrders ?? "—"} icon={CheckCircle2} tone="success" />
         <Card label="Avg Order" value={s && s.totalOrders ? `₹${Math.round(s.totalRevenue / Math.max(s.deliveredOrders, 1))}` : "—"} icon={TrendingUp} />
       </div>
+
+      <section className="rounded-2xl border bg-card p-5 shadow-sm">
+        <div className="flex items-center gap-2">
+          <Wallet className="h-4 w-4 text-primary" />
+          <h2 className="text-sm font-bold">Payouts (delivered orders)</h2>
+        </div>
+        <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-4">
+          <Money label="Payable to Restaurants" value={s?.payout.restaurant ?? 0} tone="success" hint="85% of food value, all restaurants" />
+          <Money label="KhanaGharTak Earning" value={s?.payout.platformGross ?? 0} hint="15% commission + platform fee" />
+          <Money label="Payable to Riders" value={s?.payout.rider ?? 0} tone="warn" hint={`${Math.round(RIDER_SHARE_RATE * 100)}% of KhanaGharTak earning`} />
+          <Money label="KhanaGharTak Net" value={s?.payout.platformNet ?? 0} hint={`${Math.round((1 - RIDER_SHARE_RATE) * 100)}% after rider payout`} />
+        </div>
+
+        <div className="mt-5 overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="text-left text-xs uppercase tracking-wide text-muted-foreground">
+              <tr><th className="py-2">Restaurant</th><th className="py-2">Delivered</th><th className="py-2 text-right">Payable</th></tr>
+            </thead>
+            <tbody>
+              {(s?.perRestaurant ?? []).map((r) => (
+                <tr key={r.id} className="border-t">
+                  <td className="py-2 font-medium">{r.name}</td>
+                  <td className="py-2 text-muted-foreground">{r.orders}</td>
+                  <td className="py-2 text-right font-bold text-success">{inr(r.payable)}</td>
+                </tr>
+              ))}
+              {(s?.perRestaurant.length ?? 0) === 0 && (
+                <tr><td colSpan={3} className="py-6 text-center text-sm text-muted-foreground">No delivered orders yet</td></tr>
+              )}
+              {(s?.perRestaurant.length ?? 0) > 0 && (
+                <tr className="border-t bg-secondary/40">
+                  <td className="py-2 font-bold">Total</td>
+                  <td className="py-2 font-bold">{s?.deliveredOrders}</td>
+                  <td className="py-2 text-right font-extrabold">{inr(s?.payout.restaurant ?? 0)}</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
     </div>
   );
 }
