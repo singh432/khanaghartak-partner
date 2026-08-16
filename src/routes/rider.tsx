@@ -6,7 +6,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useFormDraft } from "@/hooks/useFormDraft";
 
 import { khanaGharTakLogoUrl } from "@/assets/brand";
-import { Bike, MapPin, Phone, Package, LogOut, CheckCircle2, Loader2, Clock } from "lucide-react";
+import { sumPayouts, inr, RIDER_SHARE_RATE } from "@/lib/payouts";
+import { Bike, MapPin, Phone, Package, LogOut, CheckCircle2, Loader2, Clock, Wallet } from "lucide-react";
 
 export const Route = createFileRoute("/rider")({
   component: RiderPanel,
@@ -174,6 +175,7 @@ function RiderDashboard({
   const [mineOrders, setMineOrders] = useState<Order[]>([]);
   const [offers, setOffers] = useState<Offer[]>([]);
   const [restaurants, setRestaurants] = useState<Record<string, Restaurant>>({});
+  const [earnings, setEarnings] = useState({ deliveries: 0, total: 0, today: 0, platformGross: 0 });
   const [tab, setTab] = useState<"available" | "mine">("available");
   const [online, setOnline] = useState(profile.is_online !== false);
   const [togglingOnline, setTogglingOnline] = useState(false);
