@@ -166,6 +166,45 @@ function SuperDashboard() {
         </div>
       </section>
 
+      <section className="rounded-2xl border bg-card p-5 shadow-sm">
+        <div className="flex items-center gap-2">
+          <Wallet className="h-4 w-4 text-amber-600" />
+          <h2 className="text-sm font-bold">Cash to collect from riders</h2>
+        </div>
+        <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
+          <Money label="Cash Collected (COD)" value={s?.payout.cash ?? 0} hint="collected from customers on delivery" />
+          <Money label="Riders Keep" value={s?.payout.rider ?? 0} tone="success" hint={`${Math.round(RIDER_SHARE_RATE * 100)}% of KhanaGharTak earning`} />
+          <Money label="Recoverable from Riders" value={s?.payout.deposit ?? 0} tone="warn" hint={`Today: ${inr(s?.riderTodayDue ?? 0)}`} />
+        </div>
+
+        <div className="mt-5 overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="text-left text-xs uppercase tracking-wide text-muted-foreground">
+              <tr>
+                <th className="py-2">Rider</th><th className="py-2">Delivered</th>
+                <th className="py-2 text-right">Cash Collected</th><th className="py-2 text-right">Rider Cut</th><th className="py-2 text-right">To Collect</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(s?.perRider ?? []).map((r) => (
+                <tr key={r.id} className="border-t">
+                  <td className="py-2 font-medium">{r.name}</td>
+                  <td className="py-2 text-muted-foreground">{r.orders}</td>
+                  <td className="py-2 text-right">{inr(r.cash)}</td>
+                  <td className="py-2 text-right text-success">{inr(r.earning)}</td>
+                  <td className="py-2 text-right font-bold text-amber-600">{inr(r.due)}</td>
+                </tr>
+              ))}
+              {(s?.perRider.length ?? 0) === 0 && (
+                <tr><td colSpan={5} className="py-6 text-center text-sm text-muted-foreground">No rider deliveries yet</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+
+
     </div>
   );
 }
