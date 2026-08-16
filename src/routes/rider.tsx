@@ -175,7 +175,7 @@ function RiderDashboard({
   const [mineOrders, setMineOrders] = useState<Order[]>([]);
   const [offers, setOffers] = useState<Offer[]>([]);
   const [restaurants, setRestaurants] = useState<Record<string, Restaurant>>({});
-  const [earnings, setEarnings] = useState({ deliveries: 0, total: 0, today: 0, platformGross: 0 });
+  const [earnings, setEarnings] = useState({ deliveries: 0, total: 0, today: 0, platformGross: 0, todayDeliveries: 0, todayCash: 0, todayDeposit: 0, totalDeposit: 0 });
   const [tab, setTab] = useState<"available" | "mine">("available");
   const [online, setOnline] = useState(profile.is_online !== false);
   const [togglingOnline, setTogglingOnline] = useState(false);
