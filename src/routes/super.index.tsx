@@ -1,44 +1,61 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Store, Users, ShoppingBag, IndianRupee, CheckCircle2, Clock, TrendingUp, Wallet } from "lucide-react";
 import { sumPayouts, inr, RIDER_SHARE_RATE, COMMISSION_RATE } from "@/lib/payouts";
 
 export const Route = createFileRoute("/super/")({ component: SuperDashboard });
 
-type Stats = {
-  totalRestaurants: number; activeRestaurants: number; totalCustomers: number;
-  totalOrders: number; totalRevenue: number;
-  todayOrders: number; pendingOrders: number; deliveredOrders: number;
-  payout: ReturnType<typeof sumPayouts>;
-  perRestaurant: { id: string; name: string; orders: number; payable: number }[];
-  perRider: { id: string; name: string; orders: number; cash: number; earning: number; due: number }[];
-  riderTodayDue: number;
+type RawData = {
+  restaurants: any[];
+  allOrders: any[];
+  riderProfiles: any[];
+  profiles: any[];
+  loaded: boolean;
 };
 
 function SuperDashboard() {
-  const [s, setS] = useState<Stats | null>(null);
+  const [raw, setRaw] = useState<RawData>({ restaurants: [], allOrders: [], riderProfiles: [], profiles: [], loaded: false });
+  const [payoutRange, setPayoutRange] = useState<"all" | "today">("all");
 
   const load = async () => {
-    const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
-    const [restaurants, orders, today, profiles, riderProfiles] = await Promise.all([
+    const [restaurants, orders, profiles, riderProfiles] = await Promise.all([
       supabase.from("restaurants").select("id,status,name"),
       supabase.from("orders").select("status,total,subtotal,platform_fee,restaurant_id,rider_id,payment_method,created_at"),
-      supabase.from("orders").select("status,total").gte("created_at", startOfDay.toISOString()),
       supabase.from("profiles").select("id"),
       supabase.from("rider_profiles").select("user_id,full_name"),
     ]);
-    const rs = restaurants.data ?? [];
-    const allOrders = orders.data ?? [];
-    const todayOrders = today.data ?? [];
+    setRaw({
+      restaurants: restaurants.data ?? [],
+      allOrders: orders.data ?? [],
+      profiles: profiles.data ?? [],
+      riderProfiles: riderProfiles.data ?? [],
+      loaded: true,
+    });
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const startOfDay = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
+
+  const stats = useMemo(() => {
+    const rs = raw.restaurants;
+    const allOrders = raw.allOrders;
     const delivered = allOrders.filter((o: any) => o.status === "delivered");
+    const todayDelivered = delivered.filter((o: any) => new Date(o.created_at) >= startOfDay);
+    const filteredDelivered = payoutRange === "today" ? todayDelivered : delivered;
+
     const revenue = delivered.reduce((s, o: any) => s + Number(o.total), 0);
-    const payout = sumPayouts(delivered as any);
+    const payout = sumPayouts(filteredDelivered as any);
 
     const nameById: Record<string, string> = {};
     rs.forEach((r: any) => { nameById[r.id] = r.name; });
     const byRest: Record<string, { orders: number; payable: number }> = {};
-    delivered.forEach((o: any) => {
+    filteredDelivered.forEach((o: any) => {
       const id = o.restaurant_id ?? "unknown";
       const cur = byRest[id] ?? { orders: 0, payable: 0 };
       cur.orders += 1;
@@ -50,9 +67,9 @@ function SuperDashboard() {
       .sort((a, b) => b.payable - a.payable);
 
     const riderNames: Record<string, string> = {};
-    (riderProfiles.data ?? []).forEach((r: any) => { riderNames[r.user_id] = r.full_name ?? r.user_id.slice(0, 8); });
+    (raw.riderProfiles ?? []).forEach((r: any) => { riderNames[r.user_id] = r.full_name ?? r.user_id.slice(0, 8); });
     const byRider: Record<string, { orders: number; cash: number; earning: number; due: number }> = {};
-    delivered.filter((o: any) => o.rider_id).forEach((o: any) => {
+    filteredDelivered.filter((o: any) => o.rider_id).forEach((o: any) => {
       const id = o.rider_id as string;
       const cur = byRider[id] ?? { orders: 0, cash: 0, earning: 0, due: 0 };
       const one = sumPayouts([o]);
@@ -66,29 +83,29 @@ function SuperDashboard() {
       .map(([id, v]) => ({ id, name: riderNames[id] ?? id.slice(0, 8), ...v }))
       .sort((a, b) => b.due - a.due);
 
+    const todayOrders = allOrders.filter((o: any) => new Date(o.created_at) >= startOfDay);
     const riderTodayDue = sumPayouts(
       delivered.filter((o: any) => o.rider_id && new Date(o.created_at) >= startOfDay) as any,
     ).deposit;
 
-    setS({
+    return {
       totalRestaurants: rs.length,
       activeRestaurants: rs.filter((r: any) => r.status === "active").length,
-      totalCustomers: profiles.data?.length ?? 0,
+      totalCustomers: raw.profiles.length,
       totalOrders: allOrders.length,
       totalRevenue: revenue,
       todayOrders: todayOrders.length,
       pendingOrders: allOrders.filter((o: any) => ["placed", "accepted", "preparing", "ready_for_pickup", "out_for_delivery"].includes(o.status)).length,
       deliveredOrders: delivered.length,
+      filteredDeliveredCount: filteredDelivered.length,
       payout,
       perRestaurant,
       perRider,
       riderTodayDue,
-    });
-  };
+    };
+  }, [raw, payoutRange, startOfDay]);
 
-
-  useEffect(() => { load(); }, []);
-
+  const s = raw.loaded ? stats : null;
 
   return (
     <div className="space-y-4 p-4 md:p-6">
@@ -127,12 +144,22 @@ function SuperDashboard() {
       </div>
 
       <section className="rounded-2xl border bg-card p-5 shadow-sm">
-        <div className="flex items-center gap-2">
-          <Wallet className="h-4 w-4 text-primary" />
-          <h2 className="text-sm font-bold">Payouts (delivered orders)</h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Wallet className="h-4 w-4 text-primary" />
+            <h2 className="text-sm font-bold">Payouts — {payoutRange === "today" ? "Today" : "All time"}</h2>
+          </div>
+          <select
+            value={payoutRange}
+            onChange={(e) => setPayoutRange(e.target.value as "all" | "today")}
+            className="h-9 rounded-lg border bg-background px-3 text-sm outline-none"
+          >
+            <option value="all">All time</option>
+            <option value="today">Today</option>
+          </select>
         </div>
         <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-4">
-          <Money label="Payable to Restaurants" value={s?.payout.restaurant ?? 0} tone="success" hint="85% of food value, all restaurants" />
+          <Money label="Payable to Restaurants" value={s?.payout.restaurant ?? 0} tone="success" hint="85% of food value" />
           <Money label="KhanaGharTak Earning" value={s?.payout.platformGross ?? 0} hint="15% commission + platform fee" />
           <Money label="Payable to Riders" value={s?.payout.rider ?? 0} tone="warn" hint={`${Math.round(RIDER_SHARE_RATE * 100)}% of KhanaGharTak earning`} />
           <Money label="KhanaGharTak Net" value={s?.payout.platformNet ?? 0} hint={`${Math.round((1 - RIDER_SHARE_RATE) * 100)}% after rider payout`} />
@@ -157,7 +184,7 @@ function SuperDashboard() {
               {(s?.perRestaurant.length ?? 0) > 0 && (
                 <tr className="border-t bg-secondary/40">
                   <td className="py-2 font-bold">Total</td>
-                  <td className="py-2 font-bold">{s?.deliveredOrders}</td>
+                  <td className="py-2 font-bold">{s?.filteredDeliveredCount}</td>
                   <td className="py-2 text-right font-extrabold">{inr(s?.payout.restaurant ?? 0)}</td>
                 </tr>
               )}
@@ -167,14 +194,16 @@ function SuperDashboard() {
       </section>
 
       <section className="rounded-2xl border bg-card p-5 shadow-sm">
-        <div className="flex items-center gap-2">
-          <Wallet className="h-4 w-4 text-amber-600" />
-          <h2 className="text-sm font-bold">Cash to collect from riders</h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Wallet className="h-4 w-4 text-amber-600" />
+            <h2 className="text-sm font-bold">Cash to collect from riders — {payoutRange === "today" ? "Today" : "All time"}</h2>
+          </div>
         </div>
         <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
           <Money label="Cash Collected (COD)" value={s?.payout.cash ?? 0} hint="collected from customers on delivery" />
           <Money label="Riders Keep" value={s?.payout.rider ?? 0} tone="success" hint={`${Math.round(RIDER_SHARE_RATE * 100)}% of KhanaGharTak earning`} />
-          <Money label="Recoverable from Riders" value={s?.payout.deposit ?? 0} tone="warn" hint={`Today: ${inr(s?.riderTodayDue ?? 0)}`} />
+          <Money label="Recoverable from Riders" value={s?.payout.deposit ?? 0} tone="warn" hint={payoutRange === "today" ? "today's COD minus rider share" : `Today: ${inr(s?.riderTodayDue ?? 0)}`} />
         </div>
 
         <div className="mt-5 overflow-x-auto">
@@ -202,9 +231,6 @@ function SuperDashboard() {
           </table>
         </div>
       </section>
-
-
-
     </div>
   );
 }
