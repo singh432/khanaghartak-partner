@@ -209,18 +209,26 @@ function RiderDashboard({
     // Earnings from completed deliveries
     const { data: done } = await supabase
       .from("orders")
-      .select("subtotal,platform_fee,total,created_at")
+      .select("subtotal,platform_fee,total,payment_method,created_at")
       .eq("rider_id", riderId)
       .eq("status", "delivered")
       .limit(1000);
     const doneList = (done ?? []) as any[];
     const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
+    const todayList = doneList.filter((o) => new Date(o.created_at) >= startOfDay);
+    const allSum = sumPayouts(doneList);
+    const todaySum = sumPayouts(todayList);
     setEarnings({
       deliveries: doneList.length,
-      total: sumPayouts(doneList).rider,
-      today: sumPayouts(doneList.filter((o) => new Date(o.created_at) >= startOfDay)).rider,
-      platformGross: sumPayouts(doneList).platformGross,
+      total: allSum.rider,
+      today: todaySum.rider,
+      platformGross: allSum.platformGross,
+      todayDeliveries: todayList.length,
+      todayCash: todaySum.cash,
+      todayDeposit: todaySum.deposit,
+      totalDeposit: allSum.deposit,
     });
+
 
     // Live offers made to this rider only — no customer PII until accepted
     const { data: offerData, error: offerErr } = await supabase.rpc("rider_list_offers" as any);
