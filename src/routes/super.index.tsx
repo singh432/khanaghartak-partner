@@ -155,3 +155,14 @@ function Card({ label, value, icon: Icon, tone }: { label: string; value: number
     </div>
   );
 }
+
+function Money({ label, value, tone, hint }: { label: string; value: number; tone?: "success" | "warn"; hint?: string }) {
+  const c = tone === "success" ? "text-success" : tone === "warn" ? "text-amber-600" : "text-primary";
+  return (
+    <div className="rounded-xl border bg-background p-4">
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className={`mt-1 text-2xl font-extrabold tracking-tight ${c}`}>{inr(value)}</p>
+      {hint && <p className="mt-0.5 text-[11px] text-muted-foreground">{hint}</p>}
+    </div>
+  );
+}
