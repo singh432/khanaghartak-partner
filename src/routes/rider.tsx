@@ -175,7 +175,7 @@ function RiderDashboard({
   const [mineOrders, setMineOrders] = useState<Order[]>([]);
   const [offers, setOffers] = useState<Offer[]>([]);
   const [restaurants, setRestaurants] = useState<Record<string, Restaurant>>({});
-  const [earnings, setEarnings] = useState({ deliveries: 0, total: 0, today: 0, platformGross: 0 });
+  const [earnings, setEarnings] = useState({ deliveries: 0, total: 0, today: 0, platformGross: 0, todayDeliveries: 0, todayCash: 0, todayDeposit: 0, totalDeposit: 0 });
   const [tab, setTab] = useState<"available" | "mine">("available");
   const [online, setOnline] = useState(profile.is_online !== false);
   const [togglingOnline, setTogglingOnline] = useState(false);
@@ -209,18 +209,26 @@ function RiderDashboard({
     // Earnings from completed deliveries
     const { data: done } = await supabase
       .from("orders")
-      .select("subtotal,platform_fee,total,created_at")
+      .select("subtotal,platform_fee,total,payment_method,created_at")
       .eq("rider_id", riderId)
       .eq("status", "delivered")
       .limit(1000);
     const doneList = (done ?? []) as any[];
     const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
+    const todayList = doneList.filter((o) => new Date(o.created_at) >= startOfDay);
+    const allSum = sumPayouts(doneList);
+    const todaySum = sumPayouts(todayList);
     setEarnings({
       deliveries: doneList.length,
-      total: sumPayouts(doneList).rider,
-      today: sumPayouts(doneList.filter((o) => new Date(o.created_at) >= startOfDay)).rider,
-      platformGross: sumPayouts(doneList).platformGross,
+      total: allSum.rider,
+      today: todaySum.rider,
+      platformGross: allSum.platformGross,
+      todayDeliveries: todayList.length,
+      todayCash: todaySum.cash,
+      todayDeposit: todaySum.deposit,
+      totalDeposit: allSum.deposit,
     });
+
 
     // Live offers made to this rider only — no customer PII until accepted
     const { data: offerData, error: offerErr } = await supabase.rpc("rider_list_offers" as any);
@@ -346,11 +354,34 @@ function RiderDashboard({
               <p className="text-base font-extrabold">{earnings.deliveries}</p>
             </div>
           </div>
+
+          <div className="mt-3 rounded-xl border bg-background p-3">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Today's cash collection</p>
+            <div className="mt-2 grid grid-cols-3 gap-2 text-center">
+              <div>
+                <p className="text-[10px] uppercase text-muted-foreground">Collected</p>
+                <p className="text-base font-extrabold">{inr(earnings.todayCash)}</p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase text-muted-foreground">Your cut</p>
+                <p className="text-base font-extrabold text-success">{inr(earnings.today)}</p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase text-muted-foreground">Deposit due</p>
+                <p className="text-base font-extrabold text-amber-600">{inr(earnings.todayDeposit)}</p>
+              </div>
+            </div>
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              Cash taken from customers on {earnings.todayDeliveries} deliveries today. Keep your cut and deposit the rest to KhanaGharTak.
+            </p>
+          </div>
+
           <p className="mt-2 text-[11px] text-muted-foreground">
             You earn {Math.round(RIDER_SHARE_RATE * 100)}% of the KhanaGharTak earning on each delivered order
             (KhanaGharTak earning so far: {inr(earnings.platformGross)}).
           </p>
         </div>
+
 
         <BaseLocationCard hasBase={hasBase} onSaved={() => { setHasBase(true); load(); }} />
       </div>
