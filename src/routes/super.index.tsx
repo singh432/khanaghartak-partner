@@ -12,6 +12,8 @@ type Stats = {
   todayOrders: number; pendingOrders: number; deliveredOrders: number;
   payout: ReturnType<typeof sumPayouts>;
   perRestaurant: { id: string; name: string; orders: number; payable: number }[];
+  perRider: { id: string; name: string; orders: number; cash: number; earning: number; due: number }[];
+  riderTodayDue: number;
 };
 
 function SuperDashboard() {
@@ -19,11 +21,12 @@ function SuperDashboard() {
 
   const load = async () => {
     const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
-    const [restaurants, orders, today, profiles] = await Promise.all([
+    const [restaurants, orders, today, profiles, riderProfiles] = await Promise.all([
       supabase.from("restaurants").select("id,status,name"),
-      supabase.from("orders").select("status,total,subtotal,platform_fee,restaurant_id"),
+      supabase.from("orders").select("status,total,subtotal,platform_fee,restaurant_id,rider_id,payment_method,created_at"),
       supabase.from("orders").select("status,total").gte("created_at", startOfDay.toISOString()),
       supabase.from("profiles").select("id"),
+      supabase.from("rider_profiles").select("user_id,full_name"),
     ]);
     const rs = restaurants.data ?? [];
     const allOrders = orders.data ?? [];
@@ -46,6 +49,27 @@ function SuperDashboard() {
       .map(([id, v]) => ({ id, name: nameById[id] ?? "Unknown", ...v }))
       .sort((a, b) => b.payable - a.payable);
 
+    const riderNames: Record<string, string> = {};
+    (riderProfiles.data ?? []).forEach((r: any) => { riderNames[r.user_id] = r.full_name ?? r.user_id.slice(0, 8); });
+    const byRider: Record<string, { orders: number; cash: number; earning: number; due: number }> = {};
+    delivered.filter((o: any) => o.rider_id).forEach((o: any) => {
+      const id = o.rider_id as string;
+      const cur = byRider[id] ?? { orders: 0, cash: 0, earning: 0, due: 0 };
+      const one = sumPayouts([o]);
+      cur.orders += 1;
+      cur.cash += one.cash;
+      cur.earning += one.rider;
+      cur.due += one.deposit;
+      byRider[id] = cur;
+    });
+    const perRider = Object.entries(byRider)
+      .map(([id, v]) => ({ id, name: riderNames[id] ?? id.slice(0, 8), ...v }))
+      .sort((a, b) => b.due - a.due);
+
+    const riderTodayDue = sumPayouts(
+      delivered.filter((o: any) => o.rider_id && new Date(o.created_at) >= startOfDay) as any,
+    ).deposit;
+
     setS({
       totalRestaurants: rs.length,
       activeRestaurants: rs.filter((r: any) => r.status === "active").length,
@@ -57,8 +81,11 @@ function SuperDashboard() {
       deliveredOrders: delivered.length,
       payout,
       perRestaurant,
+      perRider,
+      riderTodayDue,
     });
   };
+
 
   useEffect(() => { load(); }, []);
 
