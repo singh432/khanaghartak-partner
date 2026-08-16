@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Store, Users, ShoppingBag, IndianRupee, CheckCircle2, Clock, TrendingUp, Bike, Wallet } from "lucide-react";
+import { Store, Users, ShoppingBag, IndianRupee, CheckCircle2, Clock, TrendingUp, Wallet } from "lucide-react";
 import { sumPayouts, inr, RIDER_SHARE_RATE, COMMISSION_RATE } from "@/lib/payouts";
 
 export const Route = createFileRoute("/super/")({ component: SuperDashboard });
