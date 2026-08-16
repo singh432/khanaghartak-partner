@@ -354,11 +354,34 @@ function RiderDashboard({
               <p className="text-base font-extrabold">{earnings.deliveries}</p>
             </div>
           </div>
+
+          <div className="mt-3 rounded-xl border bg-background p-3">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Today's cash collection</p>
+            <div className="mt-2 grid grid-cols-3 gap-2 text-center">
+              <div>
+                <p className="text-[10px] uppercase text-muted-foreground">Collected</p>
+                <p className="text-base font-extrabold">{inr(earnings.todayCash)}</p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase text-muted-foreground">Your cut</p>
+                <p className="text-base font-extrabold text-success">{inr(earnings.today)}</p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase text-muted-foreground">Deposit due</p>
+                <p className="text-base font-extrabold text-amber-600">{inr(earnings.todayDeposit)}</p>
+              </div>
+            </div>
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              Cash taken from customers on {earnings.todayDeliveries} deliveries today. Keep your cut and deposit the rest to KhanaGharTak.
+            </p>
+          </div>
+
           <p className="mt-2 text-[11px] text-muted-foreground">
             You earn {Math.round(RIDER_SHARE_RATE * 100)}% of the KhanaGharTak earning on each delivered order
             (KhanaGharTak earning so far: {inr(earnings.platformGross)}).
           </p>
         </div>
+
 
         <BaseLocationCard hasBase={hasBase} onSaved={() => { setHasBase(true); load(); }} />
       </div>
