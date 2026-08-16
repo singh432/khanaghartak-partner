@@ -326,6 +326,32 @@ function RiderDashboard({
             <span className={`absolute top-1 h-5 w-5 rounded-full bg-background transition-all ${online ? "left-6" : "left-1"}`} />
           </button>
         </div>
+
+        <div className="mb-3 rounded-2xl border bg-card p-4">
+          <div className="flex items-center gap-2">
+            <Wallet className="h-4 w-4 text-primary" />
+            <p className="text-sm font-extrabold">My Earnings</p>
+          </div>
+          <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+            <div className="rounded-xl bg-secondary p-2">
+              <p className="text-[10px] font-semibold uppercase text-muted-foreground">Today</p>
+              <p className="text-base font-extrabold">{inr(earnings.today)}</p>
+            </div>
+            <div className="rounded-xl bg-primary/10 p-2">
+              <p className="text-[10px] font-semibold uppercase text-muted-foreground">Total</p>
+              <p className="text-base font-extrabold text-primary">{inr(earnings.total)}</p>
+            </div>
+            <div className="rounded-xl bg-secondary p-2">
+              <p className="text-[10px] font-semibold uppercase text-muted-foreground">Deliveries</p>
+              <p className="text-base font-extrabold">{earnings.deliveries}</p>
+            </div>
+          </div>
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            You earn {Math.round(RIDER_SHARE_RATE * 100)}% of the KhanaGharTak earning on each delivered order
+            (KhanaGharTak earning so far: {inr(earnings.platformGross)}).
+          </p>
+        </div>
+
         <BaseLocationCard hasBase={hasBase} onSaved={() => { setHasBase(true); load(); }} />
       </div>
 
