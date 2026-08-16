@@ -204,10 +204,27 @@ function RiderDashboard({
     const mineList = (mine ?? []) as unknown as Order[];
     setMineOrders(mineList);
 
+    // Earnings from completed deliveries
+    const { data: done } = await supabase
+      .from("orders")
+      .select("subtotal,platform_fee,total,created_at")
+      .eq("rider_id", riderId)
+      .eq("status", "delivered")
+      .limit(1000);
+    const doneList = (done ?? []) as any[];
+    const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
+    setEarnings({
+      deliveries: doneList.length,
+      total: sumPayouts(doneList).rider,
+      today: sumPayouts(doneList.filter((o) => new Date(o.created_at) >= startOfDay)).rider,
+      platformGross: sumPayouts(doneList).platformGross,
+    });
+
     // Live offers made to this rider only — no customer PII until accepted
     const { data: offerData, error: offerErr } = await supabase.rpc("rider_list_offers" as any);
     if (offerErr) { toast.error(offerErr.message); return; }
     setOffers((offerData ?? []) as unknown as Offer[]);
+
 
     const rIds = [...new Set(mineList.map((o) => o.restaurant_id).filter(Boolean))] as string[];
     if (rIds.length) {
