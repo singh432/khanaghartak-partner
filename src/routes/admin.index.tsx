@@ -14,7 +14,7 @@ type Lifetime = { orders: number; revenue: number; foodSales: number; platformCu
 
 function AdminDashboard() {
   const [stats, setStats] = useState<Stats | null>(null);
-  const [lifetime, setLifetime] = useState<Lifetime | null>(null);
+  const [, setLifetime] = useState<Lifetime | null>(null);
   const [deliveredRows, setDeliveredRows] = useState<any[]>([]);
   const [range, setRange] = useState<DateRange>({ kind: "all", date: todayInputValue() });
 
