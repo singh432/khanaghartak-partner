@@ -1,7 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { TrendingUp, ShoppingBag, CheckCircle2, XCircle, Clock, IndianRupee } from "lucide-react";
+import { DateRangeFilter } from "@/components/DateRangeFilter";
+import { inRange, rangeLabel, todayInputValue, type DateRange } from "@/lib/date-range";
 
 export const Route = createFileRoute("/admin/")({ component: AdminDashboard });
 
@@ -12,7 +14,15 @@ type Lifetime = { orders: number; revenue: number; foodSales: number; platformCu
 
 function AdminDashboard() {
   const [stats, setStats] = useState<Stats | null>(null);
-  const [lifetime, setLifetime] = useState<Lifetime | null>(null);
+  const [, setLifetime] = useState<Lifetime | null>(null);
+  const [deliveredRows, setDeliveredRows] = useState<any[]>([]);
+  const [range, setRange] = useState<DateRange>({ kind: "all", date: todayInputValue() });
+
+  const period = useMemo(() => {
+    const list = deliveredRows.filter((r) => inRange(r.created_at, range));
+    const foodSales = list.reduce((s, r) => s + Number(r.subtotal ?? 0), 0);
+    return { orders: list.length, foodSales };
+  }, [deliveredRows, range]);
 
   const load = async () => {
     const start = new Date(); start.setHours(0, 0, 0, 0);
@@ -37,7 +47,7 @@ function AdminDashboard() {
     setStats(s);
 
     const { data: allRows } = await supabase.from("orders")
-      .select("total,subtotal,platform_fee").eq("status", "delivered");
+      .select("total,subtotal,platform_fee,created_at").eq("status", "delivered");
     const lt: Lifetime = { orders: 0, revenue: 0, foodSales: 0, platformCut: 0 };
     for (const r of allRows ?? []) {
       lt.orders++;
@@ -46,6 +56,7 @@ function AdminDashboard() {
       lt.platformCut += Number(r.platform_fee ?? 0);
     }
     setLifetime(lt);
+    setDeliveredRows((allRows ?? []) as any[]);
   };
 
   useEffect(() => {
@@ -87,11 +98,14 @@ function AdminDashboard() {
       </div>
 
       <div className="rounded-2xl border bg-card p-5 shadow-sm">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Earnings (all time, delivered orders)</p>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Earnings — {rangeLabel(range)} ({period.orders} delivered)</p>
+          <DateRangeFilter value={range} onChange={setRange} />
+        </div>
         <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
-          <Money label="Your Food Sales" value={lifetime?.foodSales ?? 0} strong />
-          <Money label={`KhanaGharTak Cut (${Math.round(COMMISSION_RATE * 100)}%)`} value={(lifetime?.foodSales ?? 0) * COMMISSION_RATE} tone="text-destructive" />
-          <Money label="Your Net Payout" value={(lifetime?.foodSales ?? 0) * (1 - COMMISSION_RATE)} tone="text-success" />
+          <Money label="Your Food Sales" value={period.foodSales} strong />
+          <Money label={`KhanaGharTak Cut (${Math.round(COMMISSION_RATE * 100)}%)`} value={period.foodSales * COMMISSION_RATE} tone="text-destructive" />
+          <Money label="Your Net Payout" value={period.foodSales * (1 - COMMISSION_RATE)} tone="text-success" />
         </div>
         <p className="mt-3 text-[11px] text-muted-foreground">
           KhanaGharTak keeps {Math.round(COMMISSION_RATE * 100)}% of your food value; delivery fee goes to the rider. Today's food sales: ₹{Number(stats?.foodSales ?? 0).toFixed(0)} · today's cut: ₹{((stats?.foodSales ?? 0) * COMMISSION_RATE).toFixed(0)}.

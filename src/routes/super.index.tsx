@@ -3,6 +3,8 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Store, Users, ShoppingBag, IndianRupee, CheckCircle2, Clock, TrendingUp, Wallet } from "lucide-react";
 import { sumPayouts, inr, RIDER_SHARE_RATE, COMMISSION_RATE } from "@/lib/payouts";
+import { DateRangeFilter } from "@/components/DateRangeFilter";
+import { inRange, rangeLabel, todayInputValue, type DateRange } from "@/lib/date-range";
 
 export const Route = createFileRoute("/super/")({ component: SuperDashboard });
 
@@ -16,7 +18,7 @@ type RawData = {
 
 function SuperDashboard() {
   const [raw, setRaw] = useState<RawData>({ restaurants: [], allOrders: [], riderProfiles: [], profiles: [], loaded: false });
-  const [payoutRange, setPayoutRange] = useState<"all" | "today">("all");
+  const [payoutRange, setPayoutRange] = useState<DateRange>({ kind: "all", date: todayInputValue() });
 
   const load = async () => {
     const [restaurants, orders, profiles, riderProfiles] = await Promise.all([
@@ -46,8 +48,7 @@ function SuperDashboard() {
     const rs = raw.restaurants;
     const allOrders = raw.allOrders;
     const delivered = allOrders.filter((o: any) => o.status === "delivered");
-    const todayDelivered = delivered.filter((o: any) => new Date(o.created_at) >= startOfDay);
-    const filteredDelivered = payoutRange === "today" ? todayDelivered : delivered;
+    const filteredDelivered = delivered.filter((o: any) => inRange(o.created_at, payoutRange));
 
     const revenue = delivered.reduce((s, o: any) => s + Number(o.total), 0);
     const payout = sumPayouts(filteredDelivered as any);
@@ -147,16 +148,9 @@ function SuperDashboard() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <Wallet className="h-4 w-4 text-primary" />
-            <h2 className="text-sm font-bold">Payouts — {payoutRange === "today" ? "Today" : "All time"}</h2>
+            <h2 className="text-sm font-bold">Payouts — {rangeLabel(payoutRange)}</h2>
           </div>
-          <select
-            value={payoutRange}
-            onChange={(e) => setPayoutRange(e.target.value as "all" | "today")}
-            className="h-9 rounded-lg border bg-background px-3 text-sm outline-none"
-          >
-            <option value="all">All time</option>
-            <option value="today">Today</option>
-          </select>
+          <DateRangeFilter value={payoutRange} onChange={setPayoutRange} />
         </div>
         <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-4">
           <Money label="Payable to Restaurants" value={s?.payout.restaurant ?? 0} tone="success" hint="85% of food value" />
@@ -197,13 +191,13 @@ function SuperDashboard() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <Wallet className="h-4 w-4 text-amber-600" />
-            <h2 className="text-sm font-bold">Cash to collect from riders — {payoutRange === "today" ? "Today" : "All time"}</h2>
+            <h2 className="text-sm font-bold">Cash to collect from riders — {rangeLabel(payoutRange)}</h2>
           </div>
         </div>
         <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
           <Money label="Cash Collected (COD)" value={s?.payout.cash ?? 0} hint="collected from customers on delivery" />
           <Money label="Riders Keep" value={s?.payout.rider ?? 0} tone="success" hint={`${Math.round(RIDER_SHARE_RATE * 100)}% of KhanaGharTak earning`} />
-          <Money label="Recoverable from Riders" value={s?.payout.deposit ?? 0} tone="warn" hint={payoutRange === "today" ? "today's COD minus rider share" : `Today: ${inr(s?.riderTodayDue ?? 0)}`} />
+          <Money label="Recoverable from Riders" value={s?.payout.deposit ?? 0} tone="warn" hint={payoutRange.kind === "today" ? "today's COD minus rider share" : `Today: ${inr(s?.riderTodayDue ?? 0)}`} />
         </div>
 
         <div className="mt-5 overflow-x-auto">
