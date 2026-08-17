@@ -48,7 +48,6 @@ function SuperDashboard() {
     const rs = raw.restaurants;
     const allOrders = raw.allOrders;
     const delivered = allOrders.filter((o: any) => o.status === "delivered");
-    const todayDelivered = delivered.filter((o: any) => new Date(o.created_at) >= startOfDay);
     const filteredDelivered = delivered.filter((o: any) => inRange(o.created_at, payoutRange));
 
     const revenue = delivered.reduce((s, o: any) => s + Number(o.total), 0);

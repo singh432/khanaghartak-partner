@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -7,6 +7,8 @@ import { useFormDraft } from "@/hooks/useFormDraft";
 
 import { khanaGharTakLogoUrl } from "@/assets/brand";
 import { sumPayouts, inr, RIDER_SHARE_RATE } from "@/lib/payouts";
+import { DateRangeFilter } from "@/components/DateRangeFilter";
+import { inRange, rangeLabel, todayInputValue, type DateRange } from "@/lib/date-range";
 import { Bike, MapPin, Phone, Package, LogOut, CheckCircle2, Loader2, Clock, Wallet } from "lucide-react";
 
 export const Route = createFileRoute("/rider")({
@@ -176,6 +178,14 @@ function RiderDashboard({
   const [offers, setOffers] = useState<Offer[]>([]);
   const [restaurants, setRestaurants] = useState<Record<string, Restaurant>>({});
   const [earnings, setEarnings] = useState({ deliveries: 0, total: 0, today: 0, platformGross: 0, todayDeliveries: 0, todayCash: 0, todayDeposit: 0, totalDeposit: 0 });
+  const [doneOrders, setDoneOrders] = useState<any[]>([]);
+  const [range, setRange] = useState<DateRange>({ kind: "today", date: todayInputValue() });
+
+  const periodStats = useMemo(() => {
+    const list = doneOrders.filter((o) => inRange(o.created_at, range));
+    const sum = sumPayouts(list);
+    return { deliveries: list.length, earning: sum.rider, cash: sum.cash, deposit: sum.deposit };
+  }, [doneOrders, range]);
   const [tab, setTab] = useState<"available" | "mine">("available");
   const [online, setOnline] = useState(profile.is_online !== false);
   const [togglingOnline, setTogglingOnline] = useState(false);
@@ -214,6 +224,7 @@ function RiderDashboard({
       .eq("status", "delivered")
       .limit(1000);
     const doneList = (done ?? []) as any[];
+    setDoneOrders(doneList);
     const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
     const todayList = doneList.filter((o) => new Date(o.created_at) >= startOfDay);
     const allSum = sumPayouts(doneList);
@@ -356,23 +367,26 @@ function RiderDashboard({
           </div>
 
           <div className="mt-3 rounded-xl border bg-background p-3">
-            <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Today's cash collection</p>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Cash collection — {rangeLabel(range)}</p>
+              <DateRangeFilter value={range} onChange={setRange} />
+            </div>
             <div className="mt-2 grid grid-cols-3 gap-2 text-center">
               <div>
                 <p className="text-[10px] uppercase text-muted-foreground">Collected</p>
-                <p className="text-base font-extrabold">{inr(earnings.todayCash)}</p>
+                <p className="text-base font-extrabold">{inr(periodStats.cash)}</p>
               </div>
               <div>
                 <p className="text-[10px] uppercase text-muted-foreground">Your cut</p>
-                <p className="text-base font-extrabold text-success">{inr(earnings.today)}</p>
+                <p className="text-base font-extrabold text-success">{inr(periodStats.earning)}</p>
               </div>
               <div>
                 <p className="text-[10px] uppercase text-muted-foreground">Deposit due</p>
-                <p className="text-base font-extrabold text-amber-600">{inr(earnings.todayDeposit)}</p>
+                <p className="text-base font-extrabold text-amber-600">{inr(periodStats.deposit)}</p>
               </div>
             </div>
             <p className="mt-2 text-[11px] text-muted-foreground">
-              Cash taken from customers on {earnings.todayDeliveries} deliveries today. Keep your cut and deposit the rest to KhanaGharTak.
+              Cash taken from customers on {periodStats.deliveries} deliveries ({rangeLabel(range).toLowerCase()}). Keep your cut and deposit the rest to KhanaGharTak.
             </p>
           </div>
 
