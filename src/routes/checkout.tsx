@@ -123,13 +123,18 @@ function CheckoutPage() {
     if (!ready || items.length === 0) return;
     let active = true;
     (async () => {
-      const { data } = await supabase
+      const { data: mi } = await supabase
         .from("menu_items")
-        .select("restaurants:restaurant_id(latitude, longitude, is_open)")
+        .select("restaurant_id")
         .eq("id", items[0].menu_item_id)
         .maybeSingle();
+      if (!active || !mi?.restaurant_id) return;
+      const { data: r } = await supabase
+        .from("restaurants")
+        .select("latitude, longitude, is_open")
+        .eq("id", mi.restaurant_id)
+        .maybeSingle();
       if (!active) return;
-      const r = (data as { restaurants: { latitude: number | null; longitude: number | null; is_open: boolean | null } | null } | null)?.restaurants;
       setRestaurantClosed(!!r && r.is_open !== true);
       if (r?.latitude != null && r?.longitude != null) {
         setRestaurantCoords({ lat: r.latitude, lng: r.longitude });
