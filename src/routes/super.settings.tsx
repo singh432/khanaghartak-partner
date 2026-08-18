@@ -46,6 +46,8 @@ function SuperSettings() {
     const { error } = await supabase.from("platform_settings").update({
       platform_fee: s.platform_fee, default_delivery_charges: s.default_delivery_charges,
       delivery_per_km: s.delivery_per_km, max_delivery_radius_km: s.max_delivery_radius_km,
+      delivery_slabs: s.delivery_slabs as unknown as never,
+      delivery_extra_per_km: s.delivery_extra_per_km,
       support_phone: s.support_phone, support_email: s.support_email,
       terms: s.terms, privacy: s.privacy,
       whatsapp_from: s.whatsapp_from, whatsapp_enabled: s.whatsapp_enabled,
