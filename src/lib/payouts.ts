@@ -1,6 +1,8 @@
 // Shared payout math for KhanaGharTak
-// Restaurant keeps 85% of food value (subtotal); KhanaGharTak takes 15% commission
-// plus the platform fee. Riders earn 70% of that KhanaGharTak earning.
+// Restaurant keeps 85% of food value (subtotal); KhanaGharTak collects 15% commission
+// + platform fee + the delivery fee charged to the customer.
+// Riders earn 70% of that KhanaGharTak earning.
+// Invariant: restaurantPayout + platformEarning === order total.
 
 export const COMMISSION_RATE = 0.15;
 export const RIDER_SHARE_RATE = 0.7;
@@ -8,6 +10,7 @@ export const RIDER_SHARE_RATE = 0.7;
 export type PayoutOrder = {
   subtotal?: number | string | null;
   platform_fee?: number | string | null;
+  delivery_fee?: number | string | null;
   total?: number | string | null;
   payment_method?: string | null;
 };
@@ -19,9 +22,9 @@ export function restaurantPayout(o: PayoutOrder) {
   return n(o.subtotal) * (1 - COMMISSION_RATE);
 }
 
-/** Gross KhanaGharTak earning on an order (commission + platform fee). */
+/** Gross KhanaGharTak earning (commission + platform fee + delivery fee). */
 export function platformEarning(o: PayoutOrder) {
-  return n(o.subtotal) * COMMISSION_RATE + n(o.platform_fee);
+  return n(o.subtotal) * COMMISSION_RATE + n(o.platform_fee) + n(o.delivery_fee);
 }
 
 /** Rider's cut = 70% of the KhanaGharTak earning. */

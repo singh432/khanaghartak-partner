@@ -219,7 +219,7 @@ function RiderDashboard({
     // Earnings from completed deliveries
     const { data: done } = await supabase
       .from("orders")
-      .select("subtotal,platform_fee,total,payment_method,created_at")
+      .select("subtotal,platform_fee,delivery_fee,total,payment_method,created_at")
       .eq("rider_id", riderId)
       .eq("status", "delivered")
       .limit(1000);
