@@ -822,6 +822,16 @@ export type Database = {
         }
         Returns: string
       }
+      public_pricing: {
+        Args: never
+        Returns: {
+          delivery_extra_per_km: number
+          delivery_per_km: number
+          delivery_slabs: Json
+          max_delivery_radius_km: number
+          platform_fee: number
+        }[]
+      }
       rider_accept_order: { Args: { _order_id: string }; Returns: undefined }
       rider_list_available_orders: {
         Args: never
