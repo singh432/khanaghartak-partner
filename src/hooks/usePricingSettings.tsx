@@ -79,10 +79,6 @@ export function usePricingSettings() {
   return settings ?? DEFAULTS;
 }
 
-/** Delivery charge rounded to nearest rupee (road distance × per-km). */
-export function computeDeliveryFee(distanceKm: number, perKm: number): number {
-  return Math.max(0, Math.round(distanceKm * perKm));
-}
 
 /** Straight-line km × 1.3 road factor. */
 export const ROAD_FACTOR = 1.3;
