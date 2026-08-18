@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-/** Launch offer: free delivery from 15 Aug for the first 50 orders. */
+/** Launch offer: free delivery from 15 Aug for the first 70 orders. */
 export function FreeDeliveryBanner() {
   const [promo, setPromo] = useState<{ active: boolean; remaining: number } | null>(null);
 
@@ -27,7 +27,7 @@ export function FreeDeliveryBanner() {
       <div>
         <p className="text-sm font-bold text-success">FREE delivery on your order</p>
         <p className="text-[11px] text-muted-foreground">
-          Launch offer from 15 August · first 100 orders only
+          Launch offer from 15 August · first 70 orders only
         </p>
       </div>
     </div>

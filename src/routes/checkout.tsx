@@ -212,7 +212,7 @@ function CheckoutPage() {
         <h1 className="text-xl font-extrabold tracking-tight">Checkout</h1>
         {freeDelivery && (
           <div className="rounded-2xl border-2 border-success/40 bg-success/10 p-3 text-sm font-semibold text-success">
-            🎉 FREE delivery — launch offer from 15 August for the first 100 orders
+            🎉 FREE delivery — launch offer from 15 August for the first 70 orders
           </div>
         )}
         <Section title="Delivery details">
