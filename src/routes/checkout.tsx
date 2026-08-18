@@ -7,7 +7,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useCart } from "@/hooks/useCart";
 import { useFormDraft } from "@/hooks/useFormDraft";
 
-import { usePricingSettings, computeDeliveryFee, ROAD_FACTOR } from "@/hooks/usePricingSettings";
+import { usePricingSettings, ROAD_FACTOR } from "@/hooks/usePricingSettings";
+import { computeDeliveryCharge, amountToFreeDelivery } from "@/lib/delivery-pricing";
 import { distanceKm as haversineKm } from "@/lib/geo";
 import { BrandHeader } from "@/components/BrandHeader";
 
@@ -143,7 +144,11 @@ function CheckoutPage() {
   }, [coords, restaurantCoords]);
 
   const freeDelivery = !!promo?.active;
-  const baseDeliveryFee = distanceKm != null ? computeDeliveryFee(distanceKm, pricing.delivery_per_km) : 0;
+  const baseDeliveryFee =
+    distanceKm != null
+      ? computeDeliveryCharge(subtotal, distanceKm, pricing.delivery_slabs, pricing.delivery_extra_per_km)
+      : 0;
+  const toFreeDelivery = amountToFreeDelivery(subtotal, pricing.delivery_slabs);
   const deliveryFee = freeDelivery ? 0 : baseDeliveryFee;
   const outOfRange = distanceKm != null && distanceKm > pricing.max_delivery_radius_km;
   const grand = subtotal + (distanceKm != null && !outOfRange ? deliveryFee : 0) + pricing.platform_fee;
@@ -281,14 +286,14 @@ function CheckoutPage() {
             </div>
           ))}
           <div className="my-2 h-px bg-border" />
-          <Row label="Items total" value={`₹${subtotal.toFixed(0)}`} />
+          <Row label="Food subtotal" value={`₹${subtotal.toFixed(0)}`} />
           <Row
-            label={distanceKm != null ? `Delivery charge (${distanceKm.toFixed(1)} km × ₹${pricing.delivery_per_km})` : "Delivery charge"}
+            label={distanceKm != null ? `Delivery fee (${distanceKm.toFixed(1)} km)` : "Delivery fee"}
             value={
               distanceKm != null
                 ? outOfRange
                   ? "—"
-                  : freeDelivery
+                  : deliveryFee === 0
                     ? "FREE"
                     : `₹${deliveryFee.toFixed(0)}`
                 : "Share location"
@@ -296,6 +301,11 @@ function CheckoutPage() {
           />
           {freeDelivery && distanceKm != null && !outOfRange && baseDeliveryFee > 0 && (
             <p className="text-xs font-semibold text-success">Launch offer applied · you saved ₹{baseDeliveryFee.toFixed(0)}</p>
+          )}
+          {toFreeDelivery > 0 && (
+            <p className="text-xs font-semibold text-primary">
+              Add ₹{toFreeDelivery} more to unlock FREE DELIVERY 🚚
+            </p>
           )}
           <Row label="Platform fee" value={`₹${pricing.platform_fee.toFixed(0)}`} />
           <div className="my-2 h-px bg-border" />

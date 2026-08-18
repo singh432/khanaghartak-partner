@@ -3,12 +3,14 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, QrCode } from "lucide-react";
+import { DEFAULT_DELIVERY_SLABS, type DeliverySlab } from "@/lib/delivery-pricing";
 
 export const Route = createFileRoute("/super/settings")({ component: SuperSettings });
 
 type S = {
   id: string; platform_fee: number; default_delivery_charges: number;
   delivery_per_km: number; max_delivery_radius_km: number;
+  delivery_slabs: DeliverySlab[]; delivery_extra_per_km: number;
   support_phone: string | null; support_email: string | null;
   terms: string | null; privacy: string | null;
   whatsapp_from: string | null; whatsapp_enabled: boolean;
@@ -32,7 +34,17 @@ function SuperSettings() {
   const [logs, setLogs] = useState<LogRow[]>([]);
 
   useEffect(() => {
-    supabase.from("platform_settings").select("*").limit(1).maybeSingle().then(({ data }) => setS(data as S | null));
+    supabase.from("platform_settings").select("*").limit(1).maybeSingle().then(({ data }) => {
+      if (!data) return setS(null);
+      const row = data as unknown as S;
+      setS({
+        ...row,
+        delivery_slabs: Array.isArray(row.delivery_slabs) && row.delivery_slabs.length
+          ? row.delivery_slabs
+          : DEFAULT_DELIVERY_SLABS,
+        delivery_extra_per_km: Number(row.delivery_extra_per_km ?? 8),
+      });
+    });
     supabase.from("qr_settings").select("*").limit(1).maybeSingle().then(({ data }) => setQr(data as QR | null));
     supabase.from("notification_log").select("*").order("created_at", { ascending: false }).limit(25)
       .then(({ data }) => setLogs((data ?? []) as LogRow[]));
@@ -44,6 +56,8 @@ function SuperSettings() {
     const { error } = await supabase.from("platform_settings").update({
       platform_fee: s.platform_fee, default_delivery_charges: s.default_delivery_charges,
       delivery_per_km: s.delivery_per_km, max_delivery_radius_km: s.max_delivery_radius_km,
+      delivery_slabs: s.delivery_slabs as unknown as never,
+      delivery_extra_per_km: s.delivery_extra_per_km,
       support_phone: s.support_phone, support_email: s.support_email,
       terms: s.terms, privacy: s.privacy,
       whatsapp_from: s.whatsapp_from, whatsapp_enabled: s.whatsapp_enabled,
@@ -97,6 +111,57 @@ function SuperSettings() {
             <input className="ai" value={s.support_email ?? ""} onChange={(e) => setS({ ...s, support_email: e.target.value })} />
           </Field>
         </div>
+
+        <div className="space-y-2 rounded-xl border p-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 className="text-sm font-bold">Delivery charge table</h2>
+              <p className="text-xs text-muted-foreground">Charge by order value and restaurant→customer distance. 0 means FREE.</p>
+            </div>
+            <Field label="Extra ₹ per km beyond 5 km">
+              <input type="number" min={0} step="1" className="ai" value={s.delivery_extra_per_km}
+                onChange={(e) => setS({ ...s, delivery_extra_per_km: Number(e.target.value) })} />
+            </Field>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead className="text-left text-muted-foreground">
+                <tr>
+                  <th className="p-2">Order value</th>
+                  <th className="p-2">0–1 km</th>
+                  <th className="p-2">1–2 km</th>
+                  <th className="p-2">2–3 km</th>
+                  <th className="p-2">3–5 km</th>
+                </tr>
+              </thead>
+              <tbody>
+                {s.delivery_slabs.map((slab, si) => (
+                  <tr key={si} className="border-t">
+                    <td className="p-2 font-semibold">
+                      {slab.max_order == null
+                        ? `₹${(s.delivery_slabs[si - 1]?.max_order ?? 0) + 1}+`
+                        : `₹${(s.delivery_slabs[si - 1]?.max_order ?? -1) + 1}–₹${slab.max_order}`}
+                    </td>
+                    {slab.rates.map((rate, ri) => (
+                      <td key={ri} className="p-1">
+                        <input type="number" min={0} step="1" className="ai" value={rate}
+                          onChange={(e) => {
+                            const next = s.delivery_slabs.map((x, i) =>
+                              i === si
+                                ? { ...x, rates: x.rates.map((r, j) => (j === ri ? Number(e.target.value) : r)) as DeliverySlab["rates"] }
+                                : x,
+                            );
+                            setS({ ...s, delivery_slabs: next });
+                          }} />
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
         <Field label="Terms & Conditions">
           <textarea className="ai" rows={4} value={s.terms ?? ""} onChange={(e) => setS({ ...s, terms: e.target.value })} />
         </Field>

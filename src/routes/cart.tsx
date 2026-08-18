@@ -5,6 +5,7 @@ import { usePricingSettings } from "@/hooks/usePricingSettings";
 import { PageSpinner } from "@/components/PageState";
 import { Plus, Minus, Trash2, ShoppingBag } from "lucide-react";
 import { MIN_ORDER_VALUE } from "@/lib/order-rules";
+import { amountToFreeDelivery } from "@/lib/delivery-pricing";
 import { cartHasHandiNonVeg, HANDI_PREP_NOTE } from "@/lib/portions";
 
 export const Route = createFileRoute("/cart")({
@@ -29,6 +30,7 @@ function CartPage() {
 
   const grand = subtotal + (subtotal > 0 ? pricing.platform_fee : 0);
   const shortfall = Math.max(0, MIN_ORDER_VALUE - subtotal);
+  const toFreeDelivery = subtotal > 0 ? amountToFreeDelivery(subtotal, pricing.delivery_slabs) : 0;
   const belowMin = subtotal > 0 && shortfall > 0;
 
   if (!ready) return <PageSpinner label="Loading your cart…" />;
@@ -81,9 +83,14 @@ function CartPage() {
         ))}
 
         <div className="mt-4 rounded-2xl border bg-card p-4 text-sm shadow-[var(--shadow-card)]">
-          <Row label="Items total" value={`₹${subtotal.toFixed(0)}`} />
+          <Row label="Food subtotal" value={`₹${subtotal.toFixed(0)}`} />
           <Row label="Platform fee" value={`₹${pricing.platform_fee.toFixed(0)}`} />
-          <Row label="Delivery charge" value="Calculated at checkout" />
+          <Row label="Delivery fee" value="Calculated at checkout" />
+          {toFreeDelivery > 0 && (
+            <p className="text-xs font-semibold text-primary">
+              Add ₹{toFreeDelivery} more to unlock FREE DELIVERY 🚚
+            </p>
+          )}
           <div className="my-2 h-px bg-border" />
           <Row label="Subtotal + fees" value={`₹${grand.toFixed(0)}+`} bold />
           <p className="mt-2 text-[11px] text-muted-foreground">Delivery is charged by distance from the kitchen to your pinned address.</p>
