@@ -143,7 +143,11 @@ function CheckoutPage() {
   }, [coords, restaurantCoords]);
 
   const freeDelivery = !!promo?.active;
-  const baseDeliveryFee = distanceKm != null ? computeDeliveryFee(distanceKm, pricing.delivery_per_km) : 0;
+  const baseDeliveryFee =
+    distanceKm != null
+      ? computeDeliveryCharge(subtotal, distanceKm, pricing.delivery_slabs, pricing.delivery_extra_per_km)
+      : 0;
+  const toFreeDelivery = amountToFreeDelivery(subtotal, pricing.delivery_slabs);
   const deliveryFee = freeDelivery ? 0 : baseDeliveryFee;
   const outOfRange = distanceKm != null && distanceKm > pricing.max_delivery_radius_km;
   const grand = subtotal + (distanceKm != null && !outOfRange ? deliveryFee : 0) + pricing.platform_fee;
