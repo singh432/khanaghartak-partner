@@ -143,6 +143,18 @@ function CheckoutPage() {
     return () => { active = false; };
   }, [ready, items]);
 
+  // Auto-pick the current location once so the delivery fee shows without an extra tap.
+  useEffect(() => {
+    if (!user || coords || typeof navigator === "undefined" || !navigator.geolocation) return;
+    let active = true;
+    navigator.geolocation.getCurrentPosition(
+      (p) => { if (active) setCoords({ lat: p.coords.latitude, lng: p.coords.longitude }); },
+      () => {},
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 5 * 60 * 1000 },
+    );
+    return () => { active = false; };
+  }, [user, coords]);
+
   const distanceKm = useMemo(() => {
     if (!coords || !restaurantCoords) return null;
     return haversineKm(restaurantCoords, coords) * ROAD_FACTOR;
