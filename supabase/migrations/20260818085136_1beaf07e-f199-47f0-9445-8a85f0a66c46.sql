@@ -1,0 +1,1 @@
+GRANT DELETE ON public.restaurants TO authenticated;
