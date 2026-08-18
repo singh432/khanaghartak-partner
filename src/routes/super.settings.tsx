@@ -34,7 +34,17 @@ function SuperSettings() {
   const [logs, setLogs] = useState<LogRow[]>([]);
 
   useEffect(() => {
-    supabase.from("platform_settings").select("*").limit(1).maybeSingle().then(({ data }) => setS(data as S | null));
+    supabase.from("platform_settings").select("*").limit(1).maybeSingle().then(({ data }) => {
+      if (!data) return setS(null);
+      const row = data as unknown as S;
+      setS({
+        ...row,
+        delivery_slabs: Array.isArray(row.delivery_slabs) && row.delivery_slabs.length
+          ? row.delivery_slabs
+          : DEFAULT_DELIVERY_SLABS,
+        delivery_extra_per_km: Number(row.delivery_extra_per_km ?? 8),
+      });
+    });
     supabase.from("qr_settings").select("*").limit(1).maybeSingle().then(({ data }) => setQr(data as QR | null));
     supabase.from("notification_log").select("*").order("created_at", { ascending: false }).limit(25)
       .then(({ data }) => setLogs((data ?? []) as LogRow[]));
