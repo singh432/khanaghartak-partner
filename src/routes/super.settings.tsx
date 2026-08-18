@@ -9,6 +9,7 @@ export const Route = createFileRoute("/super/settings")({ component: SuperSettin
 type S = {
   id: string; platform_fee: number; default_delivery_charges: number;
   delivery_per_km: number; max_delivery_radius_km: number;
+  delivery_slabs: DeliverySlab[]; delivery_extra_per_km: number;
   support_phone: string | null; support_email: string | null;
   terms: string | null; privacy: string | null;
   whatsapp_from: string | null; whatsapp_enabled: boolean;
