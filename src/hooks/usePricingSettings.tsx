@@ -1,16 +1,25 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  DEFAULT_DELIVERY_SLABS,
+  DEFAULT_EXTRA_PER_KM,
+  type DeliverySlab,
+} from "@/lib/delivery-pricing";
 
 export type PricingSettings = {
   platform_fee: number;
   delivery_per_km: number;
   max_delivery_radius_km: number;
+  delivery_slabs: DeliverySlab[];
+  delivery_extra_per_km: number;
 };
 
 const DEFAULTS: PricingSettings = {
-  platform_fee: 10,
+  platform_fee: 5,
   delivery_per_km: 10,
   max_delivery_radius_km: 7,
+  delivery_slabs: DEFAULT_DELIVERY_SLABS,
+  delivery_extra_per_km: DEFAULT_EXTRA_PER_KM,
 };
 
 // Simple in-memory cache so multiple components on one page share the fetch.
