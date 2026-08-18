@@ -23,7 +23,7 @@ function SuperDashboard() {
   const load = async () => {
     const [restaurants, orders, profiles, riderProfiles] = await Promise.all([
       supabase.from("restaurants").select("id,status,name"),
-      supabase.from("orders").select("status,total,subtotal,platform_fee,restaurant_id,rider_id,payment_method,created_at"),
+      supabase.from("orders").select("status,total,subtotal,platform_fee,delivery_fee,restaurant_id,rider_id,payment_method,created_at"),
       supabase.from("profiles").select("id"),
       supabase.from("rider_profiles").select("user_id,full_name"),
     ]);
@@ -154,7 +154,7 @@ function SuperDashboard() {
         </div>
         <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-4">
           <Money label="Payable to Restaurants" value={s?.payout.restaurant ?? 0} tone="success" hint="85% of food value" />
-          <Money label="KhanaGharTak Earning" value={s?.payout.platformGross ?? 0} hint="15% commission + platform fee" />
+          <Money label="KhanaGharTak Earning" value={s?.payout.platformGross ?? 0} hint="15% commission + platform fee + delivery fee" />
           <Money label="Payable to Riders" value={s?.payout.rider ?? 0} tone="warn" hint={`${Math.round(RIDER_SHARE_RATE * 100)}% of KhanaGharTak earning`} />
           <Money label="KhanaGharTak Net" value={s?.payout.platformNet ?? 0} hint={`${Math.round((1 - RIDER_SHARE_RATE) * 100)}% after rider payout`} />
         </div>

@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Flag } from "lucide-react";
+import { restaurantPayout, platformEarning } from "@/lib/payouts";
 
 export const Route = createFileRoute("/super/orders")({ component: SuperOrders });
 
@@ -13,7 +14,7 @@ type O = {
   rider_id: string | null;
 };
 
-const COMMISSION_RATE = 0.15;
+
 
 type Range = "today" | "week" | "month" | "all";
 
@@ -91,8 +92,8 @@ function SuperOrders() {
                 <td className="px-4 py-3 font-mono text-xs">{o.id.slice(0, 8)}</td>
                 <td className="px-4 py-3">{restaurants[o.restaurant_id ?? ""] ?? "—"}</td>
                 <td className="px-4 py-3">{o.customer_name}</td>
-                <td className="px-4 py-3 font-semibold text-success">₹{(Number(o.subtotal ?? 0) * (1 - COMMISSION_RATE)).toFixed(0)}</td>
-                <td className="px-4 py-3 font-semibold text-primary">₹{(Number(o.subtotal ?? 0) * COMMISSION_RATE + Number(o.platform_fee ?? 0)).toFixed(0)}</td>
+                <td className="px-4 py-3 font-semibold text-success">₹{restaurantPayout(o).toFixed(0)}</td>
+                <td className="px-4 py-3 font-semibold text-primary">₹{platformEarning(o).toFixed(0)}</td>
                 <td className="px-4 py-3 text-muted-foreground">₹{Number(o.total).toFixed(0)}</td>
                 <td className="px-4 py-3">
                   <span className="rounded-full bg-secondary px-2 py-0.5 text-xs capitalize">{o.status.replace(/_/g, " ")}</span>
