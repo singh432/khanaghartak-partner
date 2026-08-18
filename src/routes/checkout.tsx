@@ -123,13 +123,18 @@ function CheckoutPage() {
     if (!ready || items.length === 0) return;
     let active = true;
     (async () => {
-      const { data } = await supabase
+      const { data: mi } = await supabase
         .from("menu_items")
-        .select("restaurants:restaurant_id(latitude, longitude, is_open)")
+        .select("restaurant_id")
         .eq("id", items[0].menu_item_id)
         .maybeSingle();
+      if (!active || !mi?.restaurant_id) return;
+      const { data: r } = await supabase
+        .from("restaurants")
+        .select("latitude, longitude, is_open")
+        .eq("id", mi.restaurant_id)
+        .maybeSingle();
       if (!active) return;
-      const r = (data as { restaurants: { latitude: number | null; longitude: number | null; is_open: boolean | null } | null } | null)?.restaurants;
       setRestaurantClosed(!!r && r.is_open !== true);
       if (r?.latitude != null && r?.longitude != null) {
         setRestaurantCoords({ lat: r.latitude, lng: r.longitude });
@@ -137,6 +142,18 @@ function CheckoutPage() {
     })();
     return () => { active = false; };
   }, [ready, items]);
+
+  // Auto-pick the current location once so the delivery fee shows without an extra tap.
+  useEffect(() => {
+    if (!user || coords || typeof navigator === "undefined" || !navigator.geolocation) return;
+    let active = true;
+    navigator.geolocation.getCurrentPosition(
+      (p) => { if (active) setCoords({ lat: p.coords.latitude, lng: p.coords.longitude }); },
+      () => {},
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 5 * 60 * 1000 },
+    );
+    return () => { active = false; };
+  }, [user, coords]);
 
   const distanceKm = useMemo(() => {
     if (!coords || !restaurantCoords) return null;

@@ -15,7 +15,7 @@ export type PricingSettings = {
 };
 
 const DEFAULTS: PricingSettings = {
-  platform_fee: 5,
+  platform_fee: 10,
   delivery_per_km: 10,
   max_delivery_radius_km: 7,
   delivery_slabs: DEFAULT_DELIVERY_SLABS,
@@ -31,11 +31,13 @@ export async function fetchPricingSettings(): Promise<PricingSettings> {
   if (inflight) return inflight;
   inflight = (async () => {
     try {
-      const { data } = await supabase
-        .from("platform_settings")
-        .select("platform_fee, delivery_per_km, max_delivery_radius_km, delivery_slabs, delivery_extra_per_km")
-        .limit(1)
-        .maybeSingle();
+      // platform_settings is admin-only; this SECURITY DEFINER RPC exposes just the pricing fields.
+      const { data: rows } = await supabase.rpc("public_pricing");
+      const data = (Array.isArray(rows) ? rows[0] : rows) as {
+        platform_fee?: number | null;
+        delivery_per_km?: number | null;
+        max_delivery_radius_km?: number | null;
+      } | null;
       const raw = data as (typeof data & {
         delivery_slabs?: unknown;
         delivery_extra_per_km?: number | null;
