@@ -286,14 +286,14 @@ function CheckoutPage() {
             </div>
           ))}
           <div className="my-2 h-px bg-border" />
-          <Row label="Items total" value={`₹${subtotal.toFixed(0)}`} />
+          <Row label="Food subtotal" value={`₹${subtotal.toFixed(0)}`} />
           <Row
-            label={distanceKm != null ? `Delivery charge (${distanceKm.toFixed(1)} km × ₹${pricing.delivery_per_km})` : "Delivery charge"}
+            label={distanceKm != null ? `Delivery fee (${distanceKm.toFixed(1)} km)` : "Delivery fee"}
             value={
               distanceKm != null
                 ? outOfRange
                   ? "—"
-                  : freeDelivery
+                  : deliveryFee === 0
                     ? "FREE"
                     : `₹${deliveryFee.toFixed(0)}`
                 : "Share location"
@@ -301,6 +301,11 @@ function CheckoutPage() {
           />
           {freeDelivery && distanceKm != null && !outOfRange && baseDeliveryFee > 0 && (
             <p className="text-xs font-semibold text-success">Launch offer applied · you saved ₹{baseDeliveryFee.toFixed(0)}</p>
+          )}
+          {toFreeDelivery > 0 && (
+            <p className="text-xs font-semibold text-primary">
+              Add ₹{toFreeDelivery} more to unlock FREE DELIVERY 🚚
+            </p>
           )}
           <Row label="Platform fee" value={`₹${pricing.platform_fee.toFixed(0)}`} />
           <div className="my-2 h-px bg-border" />
