@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, QrCode } from "lucide-react";
+import { DEFAULT_DELIVERY_SLABS, type DeliverySlab } from "@/lib/delivery-pricing";
 
 export const Route = createFileRoute("/super/settings")({ component: SuperSettings });
 
