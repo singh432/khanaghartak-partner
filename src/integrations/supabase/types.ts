@@ -400,7 +400,9 @@ export type Database = {
       platform_settings: {
         Row: {
           default_delivery_charges: number
+          delivery_extra_per_km: number
           delivery_per_km: number
+          delivery_slabs: Json
           id: string
           max_delivery_radius_km: number
           platform_fee: number
@@ -414,7 +416,9 @@ export type Database = {
         }
         Insert: {
           default_delivery_charges?: number
+          delivery_extra_per_km?: number
           delivery_per_km?: number
+          delivery_slabs?: Json
           id?: string
           max_delivery_radius_km?: number
           platform_fee?: number
@@ -428,7 +432,9 @@ export type Database = {
         }
         Update: {
           default_delivery_charges?: number
+          delivery_extra_per_km?: number
           delivery_per_km?: number
+          delivery_slabs?: Json
           id?: string
           max_delivery_radius_km?: number
           platform_fee?: number
@@ -750,6 +756,10 @@ export type Database = {
           needs_otp: boolean
           phone_verified: boolean
         }[]
+      }
+      compute_delivery_fee: {
+        Args: { _distance_km: number; _subtotal: number }
+        Returns: number
       }
       create_phone_otp: {
         Args: { _code_hash: string; _phone: string; _user_id: string }
