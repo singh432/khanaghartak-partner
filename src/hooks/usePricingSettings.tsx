@@ -33,14 +33,25 @@ export async function fetchPricingSettings(): Promise<PricingSettings> {
     try {
       const { data } = await supabase
         .from("platform_settings")
-        .select("platform_fee, delivery_per_km, max_delivery_radius_km")
+        .select("platform_fee, delivery_per_km, max_delivery_radius_km, delivery_slabs, delivery_extra_per_km")
         .limit(1)
         .maybeSingle();
+      const raw = data as (typeof data & {
+        delivery_slabs?: unknown;
+        delivery_extra_per_km?: number | null;
+      }) | null;
+      const slabs = Array.isArray(raw?.delivery_slabs)
+        ? (raw!.delivery_slabs as DeliverySlab[])
+        : DEFAULTS.delivery_slabs;
       const v: PricingSettings = {
         platform_fee: Number(data?.platform_fee ?? DEFAULTS.platform_fee),
         delivery_per_km: Number(data?.delivery_per_km ?? DEFAULTS.delivery_per_km),
         max_delivery_radius_km: Number(
           data?.max_delivery_radius_km ?? DEFAULTS.max_delivery_radius_km,
+        ),
+        delivery_slabs: slabs.length ? slabs : DEFAULTS.delivery_slabs,
+        delivery_extra_per_km: Number(
+          raw?.delivery_extra_per_km ?? DEFAULTS.delivery_extra_per_km,
         ),
       };
       cache = v;
