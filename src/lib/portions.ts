@@ -68,3 +68,11 @@ export const HANDI_PREP_NOTE =
 export function cartHasHandiNonVeg(items: { name: string; veg_type: "veg" | "nonveg" }[]): boolean {
   return items.some((i) => i.veg_type === "nonveg" && i.name.toLowerCase().includes("handi"));
 }
+
+export const CAKE_PREP_NOTE =
+  "Fresh cakes are baked to order — please place your cake order at least 24 hours in advance.";
+
+/** True when the cart contains a fresh cake. */
+export function cartHasCake(items: { name: string }[]): boolean {
+  return items.some((i) => i.name.toLowerCase().includes("cake"));
+}

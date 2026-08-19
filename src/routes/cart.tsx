@@ -6,7 +6,7 @@ import { PageSpinner } from "@/components/PageState";
 import { Plus, Minus, Trash2, ShoppingBag } from "lucide-react";
 import { MIN_ORDER_VALUE } from "@/lib/order-rules";
 import { amountToFreeDelivery } from "@/lib/delivery-pricing";
-import { cartHasHandiNonVeg, HANDI_PREP_NOTE } from "@/lib/portions";
+import { cartHasHandiNonVeg, HANDI_PREP_NOTE, cartHasCake, CAKE_PREP_NOTE } from "@/lib/portions";
 
 export const Route = createFileRoute("/cart")({
   component: CartPage,
@@ -59,6 +59,11 @@ function CartPage() {
         {cartHasHandiNonVeg(items) && (
           <p className="rounded-xl border border-primary/30 bg-accent/40 px-3 py-2 text-xs font-medium">
             {HANDI_PREP_NOTE}
+          </p>
+        )}
+        {cartHasCake(items) && (
+          <p className="rounded-xl border border-primary/30 bg-accent/40 px-3 py-2 text-xs font-medium">
+            {CAKE_PREP_NOTE}
           </p>
         )}
         {items.map((it) => (

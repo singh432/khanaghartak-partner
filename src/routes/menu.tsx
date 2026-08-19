@@ -5,7 +5,7 @@ import { BrandHeader } from "@/components/BrandHeader";
 import { useCart, cartKey, type Portion } from "@/hooks/useCart";
 import { useAuth } from "@/hooks/useAuth";
 
-import { isCakeCategory, isPieceCategory, isSinglePriceCategory, isSweetCategory, isHandiCategory, HANDI_PREP_NOTE, PORTION_LABELS } from "@/lib/portions";
+import { isCakeCategory, isPieceCategory, isSinglePriceCategory, isSweetCategory, isHandiCategory, HANDI_PREP_NOTE, CAKE_PREP_NOTE, PORTION_LABELS } from "@/lib/portions";
 import { PageError, PageSpinner } from "@/components/PageState";
 import { withTimeout } from "@/lib/supabase-query";
 import { Plus, Minus, Search, Star, Clock } from "lucide-react";
@@ -257,6 +257,11 @@ function MenuPage() {
                 {isHandiCategory(cat.name) && list.some((i) => i.veg_type === "nonveg") && (
                   <p className="mb-3 rounded-xl border border-primary/30 bg-accent/40 px-3 py-2 text-xs font-medium text-foreground">
                     {HANDI_PREP_NOTE}
+                  </p>
+                )}
+                {isCakeCategory(cat.name) && (
+                  <p className="mb-3 rounded-xl border border-primary/30 bg-accent/40 px-3 py-2 text-xs font-medium text-foreground">
+                    {CAKE_PREP_NOTE}
                   </p>
                 )}
                 <div className="space-y-3">
