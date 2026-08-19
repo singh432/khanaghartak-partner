@@ -83,10 +83,26 @@ function SuperRestaurants() {
                 <td className="px-4 py-3 text-muted-foreground truncate max-w-[260px]">{r.address ?? "—"}</td>
                 <td className="px-4 py-3">{counts[r.id] ?? 0}</td>
                 <td className="px-4 py-3">
-                  <StatusBadge status={r.status} />
+                  <div className="flex items-center gap-2">
+                    <StatusBadge status={r.status} />
+                    {r.status === "active" && (
+                      <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${r.is_open ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive"}`}>
+                        {r.is_open ? "Open" : "Closed"}
+                      </span>
+                    )}
+                  </div>
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex justify-end gap-1.5">
+                    {r.status === "active" && (
+                      <button
+                        onClick={() => setOpen(r.id, !r.is_open)}
+                        className={`rounded-lg px-2.5 py-2 text-xs font-bold ${r.is_open ? "bg-destructive/10 text-destructive" : "bg-success/10 text-success"}`}
+                        title={r.is_open ? "Close restaurant" : "Open restaurant"}
+                      >
+                        {r.is_open ? "Close" : "Open"}
+                      </button>
+                    )}
                     {r.status === "pending" && (
                       <>
                         <button onClick={() => setStatus(r.id, "active")} className="rounded-lg bg-success/10 p-2 text-success" title="Approve"><Check className="h-4 w-4" /></button>
