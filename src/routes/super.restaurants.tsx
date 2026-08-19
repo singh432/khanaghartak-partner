@@ -37,6 +37,13 @@ function SuperRestaurants() {
     load();
   };
 
+  const setOpen = async (id: string, is_open: boolean) => {
+    const { error } = await supabase.from("restaurants").update({ is_open }).eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success(is_open ? "Restaurant opened" : "Restaurant closed");
+    load();
+  };
+
   const del = async (id: string) => {
     if (!confirm("Delete this restaurant and all its menu/orders linkage?")) return;
     const { error } = await supabase.from("restaurants").delete().eq("id", id);
