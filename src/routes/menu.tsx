@@ -74,7 +74,9 @@ function MenuPage() {
   const { r: restaurantParam } = Route.useSearch();
   const { user, loading } = useAuth();
 
-  const { items: cart, add, inc, dec, totalQty } = useCart();
+  const { items: cart, add, inc, dec, totalQty, restaurantName: cartRestaurantName } = useCart();
+  const [pendingItem, setPendingItem] = useState<Parameters<typeof add>[0] | null>(null);
+
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [menu, setMenu] = useState<MenuItem[]>([]);
@@ -301,7 +303,10 @@ function MenuPage() {
                                     </span>
                                   ) : qty === 0 ? (
                                     <button
-                                      onClick={() => add({ menu_item_id: item.id, portion: p.portion, name: showLabel && p.portion !== "full" ? `${item.name} (${label})` : item.name, price: p.price, image_url: item.image_url, veg_type: item.veg_type })}
+                                      onClick={() => {
+                                        const payload = { menu_item_id: item.id, portion: p.portion, name: showLabel && p.portion !== "full" ? `${item.name} (${label})` : item.name, price: p.price, image_url: item.image_url, veg_type: item.veg_type, restaurant_id: item.restaurant_id, restaurant_name: restaurant?.name ?? null };
+                                        if (add(payload) === "conflict") setPendingItem(payload);
+                                      }}
                                       className="rounded-lg border-2 border-primary bg-card px-4 py-1 text-xs font-bold text-primary shadow-sm">
                                       ADD
                                     </button>
@@ -367,9 +372,31 @@ function MenuPage() {
         </>
       )}
 
+
+      {pendingItem && (
+        <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/50 p-4" onClick={() => setPendingItem(null)}>
+          <div className="w-full max-w-[440px] rounded-2xl bg-card p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-base font-extrabold">Start a new order?</h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Your cart has items from {cartRestaurantName ?? "another restaurant"}. You can order from only one restaurant at a time.
+            </p>
+            <div className="mt-4 flex gap-2">
+              <button onClick={() => setPendingItem(null)}
+                className="flex-1 rounded-xl border-2 border-border py-2.5 text-sm font-bold">
+                Keep cart
+              </button>
+              <button onClick={() => { add(pendingItem, { replace: true }); setPendingItem(null); }}
+                className="flex-1 rounded-xl bg-primary py-2.5 text-sm font-bold text-primary-foreground">
+                Clear & add
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
 
 function VegDot({ type }: { type: "veg" | "nonveg" }) {
   const color = type === "veg" ? "border-success" : "border-destructive";
