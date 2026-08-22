@@ -372,9 +372,31 @@ function MenuPage() {
         </>
       )}
 
+
+      {pendingItem && (
+        <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/50 p-4" onClick={() => setPendingItem(null)}>
+          <div className="w-full max-w-[440px] rounded-2xl bg-card p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-base font-extrabold">Start a new order?</h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Your cart has items from {cartRestaurantName ?? "another restaurant"}. You can order from only one restaurant at a time.
+            </p>
+            <div className="mt-4 flex gap-2">
+              <button onClick={() => setPendingItem(null)}
+                className="flex-1 rounded-xl border-2 border-border py-2.5 text-sm font-bold">
+                Keep cart
+              </button>
+              <button onClick={() => { add(pendingItem, { replace: true }); setPendingItem(null); }}
+                className="flex-1 rounded-xl bg-primary py-2.5 text-sm font-bold text-primary-foreground">
+                Clear & add
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
 
 function VegDot({ type }: { type: "veg" | "nonveg" }) {
   const color = type === "veg" ? "border-success" : "border-destructive";
