@@ -57,13 +57,22 @@ export function CartProvider({ children }: { children: ReactNode }) {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); } catch {}
   }, [items, ready]);
 
-  const add: CartCtx["add"] = (it) => {
+  const restaurantId = items.find((i) => i.restaurant_id)?.restaurant_id ?? null;
+  const restaurantName = items.find((i) => i.restaurant_name)?.restaurant_name ?? null;
+
+  const add: CartCtx["add"] = (it, opts) => {
     const id = cartKey(it.menu_item_id, it.portion);
+    const conflict =
+      !!it.restaurant_id && !!restaurantId && it.restaurant_id !== restaurantId;
+    if (conflict && !opts?.replace) return "conflict";
+
     setItems((cur) => {
-      const existing = cur.find((c) => c.id === id);
-      if (existing) return cur.map((c) => c.id === id ? { ...c, qty: c.qty + 1 } : c);
-      return [...cur, { ...it, id, qty: 1 }];
+      const base = conflict ? [] : cur;
+      const existing = base.find((c) => c.id === id);
+      if (existing) return base.map((c) => c.id === id ? { ...c, qty: c.qty + 1 } : c);
+      return [...base, { ...it, id, qty: 1 }];
     });
+    return "added";
   };
   const inc = (id: string) => setItems((cur) => cur.map((c) => c.id === id ? { ...c, qty: c.qty + 1 } : c));
   const dec = (id: string) => setItems((cur) =>
@@ -76,7 +85,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const subtotal = items.reduce((s, i) => s + i.qty * i.price, 0);
 
   return (
-    <Ctx.Provider value={{ items, ready, add, inc, dec, remove, clear, totalQty, subtotal }}>
+    <Ctx.Provider value={{ items, ready, add, inc, dec, remove, clear, totalQty, subtotal, restaurantId, restaurantName }}>
+
       {children}
     </Ctx.Provider>
   );
