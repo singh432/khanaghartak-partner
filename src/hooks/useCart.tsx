@@ -12,6 +12,8 @@ export type CartItem = {
   image_url: string | null;
   veg_type: "veg" | "nonveg";
   qty: number;
+  restaurant_id?: string | null;
+  restaurant_name?: string | null;
 };
 
 export const cartKey = (menuItemId: string, portion: Portion) => `${menuItemId}:${portion}`;
@@ -19,14 +21,18 @@ export const cartKey = (menuItemId: string, portion: Portion) => `${menuItemId}:
 type CartCtx = {
   items: CartItem[];
   ready: boolean;
-  add: (item: Omit<CartItem, "qty" | "id">) => void;
+  /** returns "added" or "conflict" when the item belongs to another restaurant */
+  add: (item: Omit<CartItem, "qty" | "id">, opts?: { replace?: boolean }) => "added" | "conflict";
   inc: (id: string) => void;
   dec: (id: string) => void;
   remove: (id: string) => void;
   clear: () => void;
   totalQty: number;
   subtotal: number;
+  restaurantId: string | null;
+  restaurantName: string | null;
 };
+
 
 const Ctx = createContext<CartCtx | null>(null);
 const STORAGE_KEY = "kgt_cart_v2";
