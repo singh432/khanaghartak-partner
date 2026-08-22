@@ -74,7 +74,9 @@ function MenuPage() {
   const { r: restaurantParam } = Route.useSearch();
   const { user, loading } = useAuth();
 
-  const { items: cart, add, inc, dec, totalQty } = useCart();
+  const { items: cart, add, inc, dec, totalQty, restaurantName: cartRestaurantName } = useCart();
+  const [pendingItem, setPendingItem] = useState<Parameters<typeof add>[0] | null>(null);
+
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [menu, setMenu] = useState<MenuItem[]>([]);
