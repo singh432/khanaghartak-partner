@@ -303,7 +303,10 @@ function MenuPage() {
                                     </span>
                                   ) : qty === 0 ? (
                                     <button
-                                      onClick={() => add({ menu_item_id: item.id, portion: p.portion, name: showLabel && p.portion !== "full" ? `${item.name} (${label})` : item.name, price: p.price, image_url: item.image_url, veg_type: item.veg_type })}
+                                      onClick={() => {
+                                        const payload = { menu_item_id: item.id, portion: p.portion, name: showLabel && p.portion !== "full" ? `${item.name} (${label})` : item.name, price: p.price, image_url: item.image_url, veg_type: item.veg_type, restaurant_id: item.restaurant_id, restaurant_name: restaurant?.name ?? null };
+                                        if (add(payload) === "conflict") setPendingItem(payload);
+                                      }}
                                       className="rounded-lg border-2 border-primary bg-card px-4 py-1 text-xs font-bold text-primary shadow-sm">
                                       ADD
                                     </button>
