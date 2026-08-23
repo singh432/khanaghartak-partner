@@ -32,6 +32,8 @@ function CartPage() {
   const shortfall = Math.max(0, MIN_ORDER_VALUE - subtotal);
   const toFreeDelivery = subtotal > 0 ? amountToFreeDelivery(subtotal, pricing.delivery_slabs) : 0;
   const belowMin = subtotal > 0 && shortfall > 0;
+  const sundayOffer = isSundayIST();
+  const sundayFree = sundayOfferActive(subtotal);
 
   if (!ready) return <PageSpinner label="Loading your cart…" />;
 
