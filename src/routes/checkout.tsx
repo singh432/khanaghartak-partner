@@ -8,7 +8,7 @@ import { useCart } from "@/hooks/useCart";
 import { useFormDraft } from "@/hooks/useFormDraft";
 
 import { usePricingSettings, ROAD_FACTOR } from "@/hooks/usePricingSettings";
-import { computeDeliveryCharge, amountToFreeDelivery } from "@/lib/delivery-pricing";
+import { computeDeliveryCharge, amountToFreeDelivery, isSundayIST, SUNDAY_OFFER_MIN, sundayOfferActive } from "@/lib/delivery-pricing";
 import { distanceKm as haversineKm } from "@/lib/geo";
 import { BrandHeader } from "@/components/BrandHeader";
 
@@ -154,6 +154,8 @@ function CheckoutPage() {
     distanceKm != null
       ? computeDeliveryCharge(subtotal, distanceKm, pricing.delivery_slabs, pricing.delivery_extra_per_km)
       : 0;
+  const sundayOffer = isSundayIST();
+  const sundayFree = sundayOfferActive(subtotal);
   const toFreeDelivery = amountToFreeDelivery(subtotal, pricing.delivery_slabs);
   const deliveryFee = baseDeliveryFee;
   const outOfRange = distanceKm != null && distanceKm > pricing.max_delivery_radius_km;
@@ -305,7 +307,17 @@ function CheckoutPage() {
                 : "Share location"
             }
           />
-          {toFreeDelivery > 0 && (
+          {sundayFree && (
+            <p className="text-xs font-semibold text-success">
+              Sunday offer applied — FREE DELIVERY on orders above ₹{SUNDAY_OFFER_MIN} 🎉
+            </p>
+          )}
+          {sundayOffer && !sundayFree && (
+            <p className="text-xs font-semibold text-primary">
+              Sunday offer: add ₹{Math.ceil(SUNDAY_OFFER_MIN - subtotal)} more for FREE DELIVERY 🚚
+            </p>
+          )}
+          {!sundayOffer && toFreeDelivery > 0 && (
             <p className="text-xs font-semibold text-primary">
               Add ₹{toFreeDelivery} more to unlock FREE DELIVERY 🚚
             </p>
