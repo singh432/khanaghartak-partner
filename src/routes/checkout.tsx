@@ -154,6 +154,8 @@ function CheckoutPage() {
     distanceKm != null
       ? computeDeliveryCharge(subtotal, distanceKm, pricing.delivery_slabs, pricing.delivery_extra_per_km)
       : 0;
+  const sundayOffer = isSundayIST();
+  const sundayFree = sundayOfferActive(subtotal);
   const toFreeDelivery = amountToFreeDelivery(subtotal, pricing.delivery_slabs);
   const deliveryFee = baseDeliveryFee;
   const outOfRange = distanceKm != null && distanceKm > pricing.max_delivery_radius_km;
