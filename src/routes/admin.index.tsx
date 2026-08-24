@@ -26,9 +26,8 @@ function AdminDashboard() {
 
   const load = async () => {
     const start = new Date(); start.setHours(0, 0, 0, 0);
-    const { data } = await supabase.from("orders").select("status,total,subtotal,platform_fee,delivery_fee,created_at")
-      .gte("created_at", start.toISOString());
-    const rows = data ?? [];
+    const { data } = await supabase.rpc("owner_list_orders", { _limit: 1000, _since: start.toISOString() } as any);
+    const rows = (data ?? []) as any[];
     const s: Stats = { total: rows.length, placed: 0, accepted: 0, preparing: 0, out: 0, delivered: 0, rejected: 0, revenue: 0, foodSales: 0, platformCut: 0, deliveryFees: 0 };
     for (const r of rows) {
       if (r.status === "placed") s.placed++;
@@ -46,25 +45,23 @@ function AdminDashboard() {
     }
     setStats(s);
 
-    const { data: allRows } = await supabase.from("orders")
-      .select("total,subtotal,platform_fee,created_at").eq("status", "delivered");
+    const { data: everything } = await supabase.rpc("owner_list_orders", { _limit: 1000 } as any);
+    const allRows = ((everything ?? []) as any[]).filter((r) => r.status === "delivered");
     const lt: Lifetime = { orders: 0, revenue: 0, foodSales: 0, platformCut: 0 };
-    for (const r of allRows ?? []) {
+    for (const r of allRows) {
       lt.orders++;
       lt.revenue += Number(r.total);
       lt.foodSales += Number(r.subtotal ?? 0);
       lt.platformCut += Number(r.platform_fee ?? 0);
     }
     setLifetime(lt);
-    setDeliveredRows((allRows ?? []) as any[]);
+    setDeliveredRows(allRows);
   };
 
   useEffect(() => {
     load();
-    const ch = supabase.channel("admin-stats")
-      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => load())
-      .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    const t = setInterval(load, 20000);
+    return () => { clearInterval(t); };
   }, []);
 
   return (

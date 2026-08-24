@@ -12,8 +12,8 @@ function AdminAnalytics() {
 
   useEffect(() => {
     const start = new Date(); start.setDate(start.getDate() - 30);
-    supabase.from("orders").select("items,total,status,created_at").gte("created_at", start.toISOString())
-      .then(({ data }) => setOrders((data ?? []) as O[]));
+    supabase.rpc("owner_list_orders", { _limit: 1000, _since: start.toISOString() } as any)
+      .then(({ data }) => setOrders((data ?? []) as unknown as O[]));
   }, []);
 
   const daily = useMemo(() => {

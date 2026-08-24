@@ -846,6 +846,28 @@ export type Database = {
           updated_at: string
         }[]
       }
+      owner_list_orders: {
+        Args: { _limit?: number; _since?: string }
+        Returns: {
+          created_at: string
+          customer_first_name: string
+          delivery_fee: number
+          distance_km: number
+          id: string
+          is_fake: boolean
+          items: Json
+          notes: string
+          payment_method: string
+          platform_fee: number
+          rejection_reason: string
+          restaurant_id: string
+          rider_id: string
+          status: string
+          subtotal: number
+          total: number
+          updated_at: string
+        }[]
+      }
       owner_order_update_safe: {
         Args: {
           _new: Database["public"]["Tables"]["orders"]["Row"]
