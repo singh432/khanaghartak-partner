@@ -157,6 +157,7 @@ function RootComponent() {
             )}
             <CartBar />
             <BottomNav />
+            <AnalyticsTracker />
 
             <Toaster position="top-center" richColors />
           </LocationGateProvider>
