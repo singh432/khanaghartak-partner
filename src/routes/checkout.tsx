@@ -180,6 +180,7 @@ function CheckoutPage() {
   };
 
   const placeOrder = async () => {
+    track("checkout_started", { value: subtotal });
     const parsed = schema.safeParse(form);
     if (!parsed.success) return toast.error(parsed.error.issues[0].message);
     if (restaurantClosed) return toast.error("This restaurant is closed right now. Please order when it reopens.");
