@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { BrandHeader } from "@/components/BrandHeader";
 import { useCart, cartKey, type Portion } from "@/hooks/useCart";
+import { track } from "@/lib/analytics";
 import { useAuth } from "@/hooks/useAuth";
 
 import { isCakeCategory, isPieceCategory, isSinglePriceCategory, isSweetCategory, isHandiCategory, HANDI_PREP_NOTE, CAKE_PREP_NOTE, PORTION_LABELS } from "@/lib/portions";
