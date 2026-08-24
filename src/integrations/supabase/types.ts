@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      analytics_events: {
+        Row: {
+          created_at: string
+          device: string | null
+          event: string
+          id: string
+          item_id: string | null
+          meta: Json
+          order_id: string | null
+          path: string | null
+          restaurant_id: string | null
+          session_id: string
+          user_id: string | null
+          value: number | null
+        }
+        Insert: {
+          created_at?: string
+          device?: string | null
+          event: string
+          id?: string
+          item_id?: string | null
+          meta?: Json
+          order_id?: string | null
+          path?: string | null
+          restaurant_id?: string | null
+          session_id: string
+          user_id?: string | null
+          value?: number | null
+        }
+        Update: {
+          created_at?: string
+          device?: string | null
+          event?: string
+          id?: string
+          item_id?: string | null
+          meta?: Json
+          order_id?: string | null
+          path?: string | null
+          restaurant_id?: string | null
+          session_id?: string
+          user_id?: string | null
+          value?: number | null
+        }
+        Relationships: []
+      }
       blocked_phones: {
         Row: {
           blocked_by: string | null
