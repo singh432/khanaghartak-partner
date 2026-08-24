@@ -387,7 +387,7 @@ function MenuPage() {
                 className="flex-1 rounded-xl border-2 border-border py-2.5 text-sm font-bold">
                 Keep cart
               </button>
-              <button onClick={() => { add(pendingItem, { replace: true }); setPendingItem(null); }}
+              <button onClick={() => { add(pendingItem, { replace: true }); track("add_to_cart", { restaurant_id: pendingItem.restaurant_id, item_id: cartKey(pendingItem.menu_item_id, pendingItem.portion), value: pendingItem.price }); setPendingItem(null); }}
                 className="flex-1 rounded-xl bg-primary py-2.5 text-sm font-bold text-primary-foreground">
                 Clear & add
               </button>
