@@ -84,16 +84,21 @@ function AdminOrders() {
     return true;
   }), [orders, filter, q]);
 
-  const updateStatus = async (id: string, status: Status, extra?: Record<string, unknown>) => {
-    const { error } = await supabase.from("orders").update({ status, ...(extra ?? {}) }).eq("id", id);
-    if (error) toast.error(error.message); else toast.success(`Order marked ${STATUS_LABEL[status]}`);
+  const updateStatus = async (id: string, status: Status, rejectionReason?: string | null) => {
+    const { error } = await supabase.rpc("owner_update_order_status", {
+      _order_id: id, _status: status, _reason: rejectionReason ?? null,
+    } as any);
+    if (error) { toast.error(error.message); return; }
+    toast.success(`Order marked ${STATUS_LABEL[status]}`);
+    setOrders((cur) => cur.map((o) => (o.id === id ? { ...o, status, rejection_reason: rejectionReason ?? o.rejection_reason } : o)));
   };
 
   const submitReject = async () => {
     if (!rejecting) return;
-    await updateStatus(rejecting, "rejected", { rejection_reason: reason.trim() || null });
+    await updateStatus(rejecting, "rejected", reason.trim() || null);
     setRejecting(null); setReason("");
   };
+
 
   return (
     <div className="pb-10">
