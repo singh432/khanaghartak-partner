@@ -877,6 +877,8 @@ export type Database = {
           platform_fee: number
         }[]
       }
+      restaurant_current_status: { Args: { _id: string }; Returns: string }
+      restaurant_owner_id: { Args: { _id: string }; Returns: string }
       rider_accept_order: { Args: { _order_id: string }; Returns: undefined }
       rider_list_available_orders: {
         Args: never
