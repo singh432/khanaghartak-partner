@@ -66,13 +66,13 @@ export function computeDeliveryCharge(
   const d = Math.max(0, distanceKm);
   const slab = pickSlab(Math.max(0, subtotal), slabs);
   let fee = slab.rates[bandIndex(d)] ?? 0;
-  if (d > 5) fee += Math.ceil(d - 5) * extraPerKm;
+  if (d > 8) fee += Math.ceil(d - 8) * extraPerKm;
   return Math.max(0, Math.round(fee));
 }
 
-/** Order value at or above which delivery is free up to 5 km. */
+/** Order value at or above which delivery becomes free for nearby (0-2 km) drops. */
 export function freeDeliveryThreshold(slabs: DeliverySlab[] = DEFAULT_DELIVERY_SLABS): number {
-  const free = slabs.find((s) => s.rates.every((r) => r === 0));
+  const free = slabs.find((s) => s.rates[0] === 0);
   if (!free) return Infinity;
   const idx = slabs.indexOf(free);
   const prev = idx > 0 ? slabs[idx - 1].max_order : null;
