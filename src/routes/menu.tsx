@@ -306,6 +306,7 @@ function MenuPage() {
                                       onClick={() => {
                                         const payload = { menu_item_id: item.id, portion: p.portion, name: showLabel && p.portion !== "full" ? `${item.name} (${label})` : item.name, price: p.price, image_url: item.image_url, veg_type: item.veg_type, restaurant_id: item.restaurant_id, restaurant_name: restaurant?.name ?? null };
                                         if (add(payload) === "conflict") setPendingItem(payload);
+                                        else track("add_to_cart", { restaurant_id: item.restaurant_id, item_id: key, value: p.price });
                                       }}
                                       className="rounded-lg border-2 border-primary bg-card px-4 py-1 text-xs font-bold text-primary shadow-sm">
                                       ADD
