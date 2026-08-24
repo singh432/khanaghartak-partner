@@ -17,7 +17,7 @@ export type PricingSettings = {
 const DEFAULTS: PricingSettings = {
   platform_fee: 10,
   delivery_per_km: 10,
-  max_delivery_radius_km: 7,
+  max_delivery_radius_km: 8,
   delivery_slabs: DEFAULT_DELIVERY_SLABS,
   delivery_extra_per_km: DEFAULT_EXTRA_PER_KM,
 };
