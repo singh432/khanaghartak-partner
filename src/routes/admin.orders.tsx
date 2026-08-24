@@ -42,24 +42,32 @@ function AdminOrders() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
-    supabase.from("orders").select(ORDER_COLUMNS).order("created_at", { ascending: false }).limit(200)
-      .then(({ data }) => setOrders((data ?? []).map((r) => pick(r as Record<string, unknown>))));
-    const channel = supabase.channel("admin-orders")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "orders" }, (payload) => {
-        const o = pick(payload.new as Record<string, unknown>);
-        setOrders((cur) => [o, ...cur]);
-        toast.success(`🔔 New order from ${o.customer_name}`, { duration: 6000 });
-        try { audioRef.current?.play().catch(() => {}); } catch {}
-        if ("Notification" in window && Notification.permission === "granted") {
-          new Notification("New Order Received", { body: `from ${o.customer_name} · ₹${o.total}` });
+    let active = true;
+    const seen = new Set<string>();
+    let first = true;
+
+    const load = async () => {
+      const { data } = await supabase.rpc("owner_list_orders", { _limit: 200 } as any);
+      if (!active) return;
+      const rows = ((data ?? []) as unknown as Record<string, unknown>[]).map(pick);
+      const fresh = rows.filter((o) => !seen.has(o.id) && o.status === "placed");
+      rows.forEach((o) => seen.add(o.id));
+      setOrders(rows);
+      if (!first) {
+        for (const o of fresh) {
+          toast.success(`🔔 New order from ${o.customer_name}`, { duration: 6000 });
+          try { audioRef.current?.play().catch(() => {}); } catch {}
+          if ("Notification" in window && Notification.permission === "granted") {
+            new Notification("New Order Received", { body: `from ${o.customer_name} · ₹${o.total}` });
+          }
         }
-      })
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "orders" }, (payload) => {
-        const o = pick(payload.new as Record<string, unknown>);
-        setOrders((cur) => cur.map((x) => x.id === o.id ? o : x));
-      })
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
+      }
+      first = false;
+    };
+
+    load();
+    const t = setInterval(load, 10000);
+    return () => { active = false; clearInterval(t); };
   }, []);
 
   useEffect(() => {
