@@ -875,6 +875,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      owner_update_order_status: {
+        Args: { _order_id: string; _reason?: string; _status: string }
+        Returns: undefined
+      }
       owns_restaurant_folder: { Args: { _folder: string }; Returns: boolean }
       place_order: {
         Args: {
