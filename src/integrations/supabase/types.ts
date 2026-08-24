@@ -587,13 +587,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "restaurant_ratings_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: true
-            referencedRelation: "restaurant_orders"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "restaurant_ratings_restaurant_id_fkey"
             columns: ["restaurant_id"]
             isOneToOne: false
@@ -790,28 +783,7 @@ export type Database = {
       }
     }
     Views: {
-      restaurant_orders: {
-        Row: {
-          created_at: string | null
-          customer_first_name: string | null
-          delivery_fee: number | null
-          distance_km: number | null
-          id: string | null
-          is_fake: boolean | null
-          items: Json | null
-          notes: string | null
-          payment_method: string | null
-          platform_fee: number | null
-          rejection_reason: string | null
-          restaurant_id: string | null
-          rider_id: string | null
-          status: string | null
-          subtotal: number | null
-          total: number | null
-          updated_at: string | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       become_rider:
@@ -871,6 +843,28 @@ export type Database = {
           latitude: number
           longitude: number
           rider_name: string
+          updated_at: string
+        }[]
+      }
+      owner_list_orders: {
+        Args: { _limit?: number; _since?: string }
+        Returns: {
+          created_at: string
+          customer_first_name: string
+          delivery_fee: number
+          distance_km: number
+          id: string
+          is_fake: boolean
+          items: Json
+          notes: string
+          payment_method: string
+          platform_fee: number
+          rejection_reason: string
+          restaurant_id: string
+          rider_id: string
+          status: string
+          subtotal: number
+          total: number
           updated_at: string
         }[]
       }
