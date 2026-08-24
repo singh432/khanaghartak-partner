@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useCart } from "@/hooks/useCart";
+import { track } from "@/lib/analytics";
 import { useFormDraft } from "@/hooks/useFormDraft";
 
 import { usePricingSettings, ROAD_FACTOR } from "@/hooks/usePricingSettings";
@@ -194,6 +195,7 @@ function CheckoutPage() {
     if (!user) return;
 
     setPlacing(true);
+    track("payment_started", { value: subtotal, meta: { method: "cod" } });
     const { data, error } = await supabase.rpc("place_order", {
       _items: items.map((i) => ({ id: i.menu_item_id, portion: i.portion, qty: i.qty })),
       _customer_name: form.name,
