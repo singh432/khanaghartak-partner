@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { BrandHeader } from "@/components/BrandHeader";
 import { useCart, cartKey, type Portion } from "@/hooks/useCart";
+import { track } from "@/lib/analytics";
 import { useAuth } from "@/hooks/useAuth";
 
 import { isCakeCategory, isPieceCategory, isSinglePriceCategory, isSweetCategory, isHandiCategory, HANDI_PREP_NOTE, CAKE_PREP_NOTE, PORTION_LABELS } from "@/lib/portions";
@@ -306,6 +307,7 @@ function MenuPage() {
                                       onClick={() => {
                                         const payload = { menu_item_id: item.id, portion: p.portion, name: showLabel && p.portion !== "full" ? `${item.name} (${label})` : item.name, price: p.price, image_url: item.image_url, veg_type: item.veg_type, restaurant_id: item.restaurant_id, restaurant_name: restaurant?.name ?? null };
                                         if (add(payload) === "conflict") setPendingItem(payload);
+                                        else track("add_to_cart", { restaurant_id: item.restaurant_id, item_id: key, value: p.price });
                                       }}
                                       className="rounded-lg border-2 border-primary bg-card px-4 py-1 text-xs font-bold text-primary shadow-sm">
                                       ADD
@@ -385,7 +387,7 @@ function MenuPage() {
                 className="flex-1 rounded-xl border-2 border-border py-2.5 text-sm font-bold">
                 Keep cart
               </button>
-              <button onClick={() => { add(pendingItem, { replace: true }); setPendingItem(null); }}
+              <button onClick={() => { add(pendingItem, { replace: true }); track("add_to_cart", { restaurant_id: pendingItem.restaurant_id, item_id: cartKey(pendingItem.menu_item_id, pendingItem.portion), value: pendingItem.price }); setPendingItem(null); }}
                 className="flex-1 rounded-xl bg-primary py-2.5 text-sm font-bold text-primary-foreground">
                 Clear & add
               </button>

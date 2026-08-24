@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useCart } from "@/hooks/useCart";
+import { track } from "@/lib/analytics";
 import { useFormDraft } from "@/hooks/useFormDraft";
 
 import { usePricingSettings, ROAD_FACTOR } from "@/hooks/usePricingSettings";
@@ -180,6 +181,7 @@ function CheckoutPage() {
   };
 
   const placeOrder = async () => {
+    track("checkout_started", { value: subtotal });
     const parsed = schema.safeParse(form);
     if (!parsed.success) return toast.error(parsed.error.issues[0].message);
     if (restaurantClosed) return toast.error("This restaurant is closed right now. Please order when it reopens.");
@@ -193,6 +195,7 @@ function CheckoutPage() {
     if (!user) return;
 
     setPlacing(true);
+    track("payment_started", { value: subtotal, meta: { method: "cod" } });
     const { data, error } = await supabase.rpc("place_order", {
       _items: items.map((i) => ({ id: i.menu_item_id, portion: i.portion, qty: i.qty })),
       _customer_name: form.name,
@@ -204,7 +207,13 @@ function CheckoutPage() {
       _longitude: coords.lng,
     });
     setPlacing(false);
-    if (error || !data) return toast.error(error?.message ?? "Could not place order");
+    if (error || !data) {
+      track("payment_failed" as never, { value: subtotal, repeatable: true, meta: { error: error?.message ?? "unknown" } });
+      return toast.error(error?.message ?? "Could not place order");
+    }
+    const orderId = data as unknown as string;
+    track("payment_success", { order_id: orderId, value: subtotal, meta: { method: "cod" } });
+    track("order_placed", { order_id: orderId, value: subtotal });
     setPlaced(true);
     clearDraft();
     clear();
