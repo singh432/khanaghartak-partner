@@ -9,26 +9,26 @@
 export type DeliverySlab = {
   /** Upper bound of the order value slab (inclusive). null = no upper bound. */
   max_order: number | null;
-  /** Charge for 0-1, 1-2, 2-3, 3-5 km bands. */
+  /** Charge for 0-2, 2-4, 4-6, 6-8 km bands. */
   rates: [number, number, number, number];
 };
 
 export const DEFAULT_DELIVERY_SLABS: DeliverySlab[] = [
-  { max_order: 199, rates: [25, 30, 40, 50] },
-  { max_order: 299, rates: [20, 25, 35, 45] },
-  { max_order: 399, rates: [15, 20, 30, 40] },
-  { max_order: 499, rates: [10, 15, 20, 30] },
-  { max_order: null, rates: [0, 0, 0, 0] },
+  { max_order: 199, rates: [20, 30, 40, 50] },
+  { max_order: 249, rates: [10, 20, 30, 40] },
+  { max_order: 299, rates: [0, 10, 20, 30] },
+  { max_order: 399, rates: [0, 0, 10, 20] },
+  { max_order: null, rates: [0, 0, 0, 10] },
 ];
 
-/** ₹ per additional km beyond 5 km. */
+/** ₹ per additional km beyond 8 km. */
 export const DEFAULT_EXTRA_PER_KM = 8;
 
-/** Distance band index: 0-1, 1-2, 2-3, 3-5 km. */
+/** Distance band index: 0-2, 2-4, 4-6, 6-8 km. */
 function bandIndex(distanceKm: number): 0 | 1 | 2 | 3 {
-  if (distanceKm <= 1) return 0;
-  if (distanceKm <= 2) return 1;
-  if (distanceKm <= 3) return 2;
+  if (distanceKm <= 2) return 0;
+  if (distanceKm <= 4) return 1;
+  if (distanceKm <= 6) return 2;
   return 3;
 }
 
