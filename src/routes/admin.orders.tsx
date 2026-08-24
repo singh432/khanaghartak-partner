@@ -17,11 +17,12 @@ type Order = {
 };
 
 const ORDER_COLUMNS =
-  "id,status,total,subtotal,delivery_fee,platform_fee,distance_km,customer_name,notes,items,rejection_reason,created_at";
+  "id,status,total,subtotal,delivery_fee,platform_fee,distance_km,notes,items,rejection_reason,created_at";
 
 function pick(row: Record<string, unknown>): Order {
   const o: Record<string, unknown> = {};
   for (const k of ORDER_COLUMNS.split(",")) o[k] = row[k];
+  o.customer_name = (row["customer_first_name"] as string) || "Customer";
   return o as unknown as Order;
 }
 
