@@ -41,8 +41,8 @@ export function pickSlab(subtotal: number, slabs: DeliverySlab[]): DeliverySlab 
 
 /**
  * Delivery fee in ₹ from order value + restaurant→customer distance.
- * ≤5 km: exact table charge (FREE for ₹500+).
- * >5 km: table charge + extraPerKm for every km beyond 5 (rounded up).
+ * ≤8 km: exact table charge.
+ * >8 km: table charge + extraPerKm for every km beyond 8 (rounded up).
  */
 /** Sunday offer: free delivery on orders of ₹300+ (IST). */
 export const SUNDAY_OFFER_MIN = 300;
