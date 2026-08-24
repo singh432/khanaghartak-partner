@@ -587,6 +587,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "restaurant_ratings_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "restaurant_orders"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "restaurant_ratings_restaurant_id_fkey"
             columns: ["restaurant_id"]
             isOneToOne: false
@@ -783,7 +790,28 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      restaurant_orders: {
+        Row: {
+          created_at: string | null
+          customer_first_name: string | null
+          delivery_fee: number | null
+          distance_km: number | null
+          id: string | null
+          is_fake: boolean | null
+          items: Json | null
+          notes: string | null
+          payment_method: string | null
+          platform_fee: number | null
+          rejection_reason: string | null
+          restaurant_id: string | null
+          rider_id: string | null
+          status: string | null
+          subtotal: number | null
+          total: number | null
+          updated_at: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       become_rider:
