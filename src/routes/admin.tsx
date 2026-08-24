@@ -228,6 +228,13 @@ function RestaurantSetup({ userId, onSignOut }: { userId: string; onSignOut: () 
         <img src={khanaGharTakLogoUrl} width={84} height={84} alt="KhanaGharTak" className="mx-auto h-20 w-20 rounded-2xl object-contain" />
         <h1 className="mt-4 text-center text-xl font-extrabold tracking-tight">Add your restaurant</h1>
         <p className="mt-1 text-center text-sm text-muted-foreground">Create your restaurant profile to open the owner dashboard.</p>
+
+        <div className="mt-4 rounded-xl border border-primary/30 bg-primary/5 p-3 text-center">
+          <p className="text-sm font-bold text-primary">One-time joining fee: ₹999</p>
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            A one-time ₹999 platform joining fee applies to list your restaurant on KhanaGharTak. Our team will contact you for payment before your restaurant is approved and goes live.
+          </p>
+        </div>
         <form onSubmit={createRestaurant} className="mt-5 space-y-3">
           <SetupField label="Restaurant name"><input className="setup-input" value={form.name} maxLength={80} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="KhanaGharTak Kitchen" /></SetupField>
           <SetupField label="Tagline"><input className="setup-input" value={form.tagline} maxLength={120} onChange={(e) => setForm({ ...form, tagline: e.target.value })} placeholder="Fresh home-style meals" /></SetupField>
