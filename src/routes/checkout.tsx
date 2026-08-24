@@ -207,7 +207,13 @@ function CheckoutPage() {
       _longitude: coords.lng,
     });
     setPlacing(false);
-    if (error || !data) return toast.error(error?.message ?? "Could not place order");
+    if (error || !data) {
+      track("payment_failed" as never, { value: subtotal, repeatable: true, meta: { error: error?.message ?? "unknown" } });
+      return toast.error(error?.message ?? "Could not place order");
+    }
+    const orderId = data as unknown as string;
+    track("payment_success", { order_id: orderId, value: subtotal, meta: { method: "cod" } });
+    track("order_placed", { order_id: orderId, value: subtotal });
     setPlaced(true);
     clearDraft();
     clear();
