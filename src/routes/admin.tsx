@@ -57,7 +57,7 @@ function AdminLayout() {
   const [restaurant, setRestaurant] = useState<{ id: string; name: string; status: string; is_open: boolean | null } | null>(null);
 
   useEffect(() => {
-    if (!loading && !user) navigate({ to: "/login" });
+    if (!loading && !user) navigate({ to: "/login", search: { as: "restaurant" } });
   }, [user, loading, navigate]);
 
   useEffect(() => {

@@ -1,7 +1,6 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState } from "react";
 import { khanaGharTakLogoUrl } from "@/assets/brand";
-import { useAuth } from "@/hooks/useAuth";
 import {
   UtensilsCrossed,
   ChefHat,
@@ -42,25 +41,17 @@ export const Route = createFileRoute("/")({
 type CtaTarget = "user" | "admin" | "rider";
 
 function loginHref(as: CtaTarget) {
-  return "/login";
+  // The entry point (and only the entry point) decides the active context.
+  return `/login?as=${as === "user" ? "customer" : as === "admin" ? "restaurant" : "rider"}`;
 }
 
 function Landing() {
-  const { user, loading, isAdmin, isRider, isSuperAdmin } = useAuth();
-  const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
 
-  // Already signed in? Keep them signed in and send them straight to their area.
-  useEffect(() => {
-    if (loading || !user) return;
-    const to = isSuperAdmin ? "/super" : isAdmin ? "/admin" : isRider ? "/rider" : "/home";
-    navigate({ to: to as "/home", replace: true });
-  }, [loading, user, isAdmin, isRider, isSuperAdmin, navigate]);
-
   const navLinks: Array<{ label: string; href: string; primary?: boolean }> = [
-    { label: "Order Food", href: user ? "/home" : loginHref("user"), primary: true },
-    { label: "Restaurant Login", href: isAdmin ? "/admin" : loginHref("admin") },
-    { label: "Rider Login", href: isRider ? "/rider" : loginHref("rider") },
+    { label: "Order Food", href: loginHref("user"), primary: true },
+    { label: "Restaurant Login", href: loginHref("admin") },
+    { label: "Rider Login", href: loginHref("rider") },
     { label: "Help", href: "#help" },
   ];
 
@@ -151,7 +142,7 @@ function Landing() {
 
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <a
-                href={user ? "/home" : loginHref("user")}
+                href={loginHref("user")}
                 className="inline-flex items-center gap-2 rounded-full bg-primary px-7 py-4 text-base font-bold text-primary-foreground shadow-[0_12px_32px_-10px_oklch(0.66_0.21_35/0.7)] transition hover:translate-y-[-1px]"
               >
                 Order Food Now <ArrowRight className="h-4 w-4" />
@@ -270,7 +261,7 @@ function Landing() {
             title="Run a kitchen? Sell on KhanaGharTak."
             body="Onboard in minutes. Manage your menu, orders, and payouts from one clean dashboard. Get reviewed by a super admin and go live the same day."
             cta="Restaurant Login"
-            href={isAdmin ? "/admin" : loginHref("admin")}
+            href={loginHref("admin")}
             icon={ChefHat}
           />
           <JoinCard
@@ -278,7 +269,7 @@ function Landing() {
             title="Ride with us. Earn per delivery."
             body="Flexible hours, daily payouts, and a clean rider panel with live pickup, drop, and Google Maps navigation. Apply once, approved by admin, start earning."
             cta="Rider Login"
-            href={isRider ? "/rider" : loginHref("rider")}
+            href={loginHref("rider")}
             icon={Bike}
           />
         </div>
@@ -325,9 +316,9 @@ function Landing() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2 text-sm">
-            <a href={user ? "/home" : loginHref("user")} className="rounded-full bg-background/10 px-4 py-2 font-semibold hover:bg-background/20">Order food</a>
-            <a href={isAdmin ? "/admin" : loginHref("admin")} className="rounded-full bg-background/10 px-4 py-2 font-semibold hover:bg-background/20">Restaurant</a>
-            <a href={isRider ? "/rider" : loginHref("rider")} className="rounded-full bg-background/10 px-4 py-2 font-semibold hover:bg-background/20">Rider</a>
+            <a href={loginHref("user")} className="rounded-full bg-background/10 px-4 py-2 font-semibold hover:bg-background/20">Order food</a>
+            <a href={loginHref("admin")} className="rounded-full bg-background/10 px-4 py-2 font-semibold hover:bg-background/20">Restaurant</a>
+            <a href={loginHref("rider")} className="rounded-full bg-background/10 px-4 py-2 font-semibold hover:bg-background/20">Rider</a>
             <a href="#help" className="rounded-full bg-primary px-4 py-2 font-bold text-primary-foreground">Help</a>
           </div>
         </div>

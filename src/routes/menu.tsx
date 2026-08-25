@@ -91,7 +91,7 @@ function MenuPage() {
   const [dataError, setDataError] = useState<string | null>(null);
   const isClosed = !!restaurant && restaurant.is_open !== true;
 
-  useEffect(() => { if (!loading && !user) navigate({ to: "/login" }); }, [user, loading, navigate]);
+  useEffect(() => { if (!loading && !user) navigate({ to: "/login", search: { as: "customer" } }); }, [user, loading, navigate]);
 
   useEffect(() => {
     let active = true;

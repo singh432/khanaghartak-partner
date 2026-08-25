@@ -98,7 +98,7 @@ function RestaurantsPage() {
 
       <p>
         <Link
-          to="/login"
+          to="/login" search={{ as: "customer" as const }}
           className="inline-flex items-center rounded-full bg-primary px-6 py-3 text-sm font-bold text-primary-foreground"
         >
           Sign in to order
