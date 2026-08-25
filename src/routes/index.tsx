@@ -1,7 +1,6 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { khanaGharTakLogoUrl } from "@/assets/brand";
-import { useAuth } from "@/hooks/useAuth";
 import {
   UtensilsCrossed,
   ChefHat,
@@ -47,8 +46,6 @@ function loginHref(as: CtaTarget) {
 }
 
 function Landing() {
-  const { user, loading, isAdmin, isRider, isSuperAdmin } = useAuth();
-  const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
 
   const navLinks: Array<{ label: string; href: string; primary?: boolean }> = [
