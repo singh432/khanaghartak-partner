@@ -42,7 +42,7 @@ export const Route = createFileRoute("/")({
 type CtaTarget = "user" | "admin" | "rider";
 
 function loginHref(as: CtaTarget) {
-  return as === "user" ? "/login" : `/login?as=${as}`;
+  return "/login";
 }
 
 function Landing() {
