@@ -6,10 +6,14 @@ import { lovable } from "@/integrations/lovable";
 import { useAuth } from "@/hooks/useAuth";
 import { khanaGharTakLogoUrl } from "@/assets/brand";
 import { MobileLogin } from "@/components/MobileLogin";
+import { contextHome, getActiveContext, parseContext, setActiveContext, type ActiveContext } from "@/lib/active-role";
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
-  validateSearch: (search: Record<string, unknown>) => ({ as: parseContext(search.as) ?? undefined }),
+  validateSearch: (search: Record<string, unknown>): { as?: ActiveContext } => {
+    const as = parseContext(search.as);
+    return as ? { as } : {};
+  },
   head: () => ({
     meta: [
       { title: "Sign in — KhanaGharTak" },
