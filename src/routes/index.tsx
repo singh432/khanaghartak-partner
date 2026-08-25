@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { khanaGharTakLogoUrl } from "@/assets/brand";
 import {
   UtensilsCrossed,
