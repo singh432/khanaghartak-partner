@@ -84,7 +84,7 @@ function CheckoutPage() {
     if (d.coords) setCoords(d.coords);
   });
 
-  useEffect(() => { if (!loading && !user) navigate({ to: "/login" }); }, [user, loading, navigate]);
+  useEffect(() => { if (!loading && !user) navigate({ to: "/login", search: { as: "customer" } }); }, [user, loading, navigate]);
   useEffect(() => { if (!placed && !loading && ready && items.length === 0) navigate({ to: "/menu", search: { r: undefined } }); }, [items, loading, ready, navigate, placed]);
 
   // Load saved profile

@@ -49,7 +49,7 @@ function LocationPage() {
     },
   );
 
-  useEffect(() => { if (!loading && !user) navigate({ to: "/login" }); }, [user, loading, navigate]);
+  useEffect(() => { if (!loading && !user) navigate({ to: "/login", search: { as: "customer" } }); }, [user, loading, navigate]);
 
   useEffect(() => {
     if (!user) return;

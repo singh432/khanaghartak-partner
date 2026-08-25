@@ -46,7 +46,7 @@ function HomePage() {
 
 
   useEffect(() => {
-    if (!loading && !user) navigate({ to: "/login" });
+    if (!loading && !user) navigate({ to: "/login", search: { as: "customer" } });
   }, [user, loading, navigate]);
 
   useEffect(() => {
