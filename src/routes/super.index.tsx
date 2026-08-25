@@ -5,6 +5,7 @@ import { Store, Users, ShoppingBag, IndianRupee, CheckCircle2, Clock, TrendingUp
 import { sumPayouts, inr, RIDER_SHARE_RATE, COMMISSION_RATE } from "@/lib/payouts";
 import { DateRangeFilter } from "@/components/DateRangeFilter";
 import { inRange, rangeLabel, todayInputValue, type DateRange } from "@/lib/date-range";
+import { fetchAll } from "@/lib/supabase-paged";
 
 export const Route = createFileRoute("/super/")({ component: SuperDashboard });
 
@@ -13,25 +14,27 @@ type RawData = {
   allOrders: any[];
   riderProfiles: any[];
   profiles: any[];
+  customerCount: number;
   loaded: boolean;
 };
 
 function SuperDashboard() {
-  const [raw, setRaw] = useState<RawData>({ restaurants: [], allOrders: [], riderProfiles: [], profiles: [], loaded: false });
+  const [raw, setRaw] = useState<RawData>({ restaurants: [], allOrders: [], riderProfiles: [], profiles: [], customerCount: 0, loaded: false });
   const [payoutRange, setPayoutRange] = useState<DateRange>({ kind: "all", date: todayInputValue() });
 
   const load = async () => {
-    const [restaurants, orders, profiles, riderProfiles] = await Promise.all([
-      supabase.from("restaurants").select("id,status,name"),
-      supabase.from("orders").select("status,total,subtotal,platform_fee,delivery_fee,restaurant_id,rider_id,payment_method,created_at"),
-      supabase.from("profiles").select("id"),
-      supabase.from("rider_profiles").select("user_id,full_name"),
+    const [restaurants, orders, customerCount, riderProfiles] = await Promise.all([
+      fetchAll(() => supabase.from("restaurants").select("id,status,name")),
+      fetchAll(() => supabase.from("orders").select("status,total,subtotal,platform_fee,delivery_fee,restaurant_id,rider_id,payment_method,created_at")),
+      supabase.from("profiles").select("id", { count: "exact", head: true }).then(({ count }) => count ?? 0),
+      fetchAll(() => supabase.from("rider_profiles").select("user_id,full_name")),
     ]);
     setRaw({
-      restaurants: restaurants.data ?? [],
-      allOrders: orders.data ?? [],
-      profiles: profiles.data ?? [],
-      riderProfiles: riderProfiles.data ?? [],
+      restaurants,
+      allOrders: orders,
+      profiles: [],
+      customerCount,
+      riderProfiles,
       loaded: true,
     });
   };
@@ -92,7 +95,7 @@ function SuperDashboard() {
     return {
       totalRestaurants: rs.length,
       activeRestaurants: rs.filter((r: any) => r.status === "active").length,
-      totalCustomers: raw.profiles.length,
+      totalCustomers: raw.customerCount,
       totalOrders: allOrders.length,
       totalRevenue: revenue,
       todayOrders: todayOrders.length,

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Search, Ban, Eye } from "lucide-react";
+import { fetchAll } from "@/lib/supabase-paged";
 
 export const Route = createFileRoute("/super/customers")({ component: SuperCustomers });
 
@@ -17,15 +18,15 @@ function SuperCustomers() {
   const [view, setView] = useState<{ user: P; orders: O[] } | null>(null);
 
   const load = async () => {
-    const [{ data: profiles }, { data: blocks }, { data: orders }] = await Promise.all([
-      supabase.from("profiles").select("id,full_name,phone,created_at").order("created_at", { ascending: false }),
-      supabase.from("customer_blocks").select("user_id"),
-      supabase.from("orders").select("user_id,total"),
+    const [profiles, blocks, orders] = await Promise.all([
+      fetchAll<P>(() => supabase.from("profiles").select("id,full_name,phone,created_at").order("created_at", { ascending: false })),
+      fetchAll(() => supabase.from("customer_blocks").select("user_id")),
+      fetchAll(() => supabase.from("orders").select("user_id,total")),
     ]);
-    setRows((profiles ?? []) as P[]);
+    setRows(profiles);
     setBlocked(new Set((blocks ?? []).map((b: any) => b.user_id)));
     const m: Record<string, { n: number; total: number }> = {};
-    (orders ?? []).forEach((o: any) => {
+    orders.forEach((o: any) => {
       if (!m[o.user_id]) m[o.user_id] = { n: 0, total: 0 };
       m[o.user_id].n++;
       m[o.user_id].total += Number(o.total);
