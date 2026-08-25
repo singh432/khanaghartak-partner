@@ -57,7 +57,7 @@ function RiderPanel() {
   const [profileChecked, setProfileChecked] = useState(false);
 
   useEffect(() => {
-    if (!loading && !user) navigate({ to: "/login", search: { as: "rider" } as any });
+    if (!loading && !user) navigate({ to: "/login" });
   }, [user, loading, navigate]);
 
   useEffect(() => {

@@ -108,6 +108,15 @@ function CheckoutPage() {
       })).catch(() => {});
   }, [user]);
 
+  // Prefill an already verified mobile number so checkout never re-asks for OTP.
+  useEffect(() => {
+    if (!user) return;
+    withTimeout(supabase.from("verified_phones").select("phone").eq("user_id", user.id)
+      .order("verified_at", { ascending: false }).limit(1).maybeSingle().then(({ data }) => {
+        if (data?.phone) setForm((cur) => (cur.phone.replace(/\D/g, "").length === 10 ? cur : { ...cur, phone: data.phone }));
+      })).catch(() => {});
+  }, [user]);
+
 
   // Fetch restaurant coords + open state from first cart item
   useEffect(() => {
@@ -241,6 +250,9 @@ function CheckoutPage() {
             <input className="ck-input" value={form.phone} maxLength={15} inputMode="tel"
               onChange={(e) => setForm({ ...form, phone: e.target.value })} />
           </Field>
+          {currentGate?.phone_verified && !currentGate.blocked && (
+            <p className="text-xs font-semibold text-success">✓ Mobile number verified</p>
+          )}
           {currentGate?.blocked && (
             <div className="flex items-start gap-2 rounded-xl border-2 border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
