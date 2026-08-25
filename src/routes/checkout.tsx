@@ -250,6 +250,9 @@ function CheckoutPage() {
             <input className="ck-input" value={form.phone} maxLength={15} inputMode="tel"
               onChange={(e) => setForm({ ...form, phone: e.target.value })} />
           </Field>
+          {currentGate?.phone_verified && !currentGate.blocked && (
+            <p className="text-xs font-semibold text-success">✓ Mobile number verified</p>
+          )}
           {currentGate?.blocked && (
             <div className="flex items-start gap-2 rounded-xl border-2 border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
