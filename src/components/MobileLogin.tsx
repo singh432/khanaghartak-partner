@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { Loader2, Phone } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { signInWithPhoneOtp } from "@/lib/phone-auth.functions";
-import { sendSmsOtp, verifySmsOtp, RESEND_SECONDS } from "@/lib/msg91-widget";
+import { loadMsg91, sendSmsOtp, verifySmsOtp, RESEND_SECONDS } from "@/lib/msg91-widget";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 
@@ -19,6 +19,12 @@ export function MobileLogin({ onBack }: { onBack: () => void }) {
 
   const digits = phone.replace(/\D/g, "").slice(-10);
   const valid = /^[6-9]\d{9}$/.test(digits);
+
+  // Warm up the MSG91 widget as soon as this step opens so the first
+  // "Send OTP" tap never races the SDK.
+  useEffect(() => {
+    void loadMsg91().catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (cooldown <= 0) return;
