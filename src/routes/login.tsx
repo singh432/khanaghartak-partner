@@ -32,16 +32,21 @@ export const Route = createFileRoute("/login")({
 
 function LoginPage() {
   const navigate = useNavigate();
-  const { user, loading: authLoading, isAdmin, isRider, isSuperAdmin } = useAuth();
+  const { as } = Route.useSearch();
+  const { user, loading: authLoading } = useAuth();
   const [busy, setBusy] = useState(false);
   const [mode, setMode] = useState<"choose" | "mobile">("choose");
 
-  // Authorization decides the landing page — never a query parameter.
+  // The entry point decides the active context — never role, phone or email.
+  useEffect(() => {
+    if (as) setActiveContext(as);
+  }, [as]);
+
   useEffect(() => {
     if (!user || authLoading) return;
-    const to = isSuperAdmin ? "/super" : isAdmin ? "/admin" : isRider ? "/rider" : "/home";
+    const to = contextHome(as ?? getActiveContext());
     navigate({ to: to as "/home", replace: true });
-  }, [user, authLoading, isAdmin, isRider, isSuperAdmin, navigate]);
+  }, [user, authLoading, as, navigate]);
 
   const onGoogle = async () => {
     setBusy(true);
