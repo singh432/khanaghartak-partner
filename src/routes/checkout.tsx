@@ -108,6 +108,15 @@ function CheckoutPage() {
       })).catch(() => {});
   }, [user]);
 
+  // Prefill an already verified mobile number so checkout never re-asks for OTP.
+  useEffect(() => {
+    if (!user) return;
+    withTimeout(supabase.from("verified_phones").select("phone").eq("user_id", user.id)
+      .order("verified_at", { ascending: false }).limit(1).maybeSingle().then(({ data }) => {
+        if (data?.phone) setForm((cur) => (cur.phone.replace(/\D/g, "").length === 10 ? cur : { ...cur, phone: data.phone }));
+      })).catch(() => {});
+  }, [user]);
+
 
   // Fetch restaurant coords + open state from first cart item
   useEffect(() => {
