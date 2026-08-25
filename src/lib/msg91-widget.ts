@@ -29,7 +29,16 @@ export function loadMsg91(): Promise<void> {
           success: () => {},
           failure: () => {},
         });
-        resolve();
+        // initSendOTP exposes sendOtp/verifyOtp asynchronously (after the
+        // widget config request finishes) — wait for them before resolving.
+        let waited = 0;
+        const waitForMethods = () => {
+          if (w.sendOtp && w.verifyOtp) return resolve();
+          waited += 100;
+          if (waited >= 15000) return reject(new Error("Verification service is unavailable"));
+          setTimeout(waitForMethods, 100);
+        };
+        waitForMethods();
       } catch {
         reject(new Error("init failed"));
       }
@@ -46,6 +55,9 @@ export function loadMsg91(): Promise<void> {
     script.onload = init;
     script.onerror = () => reject(new Error("load failed"));
     document.body.appendChild(script);
+  }).catch((err: unknown) => {
+    sdkPromise = null; // allow a retry on the next attempt
+    throw err;
   });
   return sdkPromise;
 }
