@@ -9,6 +9,7 @@ import { MobileLogin } from "@/components/MobileLogin";
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
+  validateSearch: (search: Record<string, unknown>) => ({ as: parseContext(search.as) ?? undefined }),
   head: () => ({
     meta: [
       { title: "Sign in — KhanaGharTak" },
