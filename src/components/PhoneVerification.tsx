@@ -3,99 +3,13 @@ import { toast } from "sonner";
 import { ShieldCheck, Loader2 } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { confirmPhoneVerification } from "@/lib/otp.functions";
+import { loadMsg91, sendSmsOtp, verifySmsOtp, RESEND_SECONDS } from "@/lib/msg91-widget";
 import { Button } from "@/components/ui/button";
 
 type Props = {
   phone: string;
   onVerified: () => void;
 };
-
-const WIDGET_ID = "36686d745256313731393737";
-// Public widget token (safe for client). The MSG91 AuthKey stays server-side.
-const TOKEN_AUTH = "560401T0Fc1eDo6a7e2ec1P1";
-const SDK_SRC = "https://verify.msg91.com/otp-provider.js";
-const RESEND_SECONDS = 10;
-
-type Msg91Window = Window & {
-  initSendOTP?: (config: Record<string, unknown>) => void;
-  sendOtp?: (identifier: string, success: (d: unknown) => void, failure: (e: unknown) => void) => void;
-  retryOtp?: (
-    channel: string,
-    success: (d: unknown) => void,
-    failure: (e: unknown) => void,
-    reqId?: string,
-  ) => void;
-  verifyOtp?: (
-    otp: string,
-    success: (d: unknown) => void,
-    failure: (e: unknown) => void,
-    reqId?: string,
-  ) => void;
-};
-
-let sdkPromise: Promise<void> | null = null;
-
-function loadMsg91(): Promise<void> {
-  if (typeof window === "undefined") return Promise.resolve();
-  const w = window as Msg91Window;
-  if (sdkPromise) return sdkPromise;
-  sdkPromise = new Promise<void>((resolve, reject) => {
-    const init = () => {
-      try {
-        w.initSendOTP?.({
-          widgetId: WIDGET_ID,
-          tokenAuth: TOKEN_AUTH,
-          exposeMethods: true,
-          success: () => {},
-          failure: () => {},
-        });
-        resolve();
-      } catch {
-        reject(new Error("init failed"));
-      }
-    };
-    const existing = document.querySelector<HTMLScriptElement>(`script[src="${SDK_SRC}"]`);
-    if (existing) {
-      if (w.initSendOTP) init();
-      else existing.addEventListener("load", init, { once: true });
-      return;
-    }
-    const script = document.createElement("script");
-    script.src = SDK_SRC;
-    script.async = true;
-    script.onload = init;
-    script.onerror = () => reject(new Error("load failed"));
-    document.body.appendChild(script);
-  });
-  return sdkPromise;
-}
-
-/** Extracts the MSG91 message/reqId string from a callback payload. */
-function payloadMessage(data: unknown): string {
-  if (typeof data === "string") return data;
-  if (data && typeof data === "object") {
-    const msg = (data as { message?: unknown }).message;
-    if (typeof msg === "string") return msg;
-  }
-  return "";
-}
-
-/**
- * MSG91 returns the request id under different keys depending on SDK version
- * (`message`, `reqId`, `requestId`, `req_id`, or a nested `data`).
- */
-function payloadReqId(data: unknown): string {
-  if (typeof data === "string") return data;
-  if (!data || typeof data !== "object") return "";
-  const obj = data as Record<string, unknown>;
-  for (const key of ["reqId", "requestId", "req_id", "message"]) {
-    const v = obj[key];
-    if (typeof v === "string" && v.trim()) return v.trim();
-  }
-  const nested = obj["data"];
-  if (nested && nested !== data) return payloadReqId(nested);
-  return "";
-}
 
 export function PhoneVerification({ phone, onVerified }: Props) {
   const confirm = useServerFn(confirmPhoneVerification);
@@ -134,7 +48,6 @@ export function PhoneVerification({ phone, onVerified }: Props) {
     void loadMsg91().catch(() => {});
   }, []);
 
-
   useEffect(() => {
     if (cooldown <= 0) return;
     const t = setTimeout(() => setCooldown((c) => c - 1), 1000);
@@ -170,23 +83,8 @@ export function PhoneVerification({ phone, onVerified }: Props) {
     if (isRetry && cooldown > 0) return;
     setSending(true);
     try {
-      await loadMsg91();
-      const w = window as Msg91Window;
-      await new Promise<void>((resolve, reject) => {
-        const onSuccess = (data: unknown) => {
-          // Keep the latest valid reqId; never clear it on an empty payload.
-          rememberReqId(payloadReqId(data));
-          resolve();
-        };
-        const onFailure = (err: unknown) => reject(new Error(payloadMessage(err) || "Could not send the code"));
-        if (isRetry && reqIdRef.current && w.retryOtp) {
-          w.retryOtp("11", onSuccess, onFailure, reqIdRef.current);
-        } else if (w.sendOtp) {
-          w.sendOtp(`91${digits}`, onSuccess, onFailure);
-        } else {
-          reject(new Error("Verification service is unavailable"));
-        }
-      });
+      const id = await sendSmsOtp(digits, isRetry ? reqIdRef.current || undefined : undefined);
+      rememberReqId(id);
 
       setSent(true);
       setCooldown(RESEND_SECONDS);
@@ -213,21 +111,7 @@ export function PhoneVerification({ phone, onVerified }: Props) {
     }
     setVerifying(true);
     try {
-      await loadMsg91();
-      const w = window as Msg91Window;
-      const accessToken = await new Promise<string>((resolve, reject) => {
-        if (!w.verifyOtp) return reject(new Error("Verification service is unavailable"));
-        w.verifyOtp(
-          otp,
-          (data) => {
-            const token = payloadMessage(data);
-            token ? resolve(token) : reject(new Error("Incorrect code, please try again"));
-          },
-          (err) => reject(new Error(payloadMessage(err) || "Incorrect code, please try again")),
-          activeReqId,
-        );
-      });
-
+      const accessToken = await verifySmsOtp(otp, activeReqId);
 
       const res = await confirm({ data: { phone: digits, accessToken } });
       if (!res.ok) {
@@ -254,7 +138,7 @@ export function PhoneVerification({ phone, onVerified }: Props) {
     <div className="space-y-3 rounded-2xl border-2 border-primary/30 bg-accent/30 p-3">
       <div className="flex items-start gap-2 text-xs font-semibold text-primary">
         <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
-        <span>Verify this number once by SMS to confirm your order.</span>
+        <span>Verify your mobile number to place your order.</span>
       </div>
 
       {!sent ? (
