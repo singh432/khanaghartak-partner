@@ -55,6 +55,9 @@ export function loadMsg91(): Promise<void> {
     script.onload = init;
     script.onerror = () => reject(new Error("load failed"));
     document.body.appendChild(script);
+  }).catch((err: unknown) => {
+    sdkPromise = null; // allow a retry on the next attempt
+    throw err;
   });
   return sdkPromise;
 }
