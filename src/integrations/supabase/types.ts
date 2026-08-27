@@ -194,6 +194,36 @@ export type Database = {
         }
         Relationships: []
       }
+      delivery_zones: {
+        Row: {
+          city: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          polygon: Json
+          updated_at: string
+        }
+        Insert: {
+          city?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          polygon?: Json
+          updated_at?: string
+        }
+        Update: {
+          city?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          polygon?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
       menu_items: {
         Row: {
           category_id: string
@@ -354,6 +384,7 @@ export type Database = {
           total: number
           updated_at: string
           user_id: string
+          zone_id: string | null
         }
         Insert: {
           address: string
@@ -380,6 +411,7 @@ export type Database = {
           total: number
           updated_at?: string
           user_id: string
+          zone_id?: string | null
         }
         Update: {
           address?: string
@@ -406,8 +438,17 @@ export type Database = {
           total?: number
           updated_at?: string
           user_id?: string
+          zone_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "orders_zone_id_fkey"
+            columns: ["zone_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_zones"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       phone_otps: {
         Row: {
@@ -619,6 +660,7 @@ export type Database = {
           status: string
           tagline: string | null
           updated_at: string
+          zone_id: string | null
         }
         Insert: {
           address?: string | null
@@ -643,6 +685,7 @@ export type Database = {
           status?: string
           tagline?: string | null
           updated_at?: string
+          zone_id?: string | null
         }
         Update: {
           address?: string | null
@@ -667,8 +710,17 @@ export type Database = {
           status?: string
           tagline?: string | null
           updated_at?: string
+          zone_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "restaurants_zone_id_fkey"
+            columns: ["zone_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_zones"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       rider_locations: {
         Row: {
@@ -710,6 +762,7 @@ export type Database = {
           updated_at: string
           user_id: string
           vehicle: string | null
+          zone_id: string | null
         }
         Insert: {
           base_latitude?: number | null
@@ -723,6 +776,7 @@ export type Database = {
           updated_at?: string
           user_id: string
           vehicle?: string | null
+          zone_id?: string | null
         }
         Update: {
           base_latitude?: number | null
@@ -736,8 +790,17 @@ export type Database = {
           updated_at?: string
           user_id?: string
           vehicle?: string | null
+          zone_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "rider_profiles_zone_id_fkey"
+            columns: ["zone_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_zones"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
@@ -780,6 +843,38 @@ export type Database = {
           verified_at?: string
         }
         Relationships: []
+      }
+      zone_managers: {
+        Row: {
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+          zone_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+          zone_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+          zone_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "zone_managers_zone_id_fkey"
+            columns: ["zone_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_zones"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
@@ -830,6 +925,8 @@ export type Database = {
         Args: { _restaurant_id: string }
         Returns: string
       }
+      is_zone_manager_of: { Args: { _zone_id: string }; Returns: boolean }
+      my_zone_ids: { Args: never; Returns: string[] }
       order_restaurant_contact: {
         Args: { _order_id: string }
         Returns: {
@@ -893,6 +990,11 @@ export type Database = {
         }
         Returns: string
       }
+      point_in_polygon: {
+        Args: { _lat: number; _lng: number; _polygon: Json }
+        Returns: boolean
+      }
+      point_in_zone: { Args: { _lat: number; _lng: number }; Returns: string }
       public_pricing: {
         Args: never
         Returns: {
@@ -965,9 +1067,96 @@ export type Database = {
         Args: { _days: number; _reason?: string; _user_id: string }
         Returns: undefined
       }
+      super_zone_stats: {
+        Args: { _since?: string; _until?: string }
+        Returns: {
+          cancelled_count: number
+          delivered_count: number
+          delivery_fees: number
+          food_value: number
+          net_profit: number
+          orders_count: number
+          platform_fees: number
+          revenue: number
+          zone_id: string
+          zone_name: string
+        }[]
+      }
       verify_phone_otp: {
         Args: { _code: string; _phone: string }
         Returns: boolean
+      }
+      zone_assign_rider: {
+        Args: { _order_id: string; _rider_id: string }
+        Returns: undefined
+      }
+      zone_list_customers: {
+        Args: { _zone_id: string }
+        Returns: {
+          full_name: string
+          last_order_at: string
+          orders_count: number
+          phone: string
+          total_spent: number
+          user_id: string
+        }[]
+      }
+      zone_list_orders: {
+        Args: { _limit?: number; _since?: string; _zone_id: string }
+        Returns: {
+          address: string
+          created_at: string
+          customer_name: string
+          customer_phone: string
+          delivery_fee: number
+          distance_km: number
+          id: string
+          is_fake: boolean
+          items: Json
+          landmark: string
+          platform_fee: number
+          restaurant_id: string
+          restaurant_name: string
+          rider_id: string
+          rider_name: string
+          status: string
+          subtotal: number
+          total: number
+          updated_at: string
+        }[]
+      }
+      zone_list_restaurants: {
+        Args: { _zone_id: string }
+        Returns: {
+          address: string
+          id: string
+          is_open: boolean
+          name: string
+          phone: string
+          rating: number
+          rating_count: number
+          status: string
+        }[]
+      }
+      zone_list_riders: {
+        Args: { _zone_id: string }
+        Returns: {
+          full_name: string
+          is_online: boolean
+          phone: string
+          status: string
+          user_id: string
+        }[]
+      }
+      zone_my_zones: {
+        Args: never
+        Returns: {
+          city: string
+          id: string
+          is_active: boolean
+          name: string
+          polygon: Json
+        }[]
       }
     }
     Enums: {
