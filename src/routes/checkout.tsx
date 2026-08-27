@@ -57,6 +57,9 @@ function CheckoutPage() {
   const [placing, setPlacing] = useState(false);
   const [placed, setPlaced] = useState(false);
   const [gate, setGate] = useState<({ needs_otp: boolean; phone_verified: boolean; cod_allowed: boolean; disabled_until: string | null; blocked: boolean } & { phone: string }) | null>(null);
+  const [zones, setZones] = useState<DeliveryZone[] | null>(null);
+
+  useEffect(() => { fetchActiveZones().then(setZones).catch(() => setZones([])); }, []);
 
 
   const phoneDigits = form.phone.replace(/[^0-9]/g, "").slice(-10);
