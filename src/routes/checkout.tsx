@@ -20,6 +20,7 @@ import { withTimeout } from "@/lib/supabase-query";
 import { MapPin, Navigation, Loader2, Wallet, AlertTriangle } from "lucide-react";
 import { MIN_ORDER_VALUE } from "@/lib/order-rules";
 import { cartHasHandiNonVeg, HANDI_PREP_NOTE, cartHasCake, CAKE_PREP_NOTE } from "@/lib/portions";
+import { fetchActiveZones, zoneForPoint, OUTSIDE_ZONE_MESSAGE, type DeliveryZone } from "@/lib/zones";
 
 export const Route = createFileRoute("/checkout")({
   component: CheckoutPage,
