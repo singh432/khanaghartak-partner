@@ -172,7 +172,10 @@ function CheckoutPage() {
   const sundayFree = sundayOfferActive(subtotal);
   const toFreeDelivery = amountToFreeDelivery(subtotal, pricing.delivery_slabs);
   const deliveryFee = baseDeliveryFee;
-  const outOfRange = distanceKm != null && distanceKm > pricing.max_delivery_radius_km;
+  // Delivery eligibility comes from the map zones only — never from the
+  // distance between the restaurant and the customer.
+  const zone = coords && zones ? zoneForPoint(coords, zones) : null;
+  const outOfRange = !!coords && !!zones && !zone;
   const grand = subtotal + (distanceKm != null && !outOfRange ? deliveryFee : 0) + pricing.platform_fee;
   const shortfall = Math.max(0, MIN_ORDER_VALUE - subtotal);
   const belowMin = shortfall > 0;
