@@ -1,0 +1,21 @@
+REVOKE EXECUTE ON FUNCTION public.point_in_zone(double precision, double precision) FROM anon, public;
+REVOKE EXECUTE ON FUNCTION public.my_zone_ids() FROM anon, public;
+REVOKE EXECUTE ON FUNCTION public.is_zone_manager_of(uuid) FROM anon, public;
+REVOKE EXECUTE ON FUNCTION public.zone_my_zones() FROM anon, public;
+REVOKE EXECUTE ON FUNCTION public.zone_list_orders(uuid, integer, timestamptz) FROM anon, public;
+REVOKE EXECUTE ON FUNCTION public.zone_list_restaurants(uuid) FROM anon, public;
+REVOKE EXECUTE ON FUNCTION public.zone_list_riders(uuid) FROM anon, public;
+REVOKE EXECUTE ON FUNCTION public.zone_list_customers(uuid) FROM anon, public;
+REVOKE EXECUTE ON FUNCTION public.zone_assign_rider(uuid, uuid) FROM anon, public;
+REVOKE EXECUTE ON FUNCTION public.super_zone_stats(timestamptz, timestamptz) FROM anon, public;
+
+GRANT EXECUTE ON FUNCTION public.point_in_zone(double precision, double precision) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.my_zone_ids() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.is_zone_manager_of(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.zone_my_zones() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.zone_list_orders(uuid, integer, timestamptz) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.zone_list_restaurants(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.zone_list_riders(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.zone_list_customers(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.zone_assign_rider(uuid, uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.super_zone_stats(timestamptz, timestamptz) TO authenticated;
