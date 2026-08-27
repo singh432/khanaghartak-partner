@@ -20,6 +20,7 @@ import { withTimeout } from "@/lib/supabase-query";
 import { MapPin, Navigation, Loader2, Wallet, AlertTriangle } from "lucide-react";
 import { MIN_ORDER_VALUE } from "@/lib/order-rules";
 import { cartHasHandiNonVeg, HANDI_PREP_NOTE, cartHasCake, CAKE_PREP_NOTE } from "@/lib/portions";
+import { fetchActiveZones, zoneForPoint, OUTSIDE_ZONE_MESSAGE, type DeliveryZone } from "@/lib/zones";
 
 export const Route = createFileRoute("/checkout")({
   component: CheckoutPage,
@@ -56,6 +57,9 @@ function CheckoutPage() {
   const [placing, setPlacing] = useState(false);
   const [placed, setPlaced] = useState(false);
   const [gate, setGate] = useState<({ needs_otp: boolean; phone_verified: boolean; cod_allowed: boolean; disabled_until: string | null; blocked: boolean } & { phone: string }) | null>(null);
+  const [zones, setZones] = useState<DeliveryZone[] | null>(null);
+
+  useEffect(() => { fetchActiveZones().then(setZones).catch(() => setZones([])); }, []);
 
 
   const phoneDigits = form.phone.replace(/[^0-9]/g, "").slice(-10);
@@ -168,7 +172,10 @@ function CheckoutPage() {
   const sundayFree = sundayOfferActive(subtotal);
   const toFreeDelivery = amountToFreeDelivery(subtotal, pricing.delivery_slabs);
   const deliveryFee = baseDeliveryFee;
-  const outOfRange = distanceKm != null && distanceKm > pricing.max_delivery_radius_km;
+  // Delivery eligibility comes from the map zones only — never from the
+  // distance between the restaurant and the customer.
+  const zone = coords && zones ? zoneForPoint(coords, zones) : null;
+  const outOfRange = !!coords && !!zones && !zone;
   const grand = subtotal + (distanceKm != null && !outOfRange ? deliveryFee : 0) + pricing.platform_fee;
   const shortfall = Math.max(0, MIN_ORDER_VALUE - subtotal);
   const belowMin = shortfall > 0;
@@ -200,7 +207,7 @@ function CheckoutPage() {
     if (currentGate && !currentGate.cod_allowed) return toast.error("Cash on Delivery is temporarily disabled for your account.");
 
     if (!coords) return toast.error("Please share your current location");
-    if (outOfRange) return toast.error("Sorry, this restaurant does not deliver to your selected location.");
+    if (outOfRange) return toast.error(OUTSIDE_ZONE_MESSAGE);
     if (!user) return;
 
     setPlacing(true);
@@ -274,9 +281,10 @@ function CheckoutPage() {
             <Navigation className="h-4 w-4" />
             {coords ? "Update my current location" : "Use my current location"}
           </button>
-          {coords && distanceKm != null && !outOfRange && (
+          {coords && !outOfRange && (
             <div className="flex items-center gap-1 text-xs text-success">
-              <MapPin className="h-3.5 w-3.5" /> Current location saved · ~{distanceKm.toFixed(1)} km from kitchen
+              <MapPin className="h-3.5 w-3.5" /> Current location saved
+              {zone ? ` · ${zone.name} delivery zone` : ""}
             </div>
           )}
 
