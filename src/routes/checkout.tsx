@@ -281,9 +281,10 @@ function CheckoutPage() {
             <Navigation className="h-4 w-4" />
             {coords ? "Update my current location" : "Use my current location"}
           </button>
-          {coords && distanceKm != null && !outOfRange && (
+          {coords && !outOfRange && (
             <div className="flex items-center gap-1 text-xs text-success">
-              <MapPin className="h-3.5 w-3.5" /> Current location saved · ~{distanceKm.toFixed(1)} km from kitchen
+              <MapPin className="h-3.5 w-3.5" /> Current location saved
+              {zone ? ` · ${zone.name} delivery zone` : ""}
             </div>
           )}
 
