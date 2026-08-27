@@ -207,7 +207,7 @@ function CheckoutPage() {
     if (currentGate && !currentGate.cod_allowed) return toast.error("Cash on Delivery is temporarily disabled for your account.");
 
     if (!coords) return toast.error("Please share your current location");
-    if (outOfRange) return toast.error("Sorry, this restaurant does not deliver to your selected location.");
+    if (outOfRange) return toast.error(OUTSIDE_ZONE_MESSAGE);
     if (!user) return;
 
     setPlacing(true);
