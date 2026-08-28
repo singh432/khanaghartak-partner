@@ -28,6 +28,7 @@ import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SuperIndexRouteImport } from './routes/super.index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as SuperZonesRouteImport } from './routes/super.zones'
 import { Route as SuperSettingsRouteImport } from './routes/super.settings'
 import { Route as SuperRidersRouteImport } from './routes/super.riders'
 import { Route as SuperRestaurantsRouteImport } from './routes/super.restaurants'
@@ -139,6 +140,11 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminRoute,
 } as any)
+const SuperZonesRoute = SuperZonesRouteImport.update({
+  id: '/zones',
+  path: '/zones',
+  getParentRoute: () => SuperRoute,
+} as any)
 const SuperSettingsRoute = SuperSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -247,6 +253,7 @@ export interface FileRoutesByFullPath {
   '/super/restaurants': typeof SuperRestaurantsRoute
   '/super/riders': typeof SuperRidersRoute
   '/super/settings': typeof SuperSettingsRoute
+  '/super/zones': typeof SuperZonesRoute
   '/admin/': typeof AdminIndexRoute
   '/super/': typeof SuperIndexRoute
   '/api/public/notify/whatsapp': typeof ApiPublicNotifyWhatsappRoute
@@ -281,6 +288,7 @@ export interface FileRoutesByTo {
   '/super/restaurants': typeof SuperRestaurantsRoute
   '/super/riders': typeof SuperRidersRoute
   '/super/settings': typeof SuperSettingsRoute
+  '/super/zones': typeof SuperZonesRoute
   '/admin': typeof AdminIndexRoute
   '/super': typeof SuperIndexRoute
   '/api/public/notify/whatsapp': typeof ApiPublicNotifyWhatsappRoute
@@ -318,6 +326,7 @@ export interface FileRoutesById {
   '/super/restaurants': typeof SuperRestaurantsRoute
   '/super/riders': typeof SuperRidersRoute
   '/super/settings': typeof SuperSettingsRoute
+  '/super/zones': typeof SuperZonesRoute
   '/admin/': typeof AdminIndexRoute
   '/super/': typeof SuperIndexRoute
   '/api/public/notify/whatsapp': typeof ApiPublicNotifyWhatsappRoute
@@ -356,6 +365,7 @@ export interface FileRouteTypes {
     | '/super/restaurants'
     | '/super/riders'
     | '/super/settings'
+    | '/super/zones'
     | '/admin/'
     | '/super/'
     | '/api/public/notify/whatsapp'
@@ -390,6 +400,7 @@ export interface FileRouteTypes {
     | '/super/restaurants'
     | '/super/riders'
     | '/super/settings'
+    | '/super/zones'
     | '/admin'
     | '/super'
     | '/api/public/notify/whatsapp'
@@ -426,6 +437,7 @@ export interface FileRouteTypes {
     | '/super/restaurants'
     | '/super/riders'
     | '/super/settings'
+    | '/super/zones'
     | '/admin/'
     | '/super/'
     | '/api/public/notify/whatsapp'
@@ -590,6 +602,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/super/zones': {
+      id: '/super/zones'
+      path: '/zones'
+      fullPath: '/super/zones'
+      preLoaderRoute: typeof SuperZonesRouteImport
+      parentRoute: typeof SuperRoute
+    }
     '/super/settings': {
       id: '/super/settings'
       path: '/settings'
@@ -725,6 +744,7 @@ interface SuperRouteChildren {
   SuperRestaurantsRoute: typeof SuperRestaurantsRoute
   SuperRidersRoute: typeof SuperRidersRoute
   SuperSettingsRoute: typeof SuperSettingsRoute
+  SuperZonesRoute: typeof SuperZonesRoute
   SuperIndexRoute: typeof SuperIndexRoute
 }
 
@@ -737,6 +757,7 @@ const SuperRouteChildren: SuperRouteChildren = {
   SuperRestaurantsRoute: SuperRestaurantsRoute,
   SuperRidersRoute: SuperRidersRoute,
   SuperSettingsRoute: SuperSettingsRoute,
+  SuperZonesRoute: SuperZonesRoute,
   SuperIndexRoute: SuperIndexRoute,
 }
 
