@@ -6,11 +6,11 @@
  * from email, phone, city, location, active/inactive status or previous role.
  * The same account can switch context freely by using another entry point.
  */
-export type ActiveContext = "customer" | "restaurant" | "rider" | "super";
+export type ActiveContext = "customer" | "restaurant" | "rider" | "manager" | "super";
 
 const KEY = "kgt-active-context";
 
-const VALID: ActiveContext[] = ["customer", "restaurant", "rider", "super"];
+const VALID: ActiveContext[] = ["customer", "restaurant", "rider", "manager", "super"];
 
 export function parseContext(value: unknown): ActiveContext | null {
   return typeof value === "string" && (VALID as string[]).includes(value)
@@ -30,5 +30,5 @@ export function getActiveContext(): ActiveContext {
 
 /** Where an entry point should land after a successful sign-in. */
 export function contextHome(ctx: ActiveContext): string {
-  return ctx === "restaurant" ? "/admin" : ctx === "rider" ? "/rider" : ctx === "super" ? "/super" : "/home";
+  return ctx === "restaurant" ? "/admin" : ctx === "rider" ? "/rider" : ctx === "manager" ? "/zone" : ctx === "super" ? "/super" : "/home";
 }
