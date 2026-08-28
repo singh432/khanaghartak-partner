@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Store, Users, ShoppingBag, IndianRupee, CheckCircle2, Clock, TrendingUp, Wallet } from "lucide-react";
+import { Store, Users, ShoppingBag, IndianRupee, CheckCircle2, Clock, TrendingUp, Wallet, Map as MapIcon } from "lucide-react";
 import { sumPayouts, inr, RIDER_SHARE_RATE, COMMISSION_RATE } from "@/lib/payouts";
 import { DateRangeFilter } from "@/components/DateRangeFilter";
 import { inRange, rangeLabel, todayInputValue, type DateRange } from "@/lib/date-range";
 import { fetchAll } from "@/lib/supabase-paged";
+import { fetchAllZones, type DeliveryZone } from "@/lib/zones";
 
 export const Route = createFileRoute("/super/")({ component: SuperDashboard });
 
@@ -21,11 +22,12 @@ type RawData = {
 function SuperDashboard() {
   const [raw, setRaw] = useState<RawData>({ restaurants: [], allOrders: [], riderProfiles: [], profiles: [], customerCount: 0, loaded: false });
   const [payoutRange, setPayoutRange] = useState<DateRange>({ kind: "all", date: todayInputValue() });
+  const [zones, setZones] = useState<DeliveryZone[]>([]);
 
   const load = async () => {
     const [restaurants, orders, customerCount, riderProfiles] = await Promise.all([
       fetchAll(() => supabase.from("restaurants").select("id,status,name")),
-      fetchAll(() => supabase.from("orders").select("status,total,subtotal,platform_fee,delivery_fee,restaurant_id,rider_id,payment_method,created_at")),
+      fetchAll(() => supabase.from("orders").select("status,total,subtotal,platform_fee,delivery_fee,restaurant_id,rider_id,payment_method,created_at,zone_id")),
       supabase.from("profiles").select("id", { count: "exact", head: true }).then(({ count }) => count ?? 0),
       fetchAll(() => supabase.from("rider_profiles").select("user_id,full_name")),
     ]);
@@ -39,7 +41,7 @@ function SuperDashboard() {
     });
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); fetchAllZones().then(setZones).catch(() => {}); }, []);
 
   const startOfDay = useMemo(() => {
     const d = new Date();
@@ -87,6 +89,26 @@ function SuperDashboard() {
       .map(([id, v]) => ({ id, name: riderNames[id] ?? id.slice(0, 8), ...v }))
       .sort((a, b) => b.due - a.due);
 
+    // Zone-wise performance for the selected range
+    const zoneName: Record<string, string> = {};
+    zones.forEach((z) => { zoneName[z.id] = z.name; });
+    const byZone: Record<string, { orders: number; delivered: number; cancelled: number; revenue: number; net: number }> = {};
+    allOrders.filter((o: any) => inRange(o.created_at, payoutRange)).forEach((o: any) => {
+      const id = (o.zone_id as string) ?? "unassigned";
+      const cur = byZone[id] ?? { orders: 0, delivered: 0, cancelled: 0, revenue: 0, net: 0 };
+      cur.orders += 1;
+      if (o.status === "delivered") {
+        cur.delivered += 1;
+        cur.revenue += Number(o.total ?? 0);
+        cur.net += sumPayouts([o] as any).platformNet;
+      }
+      if (o.status === "cancelled" || o.status === "rejected") cur.cancelled += 1;
+      byZone[id] = cur;
+    });
+    const perZone = Object.entries(byZone)
+      .map(([id, v]) => ({ id, name: zoneName[id] ?? "Unassigned", ...v }))
+      .sort((a, b) => b.revenue - a.revenue);
+
     const todayOrders = allOrders.filter((o: any) => new Date(o.created_at) >= startOfDay);
     const riderTodayDue = sumPayouts(
       delivered.filter((o: any) => o.rider_id && new Date(o.created_at) >= startOfDay) as any,
@@ -105,9 +127,10 @@ function SuperDashboard() {
       payout,
       perRestaurant,
       perRider,
+      perZone,
       riderTodayDue,
     };
-  }, [raw, payoutRange, startOfDay]);
+  }, [raw, payoutRange, startOfDay, zones]);
 
   const s = raw.loaded ? stats : null;
 
@@ -146,6 +169,41 @@ function SuperDashboard() {
         <Card label="Delivered" value={s?.deliveredOrders ?? "—"} icon={CheckCircle2} tone="success" />
         <Card label="Avg Order" value={s && s.totalOrders ? `₹${Math.round(s.totalRevenue / Math.max(s.deliveredOrders, 1))}` : "—"} icon={TrendingUp} />
       </div>
+
+      <section className="rounded-2xl border bg-card p-5 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <MapIcon className="h-4 w-4 text-primary" />
+            <h2 className="text-sm font-bold">Zone-wise performance — {rangeLabel(payoutRange)}</h2>
+          </div>
+          <DateRangeFilter value={payoutRange} onChange={setPayoutRange} />
+        </div>
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="text-left text-xs uppercase tracking-wide text-muted-foreground">
+              <tr>
+                <th className="py-2">Zone</th><th className="py-2">Orders</th><th className="py-2">Delivered</th>
+                <th className="py-2">Cancelled</th><th className="py-2 text-right">Revenue</th><th className="py-2 text-right">Net profit</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(s?.perZone ?? []).map((z) => (
+                <tr key={z.id} className="border-t">
+                  <td className="py-2 font-medium">{z.name}</td>
+                  <td className="py-2 text-muted-foreground">{z.orders}</td>
+                  <td className="py-2 text-muted-foreground">{z.delivered}</td>
+                  <td className="py-2 text-muted-foreground">{z.cancelled}</td>
+                  <td className="py-2 text-right font-bold">{inr(z.revenue)}</td>
+                  <td className="py-2 text-right font-bold text-success">{inr(z.net)}</td>
+                </tr>
+              ))}
+              {(s?.perZone.length ?? 0) === 0 && (
+                <tr><td colSpan={6} className="py-6 text-center text-sm text-muted-foreground">No orders in this range</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
 
       <section className="rounded-2xl border bg-card p-5 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">

@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ZoneRouteImport } from './routes/zone'
 import { Route as TermsAndConditionsRouteImport } from './routes/terms-and-conditions'
 import { Route as SuperRouteImport } from './routes/super'
 import { Route as RiderRouteImport } from './routes/rider'
@@ -28,6 +29,7 @@ import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SuperIndexRouteImport } from './routes/super.index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as SuperZonesRouteImport } from './routes/super.zones'
 import { Route as SuperSettingsRouteImport } from './routes/super.settings'
 import { Route as SuperRidersRouteImport } from './routes/super.riders'
 import { Route as SuperRestaurantsRouteImport } from './routes/super.restaurants'
@@ -44,6 +46,11 @@ import { Route as AdminAnalyticsRouteImport } from './routes/admin.analytics'
 import { Route as ApiPublicNotifyWhatsappStatusRouteImport } from './routes/api/public/notify/whatsapp-status'
 import { Route as ApiPublicNotifyWhatsappRouteImport } from './routes/api/public/notify/whatsapp'
 
+const ZoneRoute = ZoneRouteImport.update({
+  id: '/zone',
+  path: '/zone',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TermsAndConditionsRoute = TermsAndConditionsRouteImport.update({
   id: '/terms-and-conditions',
   path: '/terms-and-conditions',
@@ -138,6 +145,11 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AdminRoute,
+} as any)
+const SuperZonesRoute = SuperZonesRouteImport.update({
+  id: '/zones',
+  path: '/zones',
+  getParentRoute: () => SuperRoute,
 } as any)
 const SuperSettingsRoute = SuperSettingsRouteImport.update({
   id: '/settings',
@@ -234,6 +246,7 @@ export interface FileRoutesByFullPath {
   '/rider': typeof RiderRoute
   '/super': typeof SuperRouteWithChildren
   '/terms-and-conditions': typeof TermsAndConditionsRoute
+  '/zone': typeof ZoneRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/menu': typeof AdminMenuRoute
   '/admin/orders': typeof AdminOrdersRoute
@@ -247,6 +260,7 @@ export interface FileRoutesByFullPath {
   '/super/restaurants': typeof SuperRestaurantsRoute
   '/super/riders': typeof SuperRidersRoute
   '/super/settings': typeof SuperSettingsRoute
+  '/super/zones': typeof SuperZonesRoute
   '/admin/': typeof AdminIndexRoute
   '/super/': typeof SuperIndexRoute
   '/api/public/notify/whatsapp': typeof ApiPublicNotifyWhatsappRoute
@@ -268,6 +282,7 @@ export interface FileRoutesByTo {
   '/restaurants': typeof RestaurantsRoute
   '/rider': typeof RiderRoute
   '/terms-and-conditions': typeof TermsAndConditionsRoute
+  '/zone': typeof ZoneRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/menu': typeof AdminMenuRoute
   '/admin/orders': typeof AdminOrdersRoute
@@ -281,6 +296,7 @@ export interface FileRoutesByTo {
   '/super/restaurants': typeof SuperRestaurantsRoute
   '/super/riders': typeof SuperRidersRoute
   '/super/settings': typeof SuperSettingsRoute
+  '/super/zones': typeof SuperZonesRoute
   '/admin': typeof AdminIndexRoute
   '/super': typeof SuperIndexRoute
   '/api/public/notify/whatsapp': typeof ApiPublicNotifyWhatsappRoute
@@ -305,6 +321,7 @@ export interface FileRoutesById {
   '/rider': typeof RiderRoute
   '/super': typeof SuperRouteWithChildren
   '/terms-and-conditions': typeof TermsAndConditionsRoute
+  '/zone': typeof ZoneRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/menu': typeof AdminMenuRoute
   '/admin/orders': typeof AdminOrdersRoute
@@ -318,6 +335,7 @@ export interface FileRoutesById {
   '/super/restaurants': typeof SuperRestaurantsRoute
   '/super/riders': typeof SuperRidersRoute
   '/super/settings': typeof SuperSettingsRoute
+  '/super/zones': typeof SuperZonesRoute
   '/admin/': typeof AdminIndexRoute
   '/super/': typeof SuperIndexRoute
   '/api/public/notify/whatsapp': typeof ApiPublicNotifyWhatsappRoute
@@ -343,6 +361,7 @@ export interface FileRouteTypes {
     | '/rider'
     | '/super'
     | '/terms-and-conditions'
+    | '/zone'
     | '/admin/analytics'
     | '/admin/menu'
     | '/admin/orders'
@@ -356,6 +375,7 @@ export interface FileRouteTypes {
     | '/super/restaurants'
     | '/super/riders'
     | '/super/settings'
+    | '/super/zones'
     | '/admin/'
     | '/super/'
     | '/api/public/notify/whatsapp'
@@ -377,6 +397,7 @@ export interface FileRouteTypes {
     | '/restaurants'
     | '/rider'
     | '/terms-and-conditions'
+    | '/zone'
     | '/admin/analytics'
     | '/admin/menu'
     | '/admin/orders'
@@ -390,6 +411,7 @@ export interface FileRouteTypes {
     | '/super/restaurants'
     | '/super/riders'
     | '/super/settings'
+    | '/super/zones'
     | '/admin'
     | '/super'
     | '/api/public/notify/whatsapp'
@@ -413,6 +435,7 @@ export interface FileRouteTypes {
     | '/rider'
     | '/super'
     | '/terms-and-conditions'
+    | '/zone'
     | '/admin/analytics'
     | '/admin/menu'
     | '/admin/orders'
@@ -426,6 +449,7 @@ export interface FileRouteTypes {
     | '/super/restaurants'
     | '/super/riders'
     | '/super/settings'
+    | '/super/zones'
     | '/admin/'
     | '/super/'
     | '/api/public/notify/whatsapp'
@@ -450,6 +474,7 @@ export interface RootRouteChildren {
   RiderRoute: typeof RiderRoute
   SuperRoute: typeof SuperRouteWithChildren
   TermsAndConditionsRoute: typeof TermsAndConditionsRoute
+  ZoneRoute: typeof ZoneRoute
   OrderIdRoute: typeof OrderIdRoute
   ApiPublicNotifyWhatsappRoute: typeof ApiPublicNotifyWhatsappRoute
   ApiPublicNotifyWhatsappStatusRoute: typeof ApiPublicNotifyWhatsappStatusRoute
@@ -457,6 +482,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/zone': {
+      id: '/zone'
+      path: '/zone'
+      fullPath: '/zone'
+      preLoaderRoute: typeof ZoneRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/terms-and-conditions': {
       id: '/terms-and-conditions'
       path: '/terms-and-conditions'
@@ -589,6 +621,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/'
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRoute
+    }
+    '/super/zones': {
+      id: '/super/zones'
+      path: '/zones'
+      fullPath: '/super/zones'
+      preLoaderRoute: typeof SuperZonesRouteImport
+      parentRoute: typeof SuperRoute
     }
     '/super/settings': {
       id: '/super/settings'
@@ -725,6 +764,7 @@ interface SuperRouteChildren {
   SuperRestaurantsRoute: typeof SuperRestaurantsRoute
   SuperRidersRoute: typeof SuperRidersRoute
   SuperSettingsRoute: typeof SuperSettingsRoute
+  SuperZonesRoute: typeof SuperZonesRoute
   SuperIndexRoute: typeof SuperIndexRoute
 }
 
@@ -737,6 +777,7 @@ const SuperRouteChildren: SuperRouteChildren = {
   SuperRestaurantsRoute: SuperRestaurantsRoute,
   SuperRidersRoute: SuperRidersRoute,
   SuperSettingsRoute: SuperSettingsRoute,
+  SuperZonesRoute: SuperZonesRoute,
   SuperIndexRoute: SuperIndexRoute,
 }
 
@@ -760,6 +801,7 @@ const rootRouteChildren: RootRouteChildren = {
   RiderRoute: RiderRoute,
   SuperRoute: SuperRouteWithChildren,
   TermsAndConditionsRoute: TermsAndConditionsRoute,
+  ZoneRoute: ZoneRoute,
   OrderIdRoute: OrderIdRoute,
   ApiPublicNotifyWhatsappRoute: ApiPublicNotifyWhatsappRoute,
   ApiPublicNotifyWhatsappStatusRoute: ApiPublicNotifyWhatsappStatusRoute,
