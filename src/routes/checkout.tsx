@@ -298,7 +298,7 @@ function CheckoutPage() {
           {outOfRange && (
             <div className="flex items-start gap-2 rounded-xl border-2 border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-              <span>Sorry, this restaurant does not deliver to your selected location. (~{distanceKm!.toFixed(1)} km, max {pricing.max_delivery_radius_km} km)</span>
+              <span>{OUTSIDE_ZONE_MESSAGE}</span>
             </div>
           )}
         </Section>
