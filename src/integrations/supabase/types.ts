@@ -1052,6 +1052,10 @@ export type Database = {
         Args: { _order_id: string; _rider_id: string }
         Returns: undefined
       }
+      super_assign_zone_manager: {
+        Args: { _email: string; _zone_id: string }
+        Returns: undefined
+      }
       super_flag_fake_order: {
         Args: { _fake: boolean; _order_id: string }
         Returns: undefined
@@ -1062,6 +1066,19 @@ export type Database = {
           id: string
           phone: string
         }[]
+      }
+      super_list_zone_managers: {
+        Args: never
+        Returns: {
+          email: string
+          full_name: string
+          user_id: string
+          zone_id: string
+        }[]
+      }
+      super_remove_zone_manager: {
+        Args: { _user_id: string; _zone_id: string }
+        Returns: undefined
       }
       super_set_cod_restriction: {
         Args: { _days: number; _reason?: string; _user_id: string }
