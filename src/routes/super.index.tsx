@@ -87,6 +87,26 @@ function SuperDashboard() {
       .map(([id, v]) => ({ id, name: riderNames[id] ?? id.slice(0, 8), ...v }))
       .sort((a, b) => b.due - a.due);
 
+    // Zone-wise performance for the selected range
+    const zoneName: Record<string, string> = {};
+    zones.forEach((z) => { zoneName[z.id] = z.name; });
+    const byZone: Record<string, { orders: number; delivered: number; cancelled: number; revenue: number; net: number }> = {};
+    allOrders.filter((o: any) => inRange(o.created_at, payoutRange)).forEach((o: any) => {
+      const id = (o.zone_id as string) ?? "unassigned";
+      const cur = byZone[id] ?? { orders: 0, delivered: 0, cancelled: 0, revenue: 0, net: 0 };
+      cur.orders += 1;
+      if (o.status === "delivered") {
+        cur.delivered += 1;
+        cur.revenue += Number(o.total ?? 0);
+        cur.net += sumPayouts([o] as any).platformNet;
+      }
+      if (o.status === "cancelled" || o.status === "rejected") cur.cancelled += 1;
+      byZone[id] = cur;
+    });
+    const perZone = Object.entries(byZone)
+      .map(([id, v]) => ({ id, name: zoneName[id] ?? "Unassigned", ...v }))
+      .sort((a, b) => b.revenue - a.revenue);
+
     const todayOrders = allOrders.filter((o: any) => new Date(o.created_at) >= startOfDay);
     const riderTodayDue = sumPayouts(
       delivered.filter((o: any) => o.rider_id && new Date(o.created_at) >= startOfDay) as any,
