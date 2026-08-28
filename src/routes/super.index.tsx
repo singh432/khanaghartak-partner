@@ -25,7 +25,7 @@ function SuperDashboard() {
   const load = async () => {
     const [restaurants, orders, customerCount, riderProfiles] = await Promise.all([
       fetchAll(() => supabase.from("restaurants").select("id,status,name")),
-      fetchAll(() => supabase.from("orders").select("status,total,subtotal,platform_fee,delivery_fee,restaurant_id,rider_id,payment_method,created_at")),
+      fetchAll(() => supabase.from("orders").select("status,total,subtotal,platform_fee,delivery_fee,restaurant_id,rider_id,payment_method,created_at,zone_id")),
       supabase.from("profiles").select("id", { count: "exact", head: true }).then(({ count }) => count ?? 0),
       fetchAll(() => supabase.from("rider_profiles").select("user_id,full_name")),
     ]);
