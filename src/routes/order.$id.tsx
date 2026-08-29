@@ -5,6 +5,8 @@ import { PageError, PageSpinner } from "@/components/PageState";
 import { RiderLiveTracker } from "@/components/RiderLiveTracker";
 import { OrderCancelWindow, type OrderLine } from "@/components/OrderCancelWindow";
 import { withTimeout } from "@/lib/supabase-query";
+import { speak, ORDER_VOICE } from "@/lib/voice";
+
 import { CheckCircle2, Clock, Phone, XCircle } from "lucide-react";
 
 
@@ -58,8 +60,18 @@ function OrderSuccess() {
     return () => { active = false; supabase.removeChannel(channel); };
   }, [id]);
 
+  // Speak the current order status once per change.
+  const status = order?.status;
+  useEffect(() => {
+    if (!status) return;
+    const line = ORDER_VOICE[status];
+    if (line) speak(line);
+  }, [status]);
+
   if (loading) return <PageSpinner label="Loading order…" />;
+
   if (error) return <PageError message={error} onRetry={() => window.location.reload()} />;
+
 
   return (
     <div className="flex min-h-[100dvh] flex-col items-center justify-center px-6 text-center">
