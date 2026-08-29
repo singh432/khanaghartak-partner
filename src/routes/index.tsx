@@ -52,6 +52,7 @@ function Landing() {
     { label: "Order Food", href: loginHref("user"), primary: true },
     { label: "Restaurant Login", href: loginHref("admin") },
     { label: "Rider Login", href: loginHref("rider") },
+    { label: "Zone Manager", href: "/login?as=manager" },
     { label: "Help", href: "#help" },
   ];
 

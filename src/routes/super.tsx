@@ -2,7 +2,7 @@ import { createFileRoute, Outlet, useNavigate, Link, useRouterState } from "@tan
 import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { khanaGharTakLogoUrl } from "@/assets/brand";
-import { LayoutDashboard, Store, ClipboardList, Users, BarChart3, Settings as SettingsIcon, LogOut, ShieldAlert, Bike, Truck } from "lucide-react";
+import { LayoutDashboard, Store, ClipboardList, Users, BarChart3, Settings as SettingsIcon, LogOut, ShieldAlert, Bike, Truck, MapPin } from "lucide-react";
 
 export const Route = createFileRoute("/super")({ component: SuperLayout });
 
@@ -12,6 +12,7 @@ const NAV = [
   { to: "/super/riders", label: "Riders", icon: Bike },
   { to: "/super/orders", label: "Orders", icon: ClipboardList },
   { to: "/super/deliveries", label: "Delivery", icon: Truck },
+  { to: "/super/zones", label: "Zones", icon: MapPin },
 
   { to: "/super/customers", label: "Customers", icon: Users },
   { to: "/super/fraud", label: "Fraud", icon: ShieldAlert },
