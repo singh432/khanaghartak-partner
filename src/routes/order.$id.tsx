@@ -61,6 +61,7 @@ function OrderSuccess() {
   if (loading) return <PageSpinner label="Loading order…" />;
   if (error) return <PageError message={error} onRetry={() => window.location.reload()} />;
 
+
   return (
     <div className="flex min-h-[100dvh] flex-col items-center justify-center px-6 text-center">
       <div className="fade-in">
