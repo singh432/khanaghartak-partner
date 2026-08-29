@@ -58,7 +58,16 @@ function OrderSuccess() {
     return () => { active = false; supabase.removeChannel(channel); };
   }, [id]);
 
+  // Speak the current order status once per change.
+  const status = order?.status;
+  useEffect(() => {
+    if (!status) return;
+    const line = ORDER_VOICE[status];
+    if (line) speak(line);
+  }, [status]);
+
   if (loading) return <PageSpinner label="Loading order…" />;
+
   if (error) return <PageError message={error} onRetry={() => window.location.reload()} />;
 
 
