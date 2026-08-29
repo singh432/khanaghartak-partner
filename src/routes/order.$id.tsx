@@ -5,6 +5,8 @@ import { PageError, PageSpinner } from "@/components/PageState";
 import { RiderLiveTracker } from "@/components/RiderLiveTracker";
 import { OrderCancelWindow, type OrderLine } from "@/components/OrderCancelWindow";
 import { withTimeout } from "@/lib/supabase-query";
+import { speak, ORDER_VOICE } from "@/lib/voice";
+
 import { CheckCircle2, Clock, Phone, XCircle } from "lucide-react";
 
 
