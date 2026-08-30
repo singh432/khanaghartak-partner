@@ -5,7 +5,7 @@ import { usePricingSettings } from "@/hooks/usePricingSettings";
 import { PageSpinner } from "@/components/PageState";
 import { Plus, Minus, Trash2, ShoppingBag } from "lucide-react";
 import { MIN_ORDER_VALUE } from "@/lib/order-rules";
-import { amountToFreeDelivery, isSundayIST, SUNDAY_OFFER_MIN, sundayOfferActive } from "@/lib/delivery-pricing";
+import { amountToFreeDelivery } from "@/lib/delivery-pricing";
 import { cartHasHandiNonVeg, HANDI_PREP_NOTE, cartHasCake, CAKE_PREP_NOTE } from "@/lib/portions";
 
 export const Route = createFileRoute("/cart")({
@@ -32,8 +32,6 @@ function CartPage() {
   const shortfall = Math.max(0, MIN_ORDER_VALUE - subtotal);
   const toFreeDelivery = subtotal > 0 ? amountToFreeDelivery(subtotal, pricing.delivery_slabs) : 0;
   const belowMin = subtotal > 0 && shortfall > 0;
-  const sundayOffer = isSundayIST();
-  const sundayFree = sundayOfferActive(subtotal);
 
   if (!ready) return <PageSpinner label="Loading your cart…" />;
 
@@ -92,13 +90,8 @@ function CartPage() {
         <div className="mt-4 rounded-2xl border bg-card p-4 text-sm shadow-[var(--shadow-card)]">
           <Row label="Food subtotal" value={`₹${subtotal.toFixed(0)}`} />
           <Row label="Platform fee" value={`₹${pricing.platform_fee.toFixed(0)}`} />
-          <Row label="Delivery fee" value={sundayFree ? "FREE (Sunday offer)" : "Calculated at checkout"} />
-          {sundayOffer && !sundayFree && (
-            <p className="text-xs font-semibold text-primary">
-              Sunday offer: add ₹{Math.ceil(SUNDAY_OFFER_MIN - subtotal)} more for FREE DELIVERY 🚚
-            </p>
-          )}
-          {!sundayOffer && toFreeDelivery > 0 && (
+          <Row label="Delivery fee" value="Calculated at checkout" />
+          {toFreeDelivery > 0 && (
             <p className="text-xs font-semibold text-primary">
               Add ₹{toFreeDelivery} more to unlock FREE DELIVERY 🚚
             </p>

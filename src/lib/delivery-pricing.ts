@@ -44,25 +44,12 @@ export function pickSlab(subtotal: number, slabs: DeliverySlab[]): DeliverySlab 
  * ≤8 km: exact table charge.
  * >8 km: table charge + extraPerKm for every km beyond 8 (rounded up).
  */
-/** Sunday offer: free delivery on orders of ₹300+ (IST). */
-export const SUNDAY_OFFER_MIN = 300;
-
-export function isSundayIST(now: Date = new Date()): boolean {
-  const ist = new Date(now.getTime() + (now.getTimezoneOffset() + 330) * 60000);
-  return ist.getDay() === 0;
-}
-
-export function sundayOfferActive(subtotal: number, now?: Date): boolean {
-  return isSundayIST(now) && subtotal >= SUNDAY_OFFER_MIN;
-}
-
 export function computeDeliveryCharge(
   subtotal: number,
   distanceKm: number,
   slabs: DeliverySlab[] = DEFAULT_DELIVERY_SLABS,
   extraPerKm: number = DEFAULT_EXTRA_PER_KM,
 ): number {
-  if (sundayOfferActive(subtotal)) return 0;
   const d = Math.max(0, distanceKm);
   const slab = pickSlab(Math.max(0, subtotal), slabs);
   let fee = slab.rates[bandIndex(d)] ?? 0;
