@@ -351,17 +351,7 @@ function CheckoutPage() {
                 : "Share location"
             }
           />
-          {sundayFree && (
-            <p className="text-xs font-semibold text-success">
-              Sunday offer applied — FREE DELIVERY on orders above ₹{SUNDAY_OFFER_MIN} 🎉
-            </p>
-          )}
-          {sundayOffer && !sundayFree && (
-            <p className="text-xs font-semibold text-primary">
-              Sunday offer: add ₹{Math.ceil(SUNDAY_OFFER_MIN - subtotal)} more for FREE DELIVERY 🚚
-            </p>
-          )}
-          {!sundayOffer && toFreeDelivery > 0 && (
+          {toFreeDelivery > 0 && (
             <p className="text-xs font-semibold text-primary">
               Add ₹{toFreeDelivery} more to unlock FREE DELIVERY 🚚
             </p>
