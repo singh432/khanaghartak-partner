@@ -9,7 +9,7 @@ import { track } from "@/lib/analytics";
 import { useFormDraft } from "@/hooks/useFormDraft";
 
 import { usePricingSettings, ROAD_FACTOR } from "@/hooks/usePricingSettings";
-import { computeDeliveryCharge, amountToFreeDelivery } from "@/lib/delivery-pricing";
+import { computeDeliveryCharge } from "@/lib/delivery-pricing";
 import { distanceKm as haversineKm } from "@/lib/geo";
 import { primeVoice } from "@/lib/voice";
 import { BrandHeader } from "@/components/BrandHeader";
