@@ -11,6 +11,7 @@ import { useFormDraft } from "@/hooks/useFormDraft";
 import { usePricingSettings, ROAD_FACTOR } from "@/hooks/usePricingSettings";
 import { computeDeliveryCharge, amountToFreeDelivery, isSundayIST, SUNDAY_OFFER_MIN, sundayOfferActive } from "@/lib/delivery-pricing";
 import { distanceKm as haversineKm } from "@/lib/geo";
+import { primeVoice } from "@/lib/voice";
 import { BrandHeader } from "@/components/BrandHeader";
 
 import { PageSpinner } from "@/components/PageState";
@@ -58,8 +59,18 @@ function CheckoutPage() {
   const [placed, setPlaced] = useState(false);
   const [gate, setGate] = useState<({ needs_otp: boolean; phone_verified: boolean; cod_allowed: boolean; disabled_until: string | null; blocked: boolean } & { phone: string }) | null>(null);
   const [zones, setZones] = useState<DeliveryZone[] | null>(null);
+  const [firstOrder, setFirstOrder] = useState(false);
 
   useEffect(() => { fetchActiveZones().then(setZones).catch(() => setZones([])); }, []);
+
+  useEffect(() => {
+    if (!user) { setFirstOrder(false); return; }
+    supabase.rpc("first_order_discount_status").then(({ data }) => {
+      const row = Array.isArray(data) ? data[0] : data;
+      setFirstOrder(!!row?.eligible);
+    }, () => {});
+  }, [user]);
+
 
 
   const phoneDigits = form.phone.replace(/[^0-9]/g, "").slice(-10);
@@ -176,7 +187,11 @@ function CheckoutPage() {
   // distance between the restaurant and the customer.
   const zone = coords && zones ? zoneForPoint(coords, zones) : null;
   const outOfRange = !!coords && !!zones && !zone;
-  const grand = subtotal + (distanceKm != null && !outOfRange ? deliveryFee : 0) + pricing.platform_fee;
+  const firstOrderDiscount = firstOrder ? Math.min(Math.round(subtotal * 0.05), 25) : 0;
+  const grand = Math.max(
+    0,
+    subtotal + (distanceKm != null && !outOfRange ? deliveryFee : 0) + pricing.platform_fee - firstOrderDiscount,
+  );
   const shortfall = Math.max(0, MIN_ORDER_VALUE - subtotal);
   const belowMin = shortfall > 0;
   const currentGate = gate?.phone === phoneDigits ? gate : null;
@@ -197,6 +212,8 @@ function CheckoutPage() {
   };
 
   const placeOrder = async () => {
+    // Unlock browser speech inside the tap so the order-placed voice can play.
+    primeVoice();
     track("checkout_started", { value: subtotal });
     const parsed = schema.safeParse(form);
     if (!parsed.success) return toast.error(parsed.error.issues[0].message);
@@ -352,6 +369,14 @@ function CheckoutPage() {
             </p>
           )}
           <Row label="Platform fee" value={`₹${pricing.platform_fee.toFixed(0)}`} />
+          {firstOrder && (
+            <>
+              <Row label="First order offer (5% off, max ₹25)" value={`− ₹${firstOrderDiscount.toFixed(0)}`} />
+              <p className="text-xs font-semibold text-success">
+                Welcome offer applied — 5% off your first order 🎉
+              </p>
+            </>
+          )}
           <div className="my-2 h-px bg-border" />
           <Row label="Grand total" value={outOfRange ? "—" : `₹${grand.toFixed(0)}`} bold />
         </Section>
