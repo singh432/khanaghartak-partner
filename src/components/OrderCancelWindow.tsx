@@ -5,7 +5,7 @@ import { Pencil, XCircle, Timer } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCart, type Portion } from "@/hooks/useCart";
 
-const WINDOW_MS = 5 * 60 * 1000;
+const WINDOW_MS = 2 * 60 * 1000;
 
 export type OrderLine = { id: string; name: string; portion?: string; price: number; qty: number };
 
