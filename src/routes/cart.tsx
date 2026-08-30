@@ -90,13 +90,8 @@ function CartPage() {
         <div className="mt-4 rounded-2xl border bg-card p-4 text-sm shadow-[var(--shadow-card)]">
           <Row label="Food subtotal" value={`₹${subtotal.toFixed(0)}`} />
           <Row label="Platform fee" value={`₹${pricing.platform_fee.toFixed(0)}`} />
-          <Row label="Delivery fee" value={sundayFree ? "FREE (Sunday offer)" : "Calculated at checkout"} />
-          {sundayOffer && !sundayFree && (
-            <p className="text-xs font-semibold text-primary">
-              Sunday offer: add ₹{Math.ceil(SUNDAY_OFFER_MIN - subtotal)} more for FREE DELIVERY 🚚
-            </p>
-          )}
-          {!sundayOffer && toFreeDelivery > 0 && (
+          <Row label="Delivery fee" value="Calculated at checkout" />
+          {toFreeDelivery > 0 && (
             <p className="text-xs font-semibold text-primary">
               Add ₹{toFreeDelivery} more to unlock FREE DELIVERY 🚚
             </p>
