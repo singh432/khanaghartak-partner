@@ -91,11 +91,6 @@ function CartPage() {
           <Row label="Food subtotal" value={`₹${subtotal.toFixed(0)}`} />
           <Row label="Platform fee" value={`₹${pricing.platform_fee.toFixed(0)}`} />
           <Row label="Delivery fee" value="Calculated at checkout" />
-          {toFreeDelivery > 0 && (
-            <p className="text-xs font-semibold text-primary">
-              Add ₹{toFreeDelivery} more to unlock FREE DELIVERY 🚚
-            </p>
-          )}
           <div className="my-2 h-px bg-border" />
           <Row label="Subtotal + fees" value={`₹${grand.toFixed(0)}+`} bold />
           <p className="mt-2 text-[11px] text-muted-foreground">Delivery is charged by distance from the kitchen to your pinned address.</p>
