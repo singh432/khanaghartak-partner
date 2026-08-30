@@ -366,6 +366,14 @@ function CheckoutPage() {
             </p>
           )}
           <Row label="Platform fee" value={`₹${pricing.platform_fee.toFixed(0)}`} />
+          {firstOrder && (
+            <>
+              <Row label="First order offer (5% off, max ₹25)" value={`− ₹${firstOrderDiscount.toFixed(0)}`} />
+              <p className="text-xs font-semibold text-success">
+                Welcome offer applied — 5% off your first order 🎉
+              </p>
+            </>
+          )}
           <div className="my-2 h-px bg-border" />
           <Row label="Grand total" value={outOfRange ? "—" : `₹${grand.toFixed(0)}`} bold />
         </Section>
