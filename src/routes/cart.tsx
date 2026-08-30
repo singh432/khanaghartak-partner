@@ -5,7 +5,7 @@ import { usePricingSettings } from "@/hooks/usePricingSettings";
 import { PageSpinner } from "@/components/PageState";
 import { Plus, Minus, Trash2, ShoppingBag } from "lucide-react";
 import { MIN_ORDER_VALUE } from "@/lib/order-rules";
-import { amountToFreeDelivery, isSundayIST, SUNDAY_OFFER_MIN, sundayOfferActive } from "@/lib/delivery-pricing";
+import { amountToFreeDelivery } from "@/lib/delivery-pricing";
 import { cartHasHandiNonVeg, HANDI_PREP_NOTE, cartHasCake, CAKE_PREP_NOTE } from "@/lib/portions";
 
 export const Route = createFileRoute("/cart")({
