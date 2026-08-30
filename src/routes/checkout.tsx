@@ -186,7 +186,11 @@ function CheckoutPage() {
   // distance between the restaurant and the customer.
   const zone = coords && zones ? zoneForPoint(coords, zones) : null;
   const outOfRange = !!coords && !!zones && !zone;
-  const grand = subtotal + (distanceKm != null && !outOfRange ? deliveryFee : 0) + pricing.platform_fee;
+  const firstOrderDiscount = firstOrder ? Math.min(Math.round(subtotal * 0.05), 25) : 0;
+  const grand = Math.max(
+    0,
+    subtotal + (distanceKm != null && !outOfRange ? deliveryFee : 0) + pricing.platform_fee - firstOrderDiscount,
+  );
   const shortfall = Math.max(0, MIN_ORDER_VALUE - subtotal);
   const belowMin = shortfall > 0;
   const currentGate = gate?.phone === phoneDigits ? gate : null;
