@@ -14,7 +14,7 @@ export const Route = createFileRoute("/order/$id")({ component: OrderSuccess });
 
 type Order = {
   id: string; status: string; total: number; subtotal: number;
-  delivery_fee: number; platform_fee: number; distance_km: number | null;
+  delivery_fee: number; platform_fee: number; discount?: number | null; distance_km: number | null;
   customer_name: string; created_at: string; address: string;
   latitude: number | null; longitude: number | null;
   items: OrderLine[] | null;
@@ -43,7 +43,7 @@ function OrderSuccess() {
     setLoading(true);
     setError(null);
     withTimeout(supabase.from("orders")
-      .select("id,status,total,subtotal,delivery_fee,platform_fee,distance_km,customer_name,created_at,address,latitude,longitude,items")
+      .select("id,status,total,subtotal,delivery_fee,platform_fee,discount,distance_km,customer_name,created_at,address,latitude,longitude,items")
       .eq("id", id).maybeSingle()).then(({ data, error }) => {
         if (!active) return;
         if (error) throw error;
@@ -105,6 +105,9 @@ function OrderSuccess() {
               <Row label="Items total" value={`₹${Number(order.subtotal ?? 0).toFixed(0)}`} />
               <Row label={`Delivery${order.distance_km != null ? ` (${Number(order.distance_km).toFixed(1)} km)` : ""}`} value={`₹${Number(order.delivery_fee ?? 0).toFixed(0)}`} />
               <Row label="Platform fee" value={`₹${Number(order.platform_fee ?? 0).toFixed(0)}`} />
+              {Number(order.discount ?? 0) > 0 && (
+                <Row label="First order offer (5% off)" value={`− ₹${Number(order.discount).toFixed(0)}`} />
+              )}
               <div className="my-1 h-px bg-border" />
               <Row label="Grand total (COD)" value={`₹${Number(order.total).toFixed(0)}`} bold />
             </div>
