@@ -351,11 +351,6 @@ function CheckoutPage() {
                 : "Share location"
             }
           />
-          {toFreeDelivery > 0 && (
-            <p className="text-xs font-semibold text-primary">
-              Add ₹{toFreeDelivery} more to unlock FREE DELIVERY 🚚
-            </p>
-          )}
           <Row label="Platform fee" value={`₹${pricing.platform_fee.toFixed(0)}`} />
           {firstOrder && (
             <>
