@@ -16,10 +16,13 @@ export type DeliverySlab = {
 export const DEFAULT_DELIVERY_SLABS: DeliverySlab[] = [
   { max_order: 199, rates: [20, 30, 40, 50] },
   { max_order: 249, rates: [10, 20, 30, 40] },
-  { max_order: 299, rates: [0, 10, 20, 30] },
-  { max_order: 399, rates: [0, 0, 10, 20] },
-  { max_order: null, rates: [0, 0, 0, 10] },
+  { max_order: 299, rates: [10, 10, 20, 30] },
+  { max_order: 399, rates: [10, 10, 10, 20] },
+  { max_order: null, rates: [10, 10, 10, 10] },
 ];
+
+/** Minimum delivery charge — there is no free delivery. */
+export const MIN_DELIVERY_CHARGE = 10;
 
 /** ₹ per additional km beyond 8 km. */
 export const DEFAULT_EXTRA_PER_KM = 8;
@@ -54,24 +57,5 @@ export function computeDeliveryCharge(
   const slab = pickSlab(Math.max(0, subtotal), slabs);
   let fee = slab.rates[bandIndex(d)] ?? 0;
   if (d > 8) fee += Math.ceil(d - 8) * extraPerKm;
-  return Math.max(0, Math.round(fee));
-}
-
-/** Order value at or above which delivery becomes free for nearby (0-2 km) drops. */
-export function freeDeliveryThreshold(slabs: DeliverySlab[] = DEFAULT_DELIVERY_SLABS): number {
-  const free = slabs.find((s) => s.rates[0] === 0);
-  if (!free) return Infinity;
-  const idx = slabs.indexOf(free);
-  const prev = idx > 0 ? slabs[idx - 1].max_order : null;
-  return prev != null ? prev + 1 : 0;
-}
-
-/** ₹ still needed to unlock free delivery, or 0 when already unlocked. */
-export function amountToFreeDelivery(
-  subtotal: number,
-  slabs: DeliverySlab[] = DEFAULT_DELIVERY_SLABS,
-): number {
-  const t = freeDeliveryThreshold(slabs);
-  if (!isFinite(t)) return 0;
-  return Math.max(0, Math.ceil(t - subtotal));
+  return Math.max(MIN_DELIVERY_CHARGE, Math.round(fee));
 }
