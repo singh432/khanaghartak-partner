@@ -211,6 +211,8 @@ function CheckoutPage() {
   };
 
   const placeOrder = async () => {
+    // Unlock browser speech inside the tap so the order-placed voice can play.
+    primeVoice();
     track("checkout_started", { value: subtotal });
     const parsed = schema.safeParse(form);
     if (!parsed.success) return toast.error(parsed.error.issues[0].message);
