@@ -179,7 +179,7 @@ function CheckoutPage() {
     distanceKm != null
       ? computeDeliveryCharge(subtotal, distanceKm, pricing.delivery_slabs, pricing.delivery_extra_per_km)
       : 0;
-  const toFreeDelivery = amountToFreeDelivery(subtotal, pricing.delivery_slabs);
+  
   const deliveryFee = baseDeliveryFee;
   // Delivery eligibility comes from the map zones only — never from the
   // distance between the restaurant and the customer.
