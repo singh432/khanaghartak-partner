@@ -365,6 +365,7 @@ export type Database = {
           customer_name: string
           customer_phone: string
           delivery_fee: number
+          discount: number
           distance_km: number | null
           flagged_by: string | null
           id: string
@@ -392,6 +393,7 @@ export type Database = {
           customer_name: string
           customer_phone: string
           delivery_fee?: number
+          discount?: number
           distance_km?: number | null
           flagged_by?: string | null
           id?: string
@@ -419,6 +421,7 @@ export type Database = {
           customer_name?: string
           customer_phone?: string
           delivery_fee?: number
+          discount?: number
           distance_km?: number | null
           flagged_by?: string | null
           id?: string
@@ -906,6 +909,14 @@ export type Database = {
         Returns: undefined
       }
       customer_cancel_order: { Args: { _order_id: string }; Returns: undefined }
+      first_order_discount_status: {
+        Args: never
+        Returns: {
+          eligible: boolean
+          max_amount: number
+          percent: number
+        }[]
+      }
       free_delivery_status: {
         Args: never
         Returns: {
