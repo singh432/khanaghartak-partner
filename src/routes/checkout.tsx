@@ -58,8 +58,18 @@ function CheckoutPage() {
   const [placed, setPlaced] = useState(false);
   const [gate, setGate] = useState<({ needs_otp: boolean; phone_verified: boolean; cod_allowed: boolean; disabled_until: string | null; blocked: boolean } & { phone: string }) | null>(null);
   const [zones, setZones] = useState<DeliveryZone[] | null>(null);
+  const [firstOrder, setFirstOrder] = useState(false);
 
   useEffect(() => { fetchActiveZones().then(setZones).catch(() => setZones([])); }, []);
+
+  useEffect(() => {
+    if (!user) { setFirstOrder(false); return; }
+    supabase.rpc("first_order_discount_status").then(({ data }) => {
+      const row = Array.isArray(data) ? data[0] : data;
+      setFirstOrder(!!row?.eligible);
+    }, () => {});
+  }, [user]);
+
 
 
   const phoneDigits = form.phone.replace(/[^0-9]/g, "").slice(-10);
