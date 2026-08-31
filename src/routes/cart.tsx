@@ -4,7 +4,6 @@ import { useCart } from "@/hooks/useCart";
 import { usePricingSettings } from "@/hooks/usePricingSettings";
 import { PageSpinner } from "@/components/PageState";
 import { Plus, Minus, Trash2, ShoppingBag } from "lucide-react";
-import { MIN_ORDER_VALUE } from "@/lib/order-rules";
 
 import { cartHasHandiNonVeg, HANDI_PREP_NOTE, cartHasCake, CAKE_PREP_NOTE } from "@/lib/portions";
 
