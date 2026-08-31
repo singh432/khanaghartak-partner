@@ -14,6 +14,8 @@ export type DeliverySlab = {
 };
 
 export const DEFAULT_DELIVERY_SLABS: DeliverySlab[] = [
+  { max_order: 49, rates: [40, 50, 60, 70] },
+  { max_order: 99, rates: [30, 40, 50, 60] },
   { max_order: 199, rates: [20, 30, 40, 50] },
   { max_order: 249, rates: [10, 20, 30, 40] },
   { max_order: 299, rates: [10, 10, 20, 30] },

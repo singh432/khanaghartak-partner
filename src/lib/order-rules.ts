@@ -1,2 +1,2 @@
-/** Minimum items total (₹) required before an order can be placed. */
-export const MIN_ORDER_VALUE = 100;
+/** No minimum order value — customers can order any amount. */
+export const MIN_ORDER_VALUE = 0;
