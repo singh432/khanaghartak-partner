@@ -56,8 +56,8 @@ function SuperRevenue() {
       delivered: delivered.length,
       cancelled: scoped.filter((o) => ["cancelled", "rejected"].includes(o.status)).length,
       revenue: delivered.reduce((s, o) => s + Number(o.total), 0),
-      restaurant: p.restaurantPayout,
-      rider: p.riderEarning,
+      restaurant: p.restaurant,
+      rider: p.rider,
       net: p.platformNet,
     };
   }, [scoped]);
@@ -76,8 +76,8 @@ function SuperRevenue() {
           delivered: delivered.length,
           cancelled: r.orders.filter((o) => ["cancelled", "rejected"].includes(o.status)).length,
           revenue: delivered.reduce((s, o) => s + Number(o.total), 0),
-          restaurant: p.restaurantPayout,
-          rider: p.riderEarning,
+          restaurant: p.restaurant,
+          rider: p.rider,
           net: p.platformNet,
         };
       })

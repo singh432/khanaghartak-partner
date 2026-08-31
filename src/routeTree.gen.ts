@@ -32,6 +32,7 @@ import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as SuperZonesRouteImport } from './routes/super.zones'
 import { Route as SuperSettingsRouteImport } from './routes/super.settings'
 import { Route as SuperRidersRouteImport } from './routes/super.riders'
+import { Route as SuperRevenueRouteImport } from './routes/super.revenue'
 import { Route as SuperRestaurantsRouteImport } from './routes/super.restaurants'
 import { Route as SuperOrdersRouteImport } from './routes/super.orders'
 import { Route as SuperManagersRouteImport } from './routes/super.managers'
@@ -162,6 +163,11 @@ const SuperRidersRoute = SuperRidersRouteImport.update({
   path: '/riders',
   getParentRoute: () => SuperRoute,
 } as any)
+const SuperRevenueRoute = SuperRevenueRouteImport.update({
+  id: '/revenue',
+  path: '/revenue',
+  getParentRoute: () => SuperRoute,
+} as any)
 const SuperRestaurantsRoute = SuperRestaurantsRouteImport.update({
   id: '/restaurants',
   path: '/restaurants',
@@ -265,6 +271,7 @@ export interface FileRoutesByFullPath {
   '/super/managers': typeof SuperManagersRoute
   '/super/orders': typeof SuperOrdersRoute
   '/super/restaurants': typeof SuperRestaurantsRoute
+  '/super/revenue': typeof SuperRevenueRoute
   '/super/riders': typeof SuperRidersRoute
   '/super/settings': typeof SuperSettingsRoute
   '/super/zones': typeof SuperZonesRoute
@@ -302,6 +309,7 @@ export interface FileRoutesByTo {
   '/super/managers': typeof SuperManagersRoute
   '/super/orders': typeof SuperOrdersRoute
   '/super/restaurants': typeof SuperRestaurantsRoute
+  '/super/revenue': typeof SuperRevenueRoute
   '/super/riders': typeof SuperRidersRoute
   '/super/settings': typeof SuperSettingsRoute
   '/super/zones': typeof SuperZonesRoute
@@ -342,6 +350,7 @@ export interface FileRoutesById {
   '/super/managers': typeof SuperManagersRoute
   '/super/orders': typeof SuperOrdersRoute
   '/super/restaurants': typeof SuperRestaurantsRoute
+  '/super/revenue': typeof SuperRevenueRoute
   '/super/riders': typeof SuperRidersRoute
   '/super/settings': typeof SuperSettingsRoute
   '/super/zones': typeof SuperZonesRoute
@@ -383,6 +392,7 @@ export interface FileRouteTypes {
     | '/super/managers'
     | '/super/orders'
     | '/super/restaurants'
+    | '/super/revenue'
     | '/super/riders'
     | '/super/settings'
     | '/super/zones'
@@ -420,6 +430,7 @@ export interface FileRouteTypes {
     | '/super/managers'
     | '/super/orders'
     | '/super/restaurants'
+    | '/super/revenue'
     | '/super/riders'
     | '/super/settings'
     | '/super/zones'
@@ -459,6 +470,7 @@ export interface FileRouteTypes {
     | '/super/managers'
     | '/super/orders'
     | '/super/restaurants'
+    | '/super/revenue'
     | '/super/riders'
     | '/super/settings'
     | '/super/zones'
@@ -655,6 +667,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SuperRidersRouteImport
       parentRoute: typeof SuperRoute
     }
+    '/super/revenue': {
+      id: '/super/revenue'
+      path: '/revenue'
+      fullPath: '/super/revenue'
+      preLoaderRoute: typeof SuperRevenueRouteImport
+      parentRoute: typeof SuperRoute
+    }
     '/super/restaurants': {
       id: '/super/restaurants'
       path: '/restaurants'
@@ -782,6 +801,7 @@ interface SuperRouteChildren {
   SuperManagersRoute: typeof SuperManagersRoute
   SuperOrdersRoute: typeof SuperOrdersRoute
   SuperRestaurantsRoute: typeof SuperRestaurantsRoute
+  SuperRevenueRoute: typeof SuperRevenueRoute
   SuperRidersRoute: typeof SuperRidersRoute
   SuperSettingsRoute: typeof SuperSettingsRoute
   SuperZonesRoute: typeof SuperZonesRoute
@@ -796,6 +816,7 @@ const SuperRouteChildren: SuperRouteChildren = {
   SuperManagersRoute: SuperManagersRoute,
   SuperOrdersRoute: SuperOrdersRoute,
   SuperRestaurantsRoute: SuperRestaurantsRoute,
+  SuperRevenueRoute: SuperRevenueRoute,
   SuperRidersRoute: SuperRidersRoute,
   SuperSettingsRoute: SuperSettingsRoute,
   SuperZonesRoute: SuperZonesRoute,
