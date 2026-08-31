@@ -2,22 +2,23 @@ import { createFileRoute, Outlet, useNavigate, Link, useRouterState } from "@tan
 import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { khanaGharTakLogoUrl } from "@/assets/brand";
-import { LayoutDashboard, Store, ClipboardList, Users, BarChart3, Settings as SettingsIcon, LogOut, ShieldAlert, Bike, Truck, MapPin } from "lucide-react";
+import { LayoutDashboard, Store, ClipboardList, Users, BarChart3, Settings as SettingsIcon, LogOut, ShieldAlert, Bike, Truck, MapPin, UserCog, IndianRupee, BadgePercent } from "lucide-react";
 
 export const Route = createFileRoute("/super")({ component: SuperLayout });
 
 const NAV = [
   { to: "/super", label: "Dashboard", icon: LayoutDashboard, exact: true },
+  { to: "/super/customers", label: "Customers", icon: Users },
+  { to: "/super/orders", label: "Orders", icon: ClipboardList },
   { to: "/super/restaurants", label: "Restaurants", icon: Store },
   { to: "/super/riders", label: "Riders", icon: Bike },
-  { to: "/super/orders", label: "Orders", icon: ClipboardList },
-  { to: "/super/deliveries", label: "Delivery", icon: Truck },
-  { to: "/super/zones", label: "Zones", icon: MapPin },
-
-  { to: "/super/customers", label: "Customers", icon: Users },
-  { to: "/super/fraud", label: "Fraud", icon: ShieldAlert },
-
+  { to: "/super/zones", label: "Delivery Zones", icon: MapPin },
+  { to: "/super/managers", label: "Managers", icon: UserCog },
+  { to: "/super/revenue", label: "Revenue & Profit", icon: IndianRupee },
+  { to: "/super/offers", label: "Offers", icon: BadgePercent },
   { to: "/super/analytics", label: "Analytics", icon: BarChart3 },
+  { to: "/super/deliveries", label: "Delivery", icon: Truck },
+  { to: "/super/fraud", label: "Fraud", icon: ShieldAlert },
   { to: "/super/settings", label: "Platform", icon: SettingsIcon },
 ] as const;
 
@@ -93,12 +94,12 @@ function SuperLayout() {
           <Outlet />
         </main>
 
-        <nav className="fixed bottom-0 left-0 right-0 z-30 grid grid-cols-8 border-t bg-background md:hidden">
+        <nav className="fixed bottom-0 left-0 right-0 z-30 flex gap-1 overflow-x-auto border-t bg-background px-1 md:hidden">
           {NAV.map((n) => {
             const active = isActive(n.to, (n as any).exact);
             return (
               <Link key={n.to} to={n.to as "/super"}
-                className={`flex flex-col items-center gap-0.5 py-2 text-[9px] font-semibold ${active ? "text-primary" : "text-muted-foreground"}`}>
+                className={`flex min-w-[62px] shrink-0 flex-col items-center gap-0.5 py-2 text-center text-[9px] font-semibold ${active ? "text-primary" : "text-muted-foreground"}`}>
                 <n.icon className="h-5 w-5" /> {n.label}
               </Link>
             );

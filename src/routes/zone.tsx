@@ -1,5 +1,5 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { createFileRoute, useNavigate, ClientOnly } from "@tanstack/react-router";
+import { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Bike, ClipboardList, Loader2, MapPin, ShieldAlert, Store, Users, LogOut } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,6 +8,9 @@ import { khanaGharTakLogoUrl } from "@/assets/brand";
 import { DateRangeFilter } from "@/components/DateRangeFilter";
 import { inRange, rangeLabel, todayInputValue, type DateRange } from "@/lib/date-range";
 import { sumPayouts, inr } from "@/lib/payouts";
+import type { ZonePoint } from "@/lib/zones";
+
+const ZoneMapEditor = lazy(() => import("@/components/ZoneMapEditor.client"));
 
 export const Route = createFileRoute("/zone")({
   component: ZoneManagerPage,
@@ -23,7 +26,7 @@ export const Route = createFileRoute("/zone")({
   }),
 });
 
-type Zone = { id: string; name: string; city: string | null; is_active: boolean };
+type Zone = { id: string; name: string; city: string | null; is_active: boolean; polygon: ZonePoint[] | null };
 type Order = {
   id: string; restaurant_name: string | null; status: string; total: number; subtotal: number;
   platform_fee: number; delivery_fee: number; customer_name: string; customer_phone: string;
@@ -33,7 +36,7 @@ type Rider = { user_id: string; full_name: string | null; phone: string | null; 
 type Rest = { id: string; name: string; status: string; is_open: boolean; address: string | null; phone: string | null };
 type Cust = { user_id: string; full_name: string | null; phone: string | null; orders_count: number; total_spent: number | null; last_order_at: string };
 
-type Tab = "orders" | "restaurants" | "riders" | "customers";
+type Tab = "orders" | "restaurants" | "riders" | "customers" | "map";
 
 function ZoneManagerPage() {
   const navigate = useNavigate();
@@ -48,6 +51,8 @@ function ZoneManagerPage() {
   const [range, setRange] = useState<DateRange>({ kind: "today", date: todayInputValue() });
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
+  const [points, setPoints] = useState<ZonePoint[]>([]);
+  const [savingMap, setSavingMap] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) navigate({ to: "/login", search: { as: "manager" } });
@@ -83,6 +88,26 @@ function ZoneManagerPage() {
     const t = setInterval(() => load(zoneId), 20000);
     return () => clearInterval(t);
   }, [zoneId]);
+
+  const currentZone = zones.find((z) => z.id === zoneId) ?? null;
+
+  useEffect(() => {
+    const poly = currentZone?.polygon;
+    setPoints(Array.isArray(poly) ? (poly as ZonePoint[]) : []);
+  }, [zoneId, currentZone?.polygon]);
+
+  const saveBoundary = async () => {
+    if (!zoneId) return;
+    if (points.length < 3) return toast.error("Draw at least 3 boundary points on the map");
+    setSavingMap(true);
+    const { error } = await (supabase.from("delivery_zones") as any)
+      .update({ polygon: points as any })
+      .eq("id", zoneId);
+    setSavingMap(false);
+    if (error) return toast.error(error.message);
+    toast.success("Zone boundary saved");
+    setZones((zs) => zs.map((z) => (z.id === zoneId ? { ...z, polygon: points } : z)));
+  };
 
   const filtered = useMemo(() => orders.filter((o) => inRange(o.created_at, range)), [orders, range]);
 
@@ -164,6 +189,7 @@ function ZoneManagerPage() {
             ["restaurants", "Restaurants", Store],
             ["riders", "Riders", Bike],
             ["customers", "Customers", Users],
+            ["map", "Zone map", MapPin],
           ] as const).map(([key, label, Icon]) => (
             <button key={key} onClick={() => setTab(key)}
               className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-4 py-2 text-xs font-bold ${tab === key ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground"}`}>
@@ -171,6 +197,35 @@ function ZoneManagerPage() {
             </button>
           ))}
         </nav>
+
+        {tab === "map" && (
+          <section className="rounded-2xl border bg-card p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="text-sm font-bold">{currentZone?.name} boundary</p>
+                <p className="text-xs text-muted-foreground">
+                  You can edit only your own zone. Click the map to add a point · click a point to remove it · {points.length} point{points.length === 1 ? "" : "s"}.
+                </p>
+              </div>
+              <div className="flex gap-2">
+                {points.length > 0 && (
+                  <button onClick={() => setPoints([])} className="h-10 rounded-xl bg-secondary px-4 text-xs font-semibold">Clear</button>
+                )}
+                <button onClick={saveBoundary} disabled={savingMap}
+                  className="inline-flex h-10 items-center gap-2 rounded-xl bg-primary px-5 text-xs font-bold text-primary-foreground">
+                  {savingMap && <Loader2 className="h-3.5 w-3.5 animate-spin" />} Save boundary
+                </button>
+              </div>
+            </div>
+            <div className="mt-3">
+              <ClientOnly fallback={<div className="h-[380px] w-full animate-pulse rounded-2xl border bg-secondary/40" />}>
+                <Suspense fallback={<div className="h-[380px] w-full animate-pulse rounded-2xl border bg-secondary/40" />}>
+                  <ZoneMapEditor points={points} onChange={setPoints} center={points[0]} />
+                </Suspense>
+              </ClientOnly>
+            </div>
+          </section>
+        )}
 
         {tab === "orders" && (
           <div className="space-y-3">

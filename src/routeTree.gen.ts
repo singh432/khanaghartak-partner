@@ -32,8 +32,11 @@ import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as SuperZonesRouteImport } from './routes/super.zones'
 import { Route as SuperSettingsRouteImport } from './routes/super.settings'
 import { Route as SuperRidersRouteImport } from './routes/super.riders'
+import { Route as SuperRevenueRouteImport } from './routes/super.revenue'
 import { Route as SuperRestaurantsRouteImport } from './routes/super.restaurants'
 import { Route as SuperOrdersRouteImport } from './routes/super.orders'
+import { Route as SuperOffersRouteImport } from './routes/super.offers'
+import { Route as SuperManagersRouteImport } from './routes/super.managers'
 import { Route as SuperFraudRouteImport } from './routes/super.fraud'
 import { Route as SuperDeliveriesRouteImport } from './routes/super.deliveries'
 import { Route as SuperCustomersRouteImport } from './routes/super.customers'
@@ -161,6 +164,11 @@ const SuperRidersRoute = SuperRidersRouteImport.update({
   path: '/riders',
   getParentRoute: () => SuperRoute,
 } as any)
+const SuperRevenueRoute = SuperRevenueRouteImport.update({
+  id: '/revenue',
+  path: '/revenue',
+  getParentRoute: () => SuperRoute,
+} as any)
 const SuperRestaurantsRoute = SuperRestaurantsRouteImport.update({
   id: '/restaurants',
   path: '/restaurants',
@@ -169,6 +177,16 @@ const SuperRestaurantsRoute = SuperRestaurantsRouteImport.update({
 const SuperOrdersRoute = SuperOrdersRouteImport.update({
   id: '/orders',
   path: '/orders',
+  getParentRoute: () => SuperRoute,
+} as any)
+const SuperOffersRoute = SuperOffersRouteImport.update({
+  id: '/offers',
+  path: '/offers',
+  getParentRoute: () => SuperRoute,
+} as any)
+const SuperManagersRoute = SuperManagersRouteImport.update({
+  id: '/managers',
+  path: '/managers',
   getParentRoute: () => SuperRoute,
 } as any)
 const SuperFraudRoute = SuperFraudRouteImport.update({
@@ -256,8 +274,11 @@ export interface FileRoutesByFullPath {
   '/super/customers': typeof SuperCustomersRoute
   '/super/deliveries': typeof SuperDeliveriesRoute
   '/super/fraud': typeof SuperFraudRoute
+  '/super/managers': typeof SuperManagersRoute
+  '/super/offers': typeof SuperOffersRoute
   '/super/orders': typeof SuperOrdersRoute
   '/super/restaurants': typeof SuperRestaurantsRoute
+  '/super/revenue': typeof SuperRevenueRoute
   '/super/riders': typeof SuperRidersRoute
   '/super/settings': typeof SuperSettingsRoute
   '/super/zones': typeof SuperZonesRoute
@@ -292,8 +313,11 @@ export interface FileRoutesByTo {
   '/super/customers': typeof SuperCustomersRoute
   '/super/deliveries': typeof SuperDeliveriesRoute
   '/super/fraud': typeof SuperFraudRoute
+  '/super/managers': typeof SuperManagersRoute
+  '/super/offers': typeof SuperOffersRoute
   '/super/orders': typeof SuperOrdersRoute
   '/super/restaurants': typeof SuperRestaurantsRoute
+  '/super/revenue': typeof SuperRevenueRoute
   '/super/riders': typeof SuperRidersRoute
   '/super/settings': typeof SuperSettingsRoute
   '/super/zones': typeof SuperZonesRoute
@@ -331,8 +355,11 @@ export interface FileRoutesById {
   '/super/customers': typeof SuperCustomersRoute
   '/super/deliveries': typeof SuperDeliveriesRoute
   '/super/fraud': typeof SuperFraudRoute
+  '/super/managers': typeof SuperManagersRoute
+  '/super/offers': typeof SuperOffersRoute
   '/super/orders': typeof SuperOrdersRoute
   '/super/restaurants': typeof SuperRestaurantsRoute
+  '/super/revenue': typeof SuperRevenueRoute
   '/super/riders': typeof SuperRidersRoute
   '/super/settings': typeof SuperSettingsRoute
   '/super/zones': typeof SuperZonesRoute
@@ -371,8 +398,11 @@ export interface FileRouteTypes {
     | '/super/customers'
     | '/super/deliveries'
     | '/super/fraud'
+    | '/super/managers'
+    | '/super/offers'
     | '/super/orders'
     | '/super/restaurants'
+    | '/super/revenue'
     | '/super/riders'
     | '/super/settings'
     | '/super/zones'
@@ -407,8 +437,11 @@ export interface FileRouteTypes {
     | '/super/customers'
     | '/super/deliveries'
     | '/super/fraud'
+    | '/super/managers'
+    | '/super/offers'
     | '/super/orders'
     | '/super/restaurants'
+    | '/super/revenue'
     | '/super/riders'
     | '/super/settings'
     | '/super/zones'
@@ -445,8 +478,11 @@ export interface FileRouteTypes {
     | '/super/customers'
     | '/super/deliveries'
     | '/super/fraud'
+    | '/super/managers'
+    | '/super/offers'
     | '/super/orders'
     | '/super/restaurants'
+    | '/super/revenue'
     | '/super/riders'
     | '/super/settings'
     | '/super/zones'
@@ -643,6 +679,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SuperRidersRouteImport
       parentRoute: typeof SuperRoute
     }
+    '/super/revenue': {
+      id: '/super/revenue'
+      path: '/revenue'
+      fullPath: '/super/revenue'
+      preLoaderRoute: typeof SuperRevenueRouteImport
+      parentRoute: typeof SuperRoute
+    }
     '/super/restaurants': {
       id: '/super/restaurants'
       path: '/restaurants'
@@ -655,6 +698,20 @@ declare module '@tanstack/react-router' {
       path: '/orders'
       fullPath: '/super/orders'
       preLoaderRoute: typeof SuperOrdersRouteImport
+      parentRoute: typeof SuperRoute
+    }
+    '/super/offers': {
+      id: '/super/offers'
+      path: '/offers'
+      fullPath: '/super/offers'
+      preLoaderRoute: typeof SuperOffersRouteImport
+      parentRoute: typeof SuperRoute
+    }
+    '/super/managers': {
+      id: '/super/managers'
+      path: '/managers'
+      fullPath: '/super/managers'
+      preLoaderRoute: typeof SuperManagersRouteImport
       parentRoute: typeof SuperRoute
     }
     '/super/fraud': {
@@ -760,8 +817,11 @@ interface SuperRouteChildren {
   SuperCustomersRoute: typeof SuperCustomersRoute
   SuperDeliveriesRoute: typeof SuperDeliveriesRoute
   SuperFraudRoute: typeof SuperFraudRoute
+  SuperManagersRoute: typeof SuperManagersRoute
+  SuperOffersRoute: typeof SuperOffersRoute
   SuperOrdersRoute: typeof SuperOrdersRoute
   SuperRestaurantsRoute: typeof SuperRestaurantsRoute
+  SuperRevenueRoute: typeof SuperRevenueRoute
   SuperRidersRoute: typeof SuperRidersRoute
   SuperSettingsRoute: typeof SuperSettingsRoute
   SuperZonesRoute: typeof SuperZonesRoute
@@ -773,8 +833,11 @@ const SuperRouteChildren: SuperRouteChildren = {
   SuperCustomersRoute: SuperCustomersRoute,
   SuperDeliveriesRoute: SuperDeliveriesRoute,
   SuperFraudRoute: SuperFraudRoute,
+  SuperManagersRoute: SuperManagersRoute,
+  SuperOffersRoute: SuperOffersRoute,
   SuperOrdersRoute: SuperOrdersRoute,
   SuperRestaurantsRoute: SuperRestaurantsRoute,
+  SuperRevenueRoute: SuperRevenueRoute,
   SuperRidersRoute: SuperRidersRoute,
   SuperSettingsRoute: SuperSettingsRoute,
   SuperZonesRoute: SuperZonesRoute,
