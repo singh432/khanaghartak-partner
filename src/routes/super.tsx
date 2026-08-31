@@ -55,15 +55,16 @@ function SuperLayout() {
 
   return (
     <div className="min-h-screen md:flex md:bg-secondary/30">
-      <aside className="hidden md:flex md:w-64 md:flex-col md:border-r md:bg-card">
+      <aside className="hidden md:sticky md:top-0 md:flex md:h-screen md:w-56 md:shrink-0 md:flex-col md:border-r md:bg-card lg:w-64">
         <div className="flex items-center gap-2 border-b px-4 py-4">
-          <img src={khanaGharTakLogoUrl} width={36} height={36} alt="" className="h-9 w-9 rounded-lg object-contain" />
-          <div>
-            <p className="text-sm font-bold leading-tight">KhanaGharTak</p>
+          <img src={khanaGharTakLogoUrl} width={36} height={36} alt="" className="h-9 w-9 shrink-0 rounded-lg object-contain" />
+          <div className="min-w-0">
+            <p className="truncate text-sm font-bold leading-tight">KhanaGharTak</p>
             <p className="text-[10px] uppercase tracking-wide text-primary">Super Admin</p>
           </div>
         </div>
-        <nav className="flex-1 space-y-1 p-3">
+        <nav className="flex-1 space-y-1 overflow-y-auto p-3">
+
           {NAV.map((n) => (
             <Link key={n.to} to={n.to as "/super"}
               className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold ${
