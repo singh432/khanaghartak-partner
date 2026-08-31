@@ -394,9 +394,7 @@ function CheckoutPage() {
           {placing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           {codBlocked
             ? "Cash on Delivery unavailable"
-            : belowMin
-              ? `Add ₹${shortfall.toFixed(0)} more to order`
-              : !coords
+            : !coords
                 ? "Share location to continue"
                 : outOfRange
                   ? "Outside delivery area"
