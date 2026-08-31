@@ -92,7 +92,7 @@ function SuperLayout() {
           <button onClick={signOut} aria-label="Sign out" className="rounded-full p-2 text-muted-foreground"><LogOut className="h-4 w-4" /></button>
         </header>
 
-        <main className="mx-auto max-w-6xl">
+        <main className="mx-auto w-full min-w-0 max-w-[1400px]">
           <Outlet />
         </main>
 
