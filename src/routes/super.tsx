@@ -67,11 +67,12 @@ function SuperLayout() {
 
           {NAV.map((n) => (
             <Link key={n.to} to={n.to as "/super"}
-              className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold ${
+              className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold ${
                 isActive(n.to, (n as any).exact) ? "bg-primary text-primary-foreground" : "text-foreground/80 hover:bg-secondary"
               }`}>
-              <n.icon className="h-4 w-4" /> {n.label}
+              <n.icon className="h-4 w-4 shrink-0" /> <span className="truncate">{n.label}</span>
             </Link>
+
           ))}
         </nav>
         <button onClick={signOut} className="m-3 flex items-center justify-center gap-2 rounded-xl border bg-card px-3 py-2.5 text-sm font-semibold text-foreground/80">
