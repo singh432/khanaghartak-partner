@@ -4,8 +4,22 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Search, Ban, Eye } from "lucide-react";
 import { fetchAll } from "@/lib/supabase-paged";
+import { inr } from "@/lib/payouts";
 
-export const Route = createFileRoute("/super/customers")({ component: SuperCustomers });
+export const Route = createFileRoute("/super/customers")({
+  component: SuperCustomers,
+  head: () => ({
+    meta: [
+      { title: "Customers & Analytics — KhanaGharTak Super Admin" },
+      { name: "description", content: "Customer list plus conversion, repeat-rate, delivered/cancelled and average order value analytics." },
+      { name: "robots", content: "noindex, nofollow" },
+      { property: "og:title", content: "Customers & Analytics — KhanaGharTak Super Admin" },
+      { property: "og:description", content: "Customer list plus conversion, repeat-rate, delivered/cancelled and average order value analytics." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
+});
 
 type P = { id: string; full_name: string | null; phone: string | null; created_at: string };
 type O = { id: string; total: number; status: string; created_at: string };
@@ -16,12 +30,13 @@ function SuperCustomers() {
   const [q, setQ] = useState("");
   const [counts, setCounts] = useState<Record<string, { n: number; total: number }>>({});
   const [view, setView] = useState<{ user: P; orders: O[] } | null>(null);
+  const [orderRows, setOrderRows] = useState<{ user_id: string; total: number; status: string }[]>([]);
 
   const load = async () => {
     const [profiles, blocks, orders] = await Promise.all([
       fetchAll<P>(() => supabase.from("profiles").select("id,full_name,phone,created_at").order("created_at", { ascending: false })),
       fetchAll(() => supabase.from("customer_blocks").select("user_id")),
-      fetchAll(() => supabase.from("orders").select("user_id,total")),
+      fetchAll(() => supabase.from("orders").select("user_id,total,status")),
     ]);
     setRows(profiles);
     setBlocked(new Set((blocks ?? []).map((b: any) => b.user_id)));
@@ -32,6 +47,7 @@ function SuperCustomers() {
       m[o.user_id].total += Number(o.total);
     });
     setCounts(m);
+    setOrderRows(orders as any);
   };
 
   useEffect(() => { load(); }, []);
@@ -55,6 +71,27 @@ function SuperCustomers() {
     setView({ user: u, orders: (data ?? []) as O[] });
   };
 
+  const analytics = (() => {
+    const totalCustomers = rows.length;
+    const ordering = new Map<string, number>();
+    orderRows.forEach((o) => ordering.set(o.user_id, (ordering.get(o.user_id) ?? 0) + 1));
+    const withOrders = ordering.size;
+    const repeat = [...ordering.values()].filter((n) => n > 1).length;
+    const delivered = orderRows.filter((o) => o.status === "delivered");
+    const cancelled = orderRows.filter((o) => ["cancelled", "rejected"].includes(o.status)).length;
+    const revenue = delivered.reduce((s, o) => s + Number(o.total), 0);
+    return {
+      totalCustomers,
+      conversion: totalCustomers ? Math.round((withOrders / totalCustomers) * 100) : 0,
+      withOrders,
+      repeat,
+      repeatRate: withOrders ? Math.round((repeat / withOrders) * 100) : 0,
+      delivered: delivered.length,
+      cancelled,
+      aov: delivered.length ? revenue / delivered.length : 0,
+    };
+  })();
+
   const filtered = rows.filter(r => !q || (r.full_name ?? "").toLowerCase().includes(q.toLowerCase()) || (r.phone ?? "").includes(q));
 
   return (
@@ -70,6 +107,15 @@ function SuperCustomers() {
             className="h-10 w-72 rounded-xl border bg-card pl-9 pr-3 text-sm outline-none" />
         </div>
       </header>
+
+      <section className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
+        <Metric label="Total customers" value={String(analytics.totalCustomers)} />
+        <Metric label="First-order conversion" value={`${analytics.conversion}%`} hint={`${analytics.withOrders} ordered`} />
+        <Metric label="Repeat customers" value={String(analytics.repeat)} hint={`${analytics.repeatRate}% of buyers`} />
+        <Metric label="Delivered orders" value={String(analytics.delivered)} />
+        <Metric label="Cancelled orders" value={String(analytics.cancelled)} />
+        <Metric label="Average order value" value={inr(analytics.aov)} />
+      </section>
 
       <div className="overflow-x-auto rounded-2xl border bg-card">
         <table className="w-full text-sm">
@@ -125,6 +171,16 @@ function SuperCustomers() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function Metric({ label, value, hint }: { label: string; value: string; hint?: string }) {
+  return (
+    <div className="rounded-2xl border bg-card p-4">
+      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="mt-1 text-xl font-extrabold">{value}</p>
+      {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
     </div>
   );
 }
