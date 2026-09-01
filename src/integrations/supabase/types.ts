@@ -1190,6 +1190,14 @@ export type Database = {
           polygon: Json
         }[]
       }
+      zone_set_restaurant_open: {
+        Args: { _is_open: boolean; _restaurant_id: string }
+        Returns: undefined
+      }
+      zone_set_rider_status: {
+        Args: { _status: string; _user_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role:

@@ -32,9 +32,11 @@ function SuperRiders() {
     load();
   };
 
-  const filtered = rows.filter((r) =>
-    !q || (r.full_name ?? "").toLowerCase().includes(q.toLowerCase()) || (r.phone ?? "").includes(q)
-  );
+  const rank = (s: string) => (s === "pending" ? 0 : s === "approved" ? 1 : 2);
+  const filtered = rows
+    .filter((r) => !q || (r.full_name ?? "").toLowerCase().includes(q.toLowerCase()) || (r.phone ?? "").includes(q))
+    .slice()
+    .sort((a, b) => rank(a.status) - rank(b.status));
 
   const pending = rows.filter((r) => r.status === "pending").length;
   const approved = rows.filter((r) => r.status === "approved").length;

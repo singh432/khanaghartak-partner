@@ -109,6 +109,11 @@ function ZoneManagerPage() {
     setZones((zs) => zs.map((z) => (z.id === zoneId ? { ...z, polygon: points } : z)));
   };
 
+  const sortedRiders = useMemo(() => {
+    const rank = (s: string) => (s === "pending" ? 0 : s === "approved" ? 1 : 2);
+    return riders.slice().sort((a, b) => rank(a.status) - rank(b.status));
+  }, [riders]);
+
   const filtered = useMemo(() => orders.filter((o) => inRange(o.created_at, range)), [orders, range]);
 
   const stats = useMemo(() => {
@@ -122,6 +127,24 @@ function ZoneManagerPage() {
       net: pay.platformNet,
     };
   }, [filtered]);
+
+  const setRiderStatus = async (userId: string, status: string) => {
+    setBusy(userId);
+    const { error } = await supabase.rpc("zone_set_rider_status" as any, { _user_id: userId, _status: status });
+    setBusy(null);
+    if (error) return toast.error(error.message);
+    toast.success(`Rider ${status}`);
+    load(zoneId);
+  };
+
+  const setRestaurantOpen = async (id: string, isOpen: boolean) => {
+    setBusy(id);
+    const { error } = await supabase.rpc("zone_set_restaurant_open" as any, { _restaurant_id: id, _is_open: isOpen });
+    setBusy(null);
+    if (error) return toast.error(error.message);
+    toast.success(isOpen ? "Restaurant opened" : "Restaurant closed");
+    load(zoneId);
+  };
 
   const assign = async (orderId: string, riderId: string) => {
     if (!riderId) return;
@@ -272,9 +295,13 @@ function ZoneManagerPage() {
                   <p className="truncate text-sm font-bold">{r.name}</p>
                   <p className="truncate text-xs text-muted-foreground">{r.address ?? "—"}{r.phone ? ` · ${r.phone}` : ""}</p>
                 </div>
-                <div className="flex shrink-0 gap-1.5 text-[11px] font-bold">
+                <div className="flex shrink-0 items-center gap-1.5 text-[11px] font-bold">
                   <span className="rounded-full bg-secondary px-2 py-1 capitalize">{r.status}</span>
                   <span className={`rounded-full px-2 py-1 ${r.is_open ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}`}>{r.is_open ? "Open" : "Closed"}</span>
+                  <button disabled={busy === r.id} onClick={() => setRestaurantOpen(r.id, !r.is_open)}
+                    className="rounded-full border px-2.5 py-1 disabled:opacity-50">
+                    {r.is_open ? "Close" : "Open"}
+                  </button>
                 </div>
               </div>
             ))}
@@ -284,15 +311,27 @@ function ZoneManagerPage() {
         {tab === "riders" && (
           <div className="space-y-2">
             {riders.length === 0 && <Empty>No riders in this zone.</Empty>}
-            {riders.map((r) => (
+            {sortedRiders.map((r) => (
               <div key={r.user_id} className="flex items-center justify-between gap-3 rounded-2xl border bg-card p-4">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-bold">{r.full_name ?? r.user_id.slice(0, 8)}</p>
                   <p className="text-xs text-muted-foreground">{r.phone ?? "—"}</p>
                 </div>
-                <div className="flex shrink-0 gap-1.5 text-[11px] font-bold">
+                <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5 text-[11px] font-bold">
                   <span className="rounded-full bg-secondary px-2 py-1 capitalize">{r.status}</span>
                   <span className={`rounded-full px-2 py-1 ${r.is_online ? "bg-success/10 text-success" : "bg-secondary text-muted-foreground"}`}>{r.is_online ? "Online" : "Offline"}</span>
+                  {r.status !== "approved" && (
+                    <button disabled={busy === r.user_id} onClick={() => setRiderStatus(r.user_id, "approved")}
+                      className="rounded-full bg-success/10 px-2.5 py-1 text-success disabled:opacity-50">Approve</button>
+                  )}
+                  {r.status === "pending" && (
+                    <button disabled={busy === r.user_id} onClick={() => setRiderStatus(r.user_id, "rejected")}
+                      className="rounded-full bg-destructive/10 px-2.5 py-1 text-destructive disabled:opacity-50">Reject</button>
+                  )}
+                  {r.status === "approved" && (
+                    <button disabled={busy === r.user_id} onClick={() => setRiderStatus(r.user_id, "suspended")}
+                      className="rounded-full bg-amber-500/10 px-2.5 py-1 text-amber-600 disabled:opacity-50">Suspend</button>
+                  )}
                 </div>
               </div>
             ))}
