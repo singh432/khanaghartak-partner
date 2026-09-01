@@ -63,6 +63,17 @@ function SuperOrders() {
     setRefresh((n) => n + 1);
   };
 
+  const cancelOrder = async (o: O) => {
+    const reason = prompt("Reason for rejecting/cancelling this order? (optional)");
+    if (reason === null) return;
+    const { error } = await supabase.rpc("super_cancel_order" as any, { _order_id: o.id, _reason: reason });
+    if (error) return toast.error(error.message);
+    toast.success("Order cancelled");
+    setRefresh((n) => n + 1);
+  };
+
+  const closed = (s: string) => ["delivered", "cancelled", "rejected"].includes(s);
+
   const filtered = useMemo(() => orders.filter(o =>
     (rest === "all" || o.restaurant_id === rest) &&
     (status === "all" || o.status === status)
