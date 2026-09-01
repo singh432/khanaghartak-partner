@@ -1071,6 +1071,10 @@ export type Database = {
         Args: { _email: string; _zone_id: string }
         Returns: undefined
       }
+      super_cancel_order: {
+        Args: { _order_id: string; _reason?: string }
+        Returns: undefined
+      }
       super_flag_fake_order: {
         Args: { _fake: boolean; _order_id: string }
         Returns: undefined

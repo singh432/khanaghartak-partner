@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { Flag } from "lucide-react";
+import { Flag, XCircle } from "lucide-react";
 import { restaurantPayout, platformEarning } from "@/lib/payouts";
 
 export const Route = createFileRoute("/super/orders")({ component: SuperOrders });
@@ -63,6 +63,17 @@ function SuperOrders() {
     setRefresh((n) => n + 1);
   };
 
+  const cancelOrder = async (o: O) => {
+    const reason = prompt("Reason for rejecting/cancelling this order? (optional)");
+    if (reason === null) return;
+    const { error } = await supabase.rpc("super_cancel_order" as any, { _order_id: o.id, _reason: reason });
+    if (error) return toast.error(error.message);
+    toast.success("Order cancelled");
+    setRefresh((n) => n + 1);
+  };
+
+  const closed = (s: string) => ["delivered", "cancelled", "rejected"].includes(s);
+
   const filtered = useMemo(() => orders.filter(o =>
     (rest === "all" || o.restaurant_id === rest) &&
     (status === "all" || o.status === status)
@@ -84,7 +95,7 @@ function SuperOrders() {
       <div className="overflow-x-auto rounded-2xl border bg-card">
         <table className="w-full text-sm">
           <thead className="bg-secondary/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
-            <tr><th className="px-4 py-3">Order ID</th><th className="px-4 py-3">Restaurant</th><th className="px-4 py-3">Customer</th><th className="px-4 py-3">Restaurant ₹</th><th className="px-4 py-3">KhanaGharTak ₹</th><th className="px-4 py-3">Order ₹</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Rider</th><th className="px-4 py-3">Date</th><th className="px-4 py-3 text-right">Fraud</th></tr>
+            <tr><th className="px-4 py-3">Order ID</th><th className="px-4 py-3">Restaurant</th><th className="px-4 py-3">Customer</th><th className="px-4 py-3">Restaurant ₹</th><th className="px-4 py-3">KhanaGharTak ₹</th><th className="px-4 py-3">Order ₹</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Rider</th><th className="px-4 py-3">Date</th><th className="px-4 py-3 text-right">Actions</th></tr>
           </thead>
           <tbody>
             {filtered.map((o) => (
@@ -101,11 +112,19 @@ function SuperOrders() {
                 </td>
                 <td className="px-4 py-3 text-muted-foreground">{o.rider_id ? riders[o.rider_id] ?? o.rider_id.slice(0, 8) : "—"}</td>
                 <td className="px-4 py-3 text-muted-foreground">{new Date(o.created_at).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" })}</td>
-                <td className="px-4 py-3 text-right">
-                  <button onClick={() => flagFake(o)} title={o.is_fake ? "Unmark fake" : "Mark as fake"}
-                    className={`rounded-lg p-2 ${o.is_fake ? "bg-destructive text-destructive-foreground" : "bg-secondary text-destructive"}`}>
-                    <Flag className="h-4 w-4" />
-                  </button>
+                <td className="px-4 py-3">
+                  <div className="flex items-center justify-end gap-2">
+                    <button onClick={() => flagFake(o)} title={o.is_fake ? "Unmark fake" : "Mark as fake"}
+                      className={`rounded-lg p-2 ${o.is_fake ? "bg-destructive text-destructive-foreground" : "bg-secondary text-destructive"}`}>
+                      <Flag className="h-4 w-4" />
+                    </button>
+                    {!closed(o.status) && (
+                      <button onClick={() => cancelOrder(o)} title="Reject / cancel this order"
+                        className="inline-flex items-center gap-1 rounded-lg bg-destructive px-2.5 py-2 text-xs font-bold text-destructive-foreground">
+                        <XCircle className="h-4 w-4" /> Reject
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
