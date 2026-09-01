@@ -59,19 +59,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    withTimeout(supabase.auth.getSession(), 8000)
-      .then(async ({ data }) => {
+    // Restoring the stored session can be slow (brokered preview storage), so retry
+    // instead of treating a slow read as "signed out" — that is what forced re-login.
+    const restore = async (attempt = 0): Promise<void> => {
+      try {
+        const { data } = await withTimeout(supabase.auth.getSession(), 15000);
         if (!active) return;
-        setSession(data.session);
-        setUser(data.session?.user ?? null);
-        if (data.session?.user) await loadRoles(data.session.user.id);
-        else { setIsAdmin(false); setIsSuperAdmin(false); setIsRider(false); }
-      })
-      .catch(() => {
+        if (data.session) {
+          setSession(data.session);
+          setUser(data.session.user);
+          await loadRoles(data.session.user.id);
+        } else if (attempt < 2) {
+          await new Promise((r) => setTimeout(r, 600));
+          return restore(attempt + 1);
+        } else {
+          setSession(null); setUser(null);
+          setIsAdmin(false); setIsSuperAdmin(false); setIsRider(false);
+        }
+      } catch {
         if (!active) return;
-        setSession(null); setUser(null); setIsAdmin(false); setIsSuperAdmin(false); setIsRider(false);
-      })
-      .finally(() => { if (active) setLoading(false); });
+        if (attempt < 2) {
+          await new Promise((r) => setTimeout(r, 600));
+          return restore(attempt + 1);
+        }
+        // Keep whatever session we already have; never force a sign-out on a slow read.
+      }
+    };
+
+    restore().finally(() => { if (active) setLoading(false); });
 
     return () => { active = false; sub.subscription.unsubscribe(); };
   }, []);
