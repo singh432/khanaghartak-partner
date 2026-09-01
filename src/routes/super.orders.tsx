@@ -26,6 +26,10 @@ function SuperOrders() {
   const [rest, setRest] = useState<string>("all");
   const [status, setStatus] = useState<string>("all");
   const [refresh, setRefresh] = useState(0);
+  const [rejectFor, setRejectFor] = useState<O | null>(null);
+  const [reason, setReason] = useState("");
+  const [fakeFor, setFakeFor] = useState<O | null>(null);
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     supabase.from("restaurants").select("id,name").then(({ data }) => {
@@ -54,20 +58,29 @@ function SuperOrders() {
     q.then(({ data }) => setOrders((data ?? []) as O[]));
   }, [range, refresh]);
 
-  const flagFake = async (o: O) => {
-    const next = !o.is_fake;
-    if (next && !confirm("Mark this order as fake? Two fake orders temporarily disable Cash on Delivery for this customer.")) return;
+  const runFlagFake = async (o: O, next: boolean) => {
+    setBusy(true);
     const { error } = await supabase.rpc("super_flag_fake_order", { _order_id: o.id, _fake: next });
+    setBusy(false);
+    setFakeFor(null);
     if (error) return toast.error(error.message);
     toast.success(next ? "Order marked as fake" : "Fake flag removed");
     setRefresh((n) => n + 1);
   };
 
-  const cancelOrder = async (o: O) => {
-    const reason = prompt("Reason for rejecting/cancelling this order? (optional)");
-    if (reason === null) return;
-    const { error } = await supabase.rpc("super_cancel_order" as any, { _order_id: o.id, _reason: reason });
+  const flagFake = (o: O) => {
+    if (!o.is_fake) return setFakeFor(o);
+    void runFlagFake(o, false);
+  };
+
+  const confirmReject = async () => {
+    if (!rejectFor) return;
+    setBusy(true);
+    const { error } = await supabase.rpc("super_cancel_order" as any, { _order_id: rejectFor.id, _reason: reason.trim() || null });
+    setBusy(false);
     if (error) return toast.error(error.message);
+    setRejectFor(null);
+    setReason("");
     toast.success("Order cancelled");
     setRefresh((n) => n + 1);
   };
