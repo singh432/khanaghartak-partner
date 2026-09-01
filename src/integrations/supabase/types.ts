@@ -884,6 +884,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      assign_entities_to_zone: {
+        Args: { _zone_id: string }
+        Returns: undefined
+      }
       become_rider:
         | { Args: never; Returns: undefined }
         | {
