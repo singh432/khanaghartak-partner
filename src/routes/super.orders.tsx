@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { Flag } from "lucide-react";
+import { Flag, XCircle } from "lucide-react";
 import { restaurantPayout, platformEarning } from "@/lib/payouts";
 
 export const Route = createFileRoute("/super/orders")({ component: SuperOrders });
