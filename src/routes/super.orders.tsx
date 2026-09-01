@@ -112,11 +112,19 @@ function SuperOrders() {
                 </td>
                 <td className="px-4 py-3 text-muted-foreground">{o.rider_id ? riders[o.rider_id] ?? o.rider_id.slice(0, 8) : "—"}</td>
                 <td className="px-4 py-3 text-muted-foreground">{new Date(o.created_at).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" })}</td>
-                <td className="px-4 py-3 text-right">
-                  <button onClick={() => flagFake(o)} title={o.is_fake ? "Unmark fake" : "Mark as fake"}
-                    className={`rounded-lg p-2 ${o.is_fake ? "bg-destructive text-destructive-foreground" : "bg-secondary text-destructive"}`}>
-                    <Flag className="h-4 w-4" />
-                  </button>
+                <td className="px-4 py-3">
+                  <div className="flex items-center justify-end gap-2">
+                    <button onClick={() => flagFake(o)} title={o.is_fake ? "Unmark fake" : "Mark as fake"}
+                      className={`rounded-lg p-2 ${o.is_fake ? "bg-destructive text-destructive-foreground" : "bg-secondary text-destructive"}`}>
+                      <Flag className="h-4 w-4" />
+                    </button>
+                    {!closed(o.status) && (
+                      <button onClick={() => cancelOrder(o)} title="Reject / cancel this order"
+                        className="inline-flex items-center gap-1 rounded-lg bg-destructive px-2.5 py-2 text-xs font-bold text-destructive-foreground">
+                        <XCircle className="h-4 w-4" /> Reject
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
