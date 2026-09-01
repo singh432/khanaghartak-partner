@@ -132,7 +132,7 @@ function SuperOrders() {
                       <Flag className="h-4 w-4" />
                     </button>
                     {!closed(o.status) && (
-                      <button onClick={() => cancelOrder(o)} title="Reject / cancel this order"
+                      <button onClick={() => { setRejectFor(o); setReason(""); }} title="Reject / cancel this order"
                         className="inline-flex items-center gap-1 rounded-lg bg-destructive px-2.5 py-2 text-xs font-bold text-destructive-foreground">
                         <XCircle className="h-4 w-4" /> Reject
                       </button>
