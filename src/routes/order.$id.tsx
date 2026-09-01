@@ -137,6 +137,20 @@ function OrderSuccess() {
         </div>
       )}
 
+      {order?.status !== "cancelled" && (
+        <div className="mt-4 w-full max-w-sm rounded-2xl border bg-card p-4 text-left shadow-[var(--shadow-card)]">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Need help with this order?</p>
+          <p className="mt-1 text-sm font-semibold">KhanaGharTak Support</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">For any order help, call us directly.</p>
+          <a
+            href="tel:+919711720846"
+            className="mt-3 inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-bold text-primary-foreground"
+          >
+            <Phone className="h-4 w-4" /> Call KhanaGharTak
+          </a>
+        </div>
+      )}
+
       <OrderCancelWindow
         orderId={id}
         createdAt={order?.created_at}
