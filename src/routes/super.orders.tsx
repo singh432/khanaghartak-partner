@@ -145,6 +145,41 @@ function SuperOrders() {
           </tbody>
         </table>
       </div>
+
+      {rejectFor && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => !busy && setRejectFor(null)}>
+          <div className="w-full max-w-sm rounded-2xl border bg-card p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-lg font-bold">Reject order</h2>
+            <p className="mt-1 text-xs text-muted-foreground">Order {rejectFor.id.slice(0, 8)} · {rejectFor.customer_name}</p>
+            <textarea
+              autoFocus value={reason} onChange={(e) => setReason(e.target.value)}
+              placeholder="Reason (optional)"
+              className="mt-3 h-24 w-full resize-none rounded-lg border bg-background p-2 text-sm outline-none"
+            />
+            <div className="mt-4 flex justify-end gap-2">
+              <button disabled={busy} onClick={() => setRejectFor(null)} className="rounded-lg border px-3 py-2 text-sm font-semibold">Keep order</button>
+              <button disabled={busy} onClick={confirmReject} className="rounded-lg bg-destructive px-3 py-2 text-sm font-bold text-destructive-foreground disabled:opacity-60">
+                {busy ? "Rejecting…" : "Reject order"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {fakeFor && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => !busy && setFakeFor(null)}>
+          <div className="w-full max-w-sm rounded-2xl border bg-card p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-lg font-bold">Mark as fake?</h2>
+            <p className="mt-2 text-sm text-muted-foreground">Two fake orders temporarily disable Cash on Delivery for this customer.</p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button disabled={busy} onClick={() => setFakeFor(null)} className="rounded-lg border px-3 py-2 text-sm font-semibold">Cancel</button>
+              <button disabled={busy} onClick={() => runFlagFake(fakeFor, true)} className="rounded-lg bg-destructive px-3 py-2 text-sm font-bold text-destructive-foreground disabled:opacity-60">
+                {busy ? "Saving…" : "Mark fake"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
