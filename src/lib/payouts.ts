@@ -1,7 +1,7 @@
 // Shared payout math for KhanaGharTak
 // Restaurant keeps 85% of food value (subtotal); KhanaGharTak collects 15% commission
 // + platform fee + the delivery fee charged to the customer.
-// Riders earn 70% of that KhanaGharTak earning.
+// Riders earn 60% of that KhanaGharTak earning.
 // Invariant: restaurantPayout + platformEarning === order total.
 
 export const COMMISSION_RATE = 0.15;
