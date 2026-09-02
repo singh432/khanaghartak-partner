@@ -27,7 +27,7 @@ export function platformEarning(o: PayoutOrder) {
   return n(o.subtotal) * COMMISSION_RATE + n(o.platform_fee) + n(o.delivery_fee);
 }
 
-/** Rider's cut = 70% of the KhanaGharTak earning. */
+/** Rider's cut = 60% of the KhanaGharTak earning. */
 export function riderEarning(o: PayoutOrder) {
   return platformEarning(o) * RIDER_SHARE_RATE;
 }
