@@ -5,7 +5,7 @@
 // Invariant: restaurantPayout + platformEarning === order total.
 
 export const COMMISSION_RATE = 0.15;
-export const RIDER_SHARE_RATE = 0.7;
+export const RIDER_SHARE_RATE = 0.6;
 
 export type PayoutOrder = {
   subtotal?: number | string | null;
