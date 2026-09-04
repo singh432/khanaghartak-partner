@@ -378,6 +378,7 @@ export type Database = {
           payment_method: string
           platform_fee: number
           rejection_reason: string | null
+          released_at: string | null
           restaurant_id: string | null
           rider_id: string | null
           status: string
@@ -406,6 +407,7 @@ export type Database = {
           payment_method?: string
           platform_fee?: number
           rejection_reason?: string | null
+          released_at?: string | null
           restaurant_id?: string | null
           rider_id?: string | null
           status?: string
@@ -434,6 +436,7 @@ export type Database = {
           payment_method?: string
           platform_fee?: number
           rejection_reason?: string | null
+          released_at?: string | null
           restaurant_id?: string | null
           rider_id?: string | null
           status?: string
