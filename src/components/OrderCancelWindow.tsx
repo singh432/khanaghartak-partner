@@ -87,6 +87,9 @@ export function OrderCancelWindow({
       <p className="flex items-center gap-2 text-xs font-semibold text-primary">
         <Timer className="h-3.5 w-3.5" /> You can edit or cancel for {mm}:{ss}
       </p>
+      <p className="mt-1 text-[11px] text-muted-foreground">
+        We send your order to the kitchen after this timer ends.
+      </p>
       <div className="mt-3 grid grid-cols-2 gap-2">
         <button
           disabled={!!busy}
