@@ -650,6 +650,8 @@ export type Database = {
           created_at: string
           delivery_charges: number
           delivery_time: string | null
+          fssai_image_url: string | null
+          fssai_number: string | null
           id: string
           image_url: string | null
           is_open: boolean | null
@@ -659,6 +661,7 @@ export type Database = {
           name: string
           opening_time: string | null
           owner_id: string | null
+          owner_name: string | null
           phone: string | null
           phone_alt: string | null
           rating: number | null
@@ -675,6 +678,8 @@ export type Database = {
           created_at?: string
           delivery_charges?: number
           delivery_time?: string | null
+          fssai_image_url?: string | null
+          fssai_number?: string | null
           id?: string
           image_url?: string | null
           is_open?: boolean | null
@@ -684,6 +689,7 @@ export type Database = {
           name: string
           opening_time?: string | null
           owner_id?: string | null
+          owner_name?: string | null
           phone?: string | null
           phone_alt?: string | null
           rating?: number | null
@@ -700,6 +706,8 @@ export type Database = {
           created_at?: string
           delivery_charges?: number
           delivery_time?: string | null
+          fssai_image_url?: string | null
+          fssai_number?: string | null
           id?: string
           image_url?: string | null
           is_open?: boolean | null
@@ -709,6 +717,7 @@ export type Database = {
           name?: string
           opening_time?: string | null
           owner_id?: string | null
+          owner_name?: string | null
           phone?: string | null
           phone_alt?: string | null
           rating?: number | null
@@ -757,6 +766,8 @@ export type Database = {
       }
       rider_profiles: {
         Row: {
+          aadhaar_image_url: string | null
+          aadhaar_number: string | null
           base_latitude: number | null
           base_longitude: number | null
           created_at: string
@@ -771,6 +782,8 @@ export type Database = {
           zone_id: string | null
         }
         Insert: {
+          aadhaar_image_url?: string | null
+          aadhaar_number?: string | null
           base_latitude?: number | null
           base_longitude?: number | null
           created_at?: string
@@ -785,6 +798,8 @@ export type Database = {
           zone_id?: string | null
         }
         Update: {
+          aadhaar_image_url?: string | null
+          aadhaar_number?: string | null
           base_latitude?: number | null
           base_longitude?: number | null
           created_at?: string
@@ -895,6 +910,16 @@ export type Database = {
         | { Args: never; Returns: undefined }
         | {
             Args: { _full_name?: string; _phone?: string; _vehicle?: string }
+            Returns: undefined
+          }
+        | {
+            Args: {
+              _aadhaar_image_url: string
+              _aadhaar_number: string
+              _full_name: string
+              _phone: string
+              _vehicle: string
+            }
             Returns: undefined
           }
       cod_status: {

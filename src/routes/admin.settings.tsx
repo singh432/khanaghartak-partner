@@ -19,7 +19,9 @@ type Restaurant = {
   min_order_value: number; delivery_charges: number;
   image_url: string | null; banner_url: string | null;
   latitude: number | null; longitude: number | null;
+  owner_name: string | null; fssai_number: string | null;
 };
+
 
 function AdminSettings() {
   const { user } = useAuth();
@@ -39,7 +41,7 @@ function AdminSettings() {
     let active = true;
     setLoadingRestaurant(true);
     (async () => {
-      const { data } = await supabase.from("restaurants").select("id, name, tagline, address, is_open, opening_time, closing_time, min_order_value, delivery_charges, image_url, banner_url, latitude, longitude").eq("owner_id", user.id).limit(1).maybeSingle();
+      const { data } = await supabase.from("restaurants").select("id, name, owner_name, fssai_number, tagline, address, is_open, opening_time, closing_time, min_order_value, delivery_charges, image_url, banner_url, latitude, longitude").eq("owner_id", user.id).limit(1).maybeSingle();
       let phone: string | null = null;
       let phone_alt: string | null = null;
       if (data?.id) {
@@ -60,7 +62,7 @@ function AdminSettings() {
     if (!r) return;
     setSaving(true);
     const { error } = await supabase.from("restaurants").update({
-      name: r.name, tagline: r.tagline, address: r.address, phone: r.phone, phone_alt: r.phone_alt,
+      name: r.name, owner_name: r.owner_name, fssai_number: r.fssai_number, tagline: r.tagline, address: r.address, phone: r.phone, phone_alt: r.phone_alt,
       opening_time: r.opening_time, closing_time: r.closing_time,
       min_order_value: r.min_order_value, delivery_charges: r.delivery_charges,
       is_open: r.is_open,
@@ -157,6 +159,8 @@ function AdminSettings() {
 
         <div className="grid gap-3 md:grid-cols-2">
           <Field label="Restaurant Name"><input className="ai" value={r.name} maxLength={80} onChange={(e) => setR({ ...r, name: e.target.value })} /></Field>
+          <Field label="Owner Name"><input className="ai" value={r.owner_name ?? ""} maxLength={80} onChange={(e) => setR({ ...r, owner_name: e.target.value })} /></Field>
+          <Field label="FSSAI Licence Number (optional)"><input className="ai" value={r.fssai_number ?? ""} maxLength={20} onChange={(e) => setR({ ...r, fssai_number: e.target.value })} /></Field>
           <Field label="Tagline"><input className="ai" value={r.tagline ?? ""} maxLength={120} onChange={(e) => setR({ ...r, tagline: e.target.value })} /></Field>
           <Field label="Primary Phone"><input className="ai" inputMode="tel" maxLength={15} value={r.phone ?? ""} onChange={(e) => setR({ ...r, phone: e.target.value })} /></Field>
           <Field label="Alternate Phone (optional)"><input className="ai" inputMode="tel" maxLength={15} value={r.phone_alt ?? ""} onChange={(e) => setR({ ...r, phone_alt: e.target.value })} /></Field>
