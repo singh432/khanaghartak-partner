@@ -1,38 +1,17 @@
 import { createServerFn } from "@tanstack/react-start";
-import { z } from "zod";
 
 // Loads the Google Maps JavaScript API once, client-side only.
-// On custom domains (e.g. khanaghartak.in) it uses the workspace's own
-// GOOGLE_API_KEY secret. On Lovable preview/published URLs it falls back
-// to the Lovable-managed connector credentials so previews keep working.
+// Always uses the project's own GOOGLE_API_KEY so custom domains never
+// receive the Lovable-managed browser key.
 let loader: Promise<any> | null = null;
 
 const getGoogleMapsConfig = createServerFn({ method: "GET" })
-  .inputValidator((data) => z.object({ useOwnKey: z.boolean().optional() }).parse(data ?? {}))
-  .handler(async ({ data }) => {
-    // Always prefer the project's own Google Maps key (GOOGLE_API_KEY);
-    // the managed connector key is only a fallback when it is absent.
-    const ownKey = process.env["GOOGLE_API_KEY"];
-    if (ownKey) {
-      return { key: ownKey, channel: null as string | null };
-    }
-
-    if (data.useOwnKey) {
-      throw new Error("GOOGLE_API_KEY secret is not set. Add it in project settings.");
-    }
-
-    const key =
-      process.env["GOOGLE_MAPS_BROWSER_KEY"] ||
-      import.meta.env["VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY"];
-    const channel =
-      process.env["GOOGLE_MAPS_TRACKING_ID"] ||
-      import.meta.env["VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_TRACKING_ID"];
-
+  .handler(async () => {
+    const key = process.env["GOOGLE_API_KEY"];
     if (!key) {
-      throw new Error("Google Maps API key not configured");
+      throw new Error("GOOGLE_API_KEY secret is not configured");
     }
-
-    return { key, channel: (channel as string | undefined) ?? null };
+    return { key };
   });
 
 export async function loadGoogleMaps(): Promise<any> {
@@ -41,16 +20,7 @@ export async function loadGoogleMaps(): Promise<any> {
 
   loader = new Promise(async (resolve, reject) => {
     try {
-      const host = window.location.hostname;
-      const useOwnKey = !(
-        host.endsWith(".lovable.app") ||
-        host === "localhost" ||
-        host === "127.0.0.1" ||
-        host.startsWith("192.168.") ||
-        host.startsWith("10.")
-      );
-
-      const { key, channel } = await getGoogleMapsConfig({ data: { useOwnKey } });
+      const { key } = await getGoogleMapsConfig();
       const w = window as any;
       if (w.google?.maps?.Map) return resolve(w.google);
 
@@ -58,9 +28,7 @@ export async function loadGoogleMaps(): Promise<any> {
       w[cbName] = () => resolve(w.google);
 
       const s = document.createElement("script");
-      s.src =
-        `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&loading=async&libraries=places,geometry&callback=${cbName}` +
-        (channel ? `&channel=${encodeURIComponent(channel)}` : "");
+      s.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&loading=async&libraries=places,geometry&callback=${cbName}`;
       s.async = true;
       s.onerror = () => reject(new Error("Failed to load Google Maps"));
       document.head.appendChild(s);
