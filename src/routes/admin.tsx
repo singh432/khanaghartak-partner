@@ -164,7 +164,9 @@ function RestaurantSetup({ userId, onSignOut }: { userId: string; onSignOut: () 
   const [saving, setSaving] = useState(false);
   const [locating, setLocating] = useState(false);
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
-  const [form, setForm] = useState({ name: "", tagline: "", phone: "", address: "" });
+  const [form, setForm] = useState({ name: "", owner_name: "", tagline: "", phone: "", address: "", fssai_number: "" });
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [fssaiFile, setFssaiFile] = useState<File | null>(null);
 
   const clearDraft = useFormDraft(`kgt-draft-restaurant-${userId}`, { form, coords }, (d) => {
     if (d.form) setForm((cur) => ({ ...cur, ...d.form }));
@@ -194,6 +196,8 @@ function RestaurantSetup({ userId, onSignOut }: { userId: string; onSignOut: () 
     const { data, error } = await supabase.from("restaurants").insert({
       owner_id: userId,
       name,
+      owner_name: form.owner_name.trim() || null,
+      fssai_number: form.fssai_number.trim() || null,
       tagline: form.tagline.trim() || null,
       phone: form.phone.trim() || null,
       address: form.address.trim() || null,
@@ -209,6 +213,27 @@ function RestaurantSetup({ userId, onSignOut }: { userId: string; onSignOut: () 
       setSaving(false);
       return toast.error(error?.message ?? "Could not add restaurant");
     }
+
+    // Restaurant photo becomes the cover photo (and logo) by default.
+    if (photoFile) {
+      const ext = (photoFile.type.split("/")[1] || "jpg").replace(/[^a-z0-9]/gi, "").toLowerCase();
+      const path = `${data.id}/cover-${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from("menu-images").upload(path, photoFile, { contentType: photoFile.type || "image/jpeg", cacheControl: "3600" });
+      if (upErr) toast.error(`Photo upload failed: ${upErr.message}`);
+      else {
+        const { data: pub } = supabase.storage.from("menu-images").getPublicUrl(path);
+        await supabase.from("restaurants").update({ banner_url: pub.publicUrl, image_url: pub.publicUrl }).eq("id", data.id);
+      }
+    }
+
+    if (fssaiFile) {
+      const ext = (fssaiFile.type.split("/")[1] || "jpg").replace(/[^a-z0-9]/gi, "").toLowerCase();
+      const path = `${userId}/fssai-${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from("partner-docs").upload(path, fssaiFile, { contentType: fssaiFile.type || "image/jpeg" });
+      if (upErr) toast.error(`Licence upload failed: ${upErr.message}`);
+      else await supabase.from("restaurants").update({ fssai_image_url: path }).eq("id", data.id);
+    }
+
     await supabase.from("categories").insert([
       { restaurant_id: data.id, name: "Breakfast", priority: 0 },
       { restaurant_id: data.id, name: "Main Course", priority: 1 },
@@ -237,9 +262,24 @@ function RestaurantSetup({ userId, onSignOut }: { userId: string; onSignOut: () 
         </div>
         <form onSubmit={createRestaurant} className="mt-5 space-y-3">
           <SetupField label="Restaurant name"><input className="setup-input" value={form.name} maxLength={80} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="KhanaGharTak Kitchen" /></SetupField>
+          <SetupField label="Owner name"><input className="setup-input" value={form.owner_name} maxLength={80} onChange={(e) => setForm({ ...form, owner_name: e.target.value })} placeholder="Full name of the owner" /></SetupField>
           <SetupField label="Tagline"><input className="setup-input" value={form.tagline} maxLength={120} onChange={(e) => setForm({ ...form, tagline: e.target.value })} placeholder="Fresh home-style meals" /></SetupField>
           <SetupField label="Phone"><input className="setup-input" value={form.phone} maxLength={20} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+91 98765 43210" /></SetupField>
           <SetupField label="Address"><textarea className="setup-input" rows={3} value={form.address} maxLength={300} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="Restaurant address" /></SetupField>
+
+          <SetupField label="Restaurant photo (used as your cover photo)">
+            <input type="file" accept="image/*" className="setup-input" onChange={(e) => setPhotoFile(e.target.files?.[0] ?? null)} />
+            <span className="mt-1 block text-[11px] text-muted-foreground">Optional — a wide food or shop photo shown to customers. You can change it later in Settings.</span>
+          </SetupField>
+
+          <SetupField label="FSSAI licence number (optional)">
+            <input className="setup-input" value={form.fssai_number} maxLength={20} inputMode="numeric" onChange={(e) => setForm({ ...form, fssai_number: e.target.value })} placeholder="14-digit FSSAI number" />
+          </SetupField>
+          <SetupField label="FSSAI licence photo (optional)">
+            <input type="file" accept="image/*" className="setup-input" onChange={(e) => setFssaiFile(e.target.files?.[0] ?? null)} />
+            <span className="mt-1 block text-[11px] text-muted-foreground">Only KhanaGharTak admins can see this.</span>
+          </SetupField>
+
 
           <div className="rounded-xl border bg-secondary/40 p-3">
             <p className="text-sm font-semibold">Restaurant location</p>
