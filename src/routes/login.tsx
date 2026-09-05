@@ -80,7 +80,7 @@ function LoginPage() {
       </div>
 
       {mobileOnly ? (
-        <MobileLogin onBack={() => navigate({ to: "/" })} />
+        <MobileLogin onBack={() => navigate({ to: "/" })} backLabel="← Back to home" />
       ) : mode === "choose" ? (
         <>
           <button
