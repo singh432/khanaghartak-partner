@@ -282,22 +282,28 @@ function CheckoutPage() {
           )}
 
 
-          <Field label="Address">
+          <Field label="Delivery address">
             <textarea className="ck-input" rows={3} value={form.address} maxLength={300}
+              placeholder="House / flat number, street, area"
               onChange={(e) => setForm({ ...form, address: e.target.value })} />
           </Field>
 
-          <button onClick={pinLocation}
+          <button onClick={() => setShowPicker(true)}
             className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-primary/40 bg-accent/40 py-3 text-sm font-semibold text-primary">
-            <Navigation className="h-4 w-4" />
-            {coords ? "Update my current location" : "Use my current location"}
+            <MapPin className="h-4 w-4" />
+            {coords ? "Change location on map" : "Select location on map"}
+          </button>
+          <button onClick={pinLocation}
+            className="flex w-full items-center justify-center gap-2 rounded-xl border py-2.5 text-xs font-semibold text-muted-foreground">
+            <Navigation className="h-3.5 w-3.5" /> Or use my current location (optional)
           </button>
           {coords && !outOfRange && (
             <div className="flex items-center gap-1 text-xs text-success">
-              <MapPin className="h-3.5 w-3.5" /> Current location saved
+              <MapPin className="h-3.5 w-3.5" /> Delivery location confirmed
               {zone ? ` · ${zone.name} delivery zone` : ""}
             </div>
           )}
+
 
           {restaurantClosed && (
             <div className="flex items-start gap-2 rounded-xl border-2 border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive">
