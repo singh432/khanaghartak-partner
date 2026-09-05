@@ -219,7 +219,7 @@ function CheckoutPage() {
     if (currentGate?.needs_otp) return toast.error("Please verify your phone number to place the order.");
     if (currentGate && !currentGate.cod_allowed) return toast.error("Cash on Delivery is temporarily disabled for your account.");
 
-    if (!coords) return toast.error("Please share your current location");
+    if (!coords) return toast.error("Please select your delivery location on the map");
     if (outOfRange) return toast.error(OUTSIDE_ZONE_MESSAGE);
     if (!user) return;
 
