@@ -45,8 +45,6 @@ const schema = z.object({
   name: z.string().trim().min(2).max(80),
   phone: z.string().trim().regex(/^[0-9+\-\s]{7,15}$/, "Enter a valid phone"),
   address: z.string().trim().min(8, "Add a complete address").max(300),
-  landmark: z.string().trim().max(120).optional(),
-  notes: z.string().trim().max(200).optional(),
 });
 
 function CheckoutPage() {
