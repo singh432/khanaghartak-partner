@@ -231,7 +231,6 @@ function CheckoutPage() {
       _customer_phone: form.phone,
       _address: form.address,
       _latitude: coords.lat,
-      _latitude: coords.lat,
       _longitude: coords.lng,
     });
     setPlacing(false);
