@@ -206,7 +206,8 @@ function MenuPage() {
             </div>
             {isClosed && (
               <p className="mt-3 rounded-xl bg-destructive/10 px-3 py-2 text-xs font-semibold text-destructive">
-                This kitchen is closed right now. You can browse the menu, but ordering will reopen when they’re back.
+                This kitchen is closed right now. You can browse the menu, but ordering reopens
+                {hoursLabel(restaurant.opening_time, restaurant.closing_time) ? ` at their opening time (${hoursLabel(restaurant.opening_time, restaurant.closing_time)}).` : " when they’re back."}
               </p>
             )}
           </div>

@@ -11,6 +11,8 @@ import { useFormDraft } from "@/hooks/useFormDraft";
 import { usePricingSettings, ROAD_FACTOR } from "@/hooks/usePricingSettings";
 import { computeDeliveryCharge } from "@/lib/delivery-pricing";
 import { distanceKm as haversineKm } from "@/lib/geo";
+import { isRestaurantOpen } from "@/lib/hours";
+import { estimateEta } from "@/lib/eta";
 import { primeVoice } from "@/lib/voice";
 import { BrandHeader } from "@/components/BrandHeader";
 
@@ -145,11 +147,11 @@ function CheckoutPage() {
       if (!active || !mi?.restaurant_id) return;
       const { data: r } = await supabase
         .from("restaurants")
-        .select("latitude, longitude, is_open")
+        .select("latitude, longitude, is_open, opening_time, closing_time")
         .eq("id", mi.restaurant_id)
         .maybeSingle();
       if (!active) return;
-      setRestaurantClosed(!!r && r.is_open !== true);
+      setRestaurantClosed(!!r && !isRestaurantOpen(r as any));
       if (r?.latitude != null && r?.longitude != null) {
         setRestaurantCoords({ lat: r.latitude, lng: r.longitude });
       }
@@ -328,6 +330,10 @@ function CheckoutPage() {
         )}
 
         <Section title="Order summary">
+          <p className="mb-2 rounded-xl bg-secondary px-3 py-2 text-xs font-semibold">
+            Estimated delivery: {estimateEta(items, distanceKm).label}
+            {distanceKm == null && " (share your location for an exact time)"}
+          </p>
           {items.map((it) => (
             <div key={it.id} className="flex justify-between py-1 text-sm">
               <span>{it.name} × {it.qty}</span>
