@@ -36,17 +36,23 @@ function LoginPage() {
   const { user, loading: authLoading } = useAuth();
   const [busy, setBusy] = useState(false);
   const [mode, setMode] = useState<"choose" | "mobile">("choose");
+  const [ctx, setCtx] = useState<ActiveContext>(as ?? "customer");
 
   // The entry point decides the active context — never role, phone or email.
   useEffect(() => {
     if (as) setActiveContext(as);
+    setCtx(as ?? getActiveContext());
   }, [as]);
+
+  // Customers sign in with their mobile number only; partners may use either.
+  const mobileOnly = ctx === "customer";
 
   useEffect(() => {
     if (!user || authLoading) return;
     const to = contextHome(as ?? getActiveContext());
     navigate({ to: to as "/home", replace: true });
   }, [user, authLoading, as, navigate]);
+
 
   const onGoogle = async () => {
     setBusy(true);
