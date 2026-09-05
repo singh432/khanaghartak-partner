@@ -52,8 +52,9 @@ function CheckoutPage() {
   const { user, loading } = useAuth();
   const { items, ready, subtotal, clear } = useCart();
   const pricing = usePricingSettings();
-  const [form, setForm] = useState({ name: "", phone: "", address: "", landmark: "", notes: "" });
+  const [form, setForm] = useState({ name: "", phone: "", address: "" });
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [showPicker, setShowPicker] = useState(false);
   const [restaurantCoords, setRestaurantCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [restaurantClosed, setRestaurantClosed] = useState(false);
   const [placing, setPlacing] = useState(false);
