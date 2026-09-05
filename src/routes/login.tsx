@@ -69,13 +69,19 @@ function LoginPage() {
     <div className="mx-auto flex min-h-[100dvh] w-full max-w-[480px] flex-col justify-center px-6 py-10">
       <div className="text-center">
         <img src={khanaGharTakLogoUrl} alt="KhanaGharTak" width={112} height={112} className="mx-auto h-24 w-24 rounded-2xl object-contain" />
-        <h1 className="mt-4 text-2xl font-extrabold tracking-tight">How would you like to continue?</h1>
+        <h1 className="mt-4 text-2xl font-extrabold tracking-tight">
+          {mobileOnly ? "Sign in with your mobile number" : "How would you like to continue?"}
+        </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          One login for customers, restaurants and riders.
+          {mobileOnly
+            ? "We'll send you a one-time code by SMS. No password needed."
+            : "One login for restaurants, riders and zone managers."}
         </p>
       </div>
 
-      {mode === "choose" ? (
+      {mobileOnly ? (
+        <MobileLogin onBack={() => navigate({ to: "/" })} />
+      ) : mode === "choose" ? (
         <>
           <button
             onClick={onGoogle}
@@ -99,12 +105,13 @@ function LoginPage() {
           </button>
 
           <p className="mt-4 text-center text-xs text-muted-foreground">
-            No password needed. Restaurant and rider accounts open their own dashboard automatically after sign in.
+            No password needed. Restaurant, rider and zone manager accounts open their own dashboard automatically after sign in.
           </p>
         </>
       ) : (
         <MobileLogin onBack={() => setMode("choose")} />
       )}
+
     </div>
   );
 }
