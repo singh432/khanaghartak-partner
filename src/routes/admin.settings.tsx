@@ -8,12 +8,13 @@ import { useFormDraft } from "@/hooks/useFormDraft";
 import { khanaGharTakLogoUrl } from "@/assets/brand";
 import { Loader2, Navigation } from "lucide-react";
 import { getCurrentLocation } from "@/lib/geolocate";
+import { isRestaurantOpen, hoursLabel } from "@/lib/hours";
 
 export const Route = createFileRoute("/admin/settings")({ component: AdminSettings });
 
 type Restaurant = {
   id: string; name: string; tagline: string | null; address: string | null;
-  phone: string | null; phone_alt: string | null; delivery_time: string | null; is_open: boolean | null;
+  phone: string | null; phone_alt: string | null; is_open: boolean | null;
   opening_time: string | null; closing_time: string | null;
   min_order_value: number; delivery_charges: number;
   image_url: string | null; banner_url: string | null;
@@ -38,7 +39,7 @@ function AdminSettings() {
     let active = true;
     setLoadingRestaurant(true);
     (async () => {
-      const { data } = await supabase.from("restaurants").select("id, name, tagline, address, delivery_time, is_open, opening_time, closing_time, min_order_value, delivery_charges, image_url, banner_url, latitude, longitude").eq("owner_id", user.id).limit(1).maybeSingle();
+      const { data } = await supabase.from("restaurants").select("id, name, tagline, address, is_open, opening_time, closing_time, min_order_value, delivery_charges, image_url, banner_url, latitude, longitude").eq("owner_id", user.id).limit(1).maybeSingle();
       let phone: string | null = null;
       let phone_alt: string | null = null;
       if (data?.id) {
@@ -62,7 +63,7 @@ function AdminSettings() {
       name: r.name, tagline: r.tagline, address: r.address, phone: r.phone, phone_alt: r.phone_alt,
       opening_time: r.opening_time, closing_time: r.closing_time,
       min_order_value: r.min_order_value, delivery_charges: r.delivery_charges,
-      delivery_time: r.delivery_time, is_open: r.is_open,
+      is_open: r.is_open,
       latitude: r.latitude, longitude: r.longitude,
     }).eq("id", r.id);
     setSaving(false);
@@ -159,7 +160,6 @@ function AdminSettings() {
           <Field label="Tagline"><input className="ai" value={r.tagline ?? ""} maxLength={120} onChange={(e) => setR({ ...r, tagline: e.target.value })} /></Field>
           <Field label="Primary Phone"><input className="ai" inputMode="tel" maxLength={15} value={r.phone ?? ""} onChange={(e) => setR({ ...r, phone: e.target.value })} /></Field>
           <Field label="Alternate Phone (optional)"><input className="ai" inputMode="tel" maxLength={15} value={r.phone_alt ?? ""} onChange={(e) => setR({ ...r, phone_alt: e.target.value })} /></Field>
-          <Field label="Delivery Time"><input className="ai" value={r.delivery_time ?? ""} onChange={(e) => setR({ ...r, delivery_time: e.target.value })} /></Field>
           <Field label="Opening Time"><input type="time" className="ai" value={r.opening_time ?? ""} onChange={(e) => setR({ ...r, opening_time: e.target.value })} /></Field>
           <Field label="Closing Time"><input type="time" className="ai" value={r.closing_time ?? ""} onChange={(e) => setR({ ...r, closing_time: e.target.value })} /></Field>
           <Field label="Min Order Value (₹)"><input type="number" min={0} className="ai" value={r.min_order_value} onChange={(e) => setR({ ...r, min_order_value: Number(e.target.value) })} /></Field>
@@ -207,13 +207,30 @@ function AdminSettings() {
           </div>
         </div>
 
-        <label className="flex items-center justify-between rounded-xl bg-secondary px-3 py-3">
-          <div>
-            <p className="text-sm font-semibold">Accepting orders</p>
-            <p className="text-[11px] text-muted-foreground">Turn off to pause incoming orders</p>
+        <div className="rounded-xl bg-secondary px-3 py-3">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold">
+                Right now: {isRestaurantOpen(r) ? "Open for orders" : "Closed"}
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                {hoursLabel(r.opening_time, r.closing_time)
+                  ? `Your kitchen opens and closes automatically (${hoursLabel(r.opening_time, r.closing_time)}).`
+                  : "Set your opening and closing time above — your kitchen then opens and closes on its own."}
+              </p>
+            </div>
+            <span className={`rounded-full px-3 py-1 text-xs font-bold ${isRestaurantOpen(r) ? "bg-success text-success-foreground" : "bg-destructive text-destructive-foreground"}`}>
+              {isRestaurantOpen(r) ? "Open" : "Closed"}
+            </span>
           </div>
-          <input type="checkbox" checked={!!r.is_open} onChange={(e) => setR({ ...r, is_open: e.target.checked })} className="h-5 w-5" />
-        </label>
+          <label className="mt-3 flex items-center justify-between border-t pt-3">
+            <div>
+              <p className="text-sm font-semibold">Pause orders now</p>
+              <p className="text-[11px] text-muted-foreground">Use only for emergencies — this keeps you closed even inside your timings.</p>
+            </div>
+            <input type="checkbox" checked={r.is_open === false} onChange={(e) => setR({ ...r, is_open: !e.target.checked })} className="h-5 w-5" />
+          </label>
+        </div>
 
         <button onClick={save} disabled={saving} className="inline-flex w-full items-center justify-center rounded-xl bg-primary py-3 text-sm font-bold text-primary-foreground disabled:opacity-60">
           {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save changes

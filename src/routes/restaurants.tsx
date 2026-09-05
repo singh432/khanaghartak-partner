@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { browseEta } from "@/lib/eta";
 import { supabase } from "@/integrations/supabase/client";
 import { withTimeout } from "@/lib/supabase-query";
 import { SitePage } from "@/components/SitePage";
@@ -33,7 +34,8 @@ type PublicRestaurant = {
   name: string;
   tagline: string | null;
   rating: number | null;
-  delivery_time: string | null;
+  opening_time: string | null;
+  closing_time: string | null;
   address: string | null;
   is_open: boolean | null;
 };
@@ -47,7 +49,7 @@ function RestaurantsPage() {
     withTimeout(
       supabase
         .from("restaurants")
-        .select("id,name,tagline,rating,delivery_time,address,is_open")
+        .select("id,name,tagline,rating,opening_time,closing_time,address,is_open")
         .eq("status", "active")
         .order("rating", { ascending: false }),
     )
@@ -86,7 +88,7 @@ function RestaurantsPage() {
                 {r.rating != null && (
                   <span className="inline-flex items-center gap-1"><Star className="h-3.5 w-3.5" /> {r.rating}</span>
                 )}
-                <span className="inline-flex items-center gap-1"><Clock className="h-3.5 w-3.5" /> {r.delivery_time ?? "35 min"}</span>
+                <span className="inline-flex items-center gap-1"><Clock className="h-3.5 w-3.5" /> {browseEta(null).label}</span>
                 {r.address && (
                   <span className="inline-flex items-center gap-1"><MapPin className="h-3.5 w-3.5" /> {r.address}</span>
                 )}
