@@ -86,7 +86,8 @@ function RiderPanel() {
 
 function BecomeRider() {
   const [busy, setBusy] = useState(false);
-  const [form, setForm] = useState({ full_name: "", phone: "", vehicle: "" });
+  const [form, setForm] = useState({ full_name: "", phone: "", vehicle: "", aadhaar_number: "" });
+  const [idFile, setIdFile] = useState<File | null>(null);
 
   const clearDraft = useFormDraft("kgt-draft-rider-signup", form, (d) => {
     if (d) setForm((cur) => ({ ...cur, ...d }));
@@ -96,11 +97,29 @@ function BecomeRider() {
     e.preventDefault();
     if (form.full_name.trim().length < 2) return toast.error("Enter your full name");
     if (form.phone.trim().length < 7) return toast.error("Enter a valid phone");
+    const aadhaar = form.aadhaar_number.replace(/\D/g, "");
+    if (aadhaar.length !== 12) return toast.error("Enter your 12-digit Aadhaar number");
     setBusy(true);
+
+    let aadhaarPath: string | null = null;
+    if (idFile) {
+      const { data: auth } = await supabase.auth.getUser();
+      const uid = auth.user?.id;
+      if (uid) {
+        const ext = (idFile.type.split("/")[1] || "jpg").replace(/[^a-z0-9]/gi, "").toLowerCase();
+        const path = `${uid}/aadhaar-${Date.now()}.${ext}`;
+        const { error: upErr } = await supabase.storage.from("partner-docs").upload(path, idFile, { contentType: idFile.type || "image/jpeg" });
+        if (upErr) { toast.error(`Could not upload Aadhaar photo: ${upErr.message}`); setBusy(false); return; }
+        aadhaarPath = path;
+      }
+    }
+
     const { error } = await supabase.rpc("become_rider" as any, {
       _full_name: form.full_name.trim(),
       _phone: form.phone.trim(),
       _vehicle: form.vehicle.trim() || null,
+      _aadhaar_number: aadhaar,
+      _aadhaar_image_url: aadhaarPath,
     });
     if (error) { toast.error(error.message); setBusy(false); return; }
     clearDraft();
@@ -118,6 +137,12 @@ function BecomeRider() {
         <input className="w-full rounded-xl border bg-card px-3 py-3 text-sm" placeholder="Full name" value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} maxLength={80} />
         <input className="w-full rounded-xl border bg-card px-3 py-3 text-sm" placeholder="Phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} maxLength={20} />
         <input className="w-full rounded-xl border bg-card px-3 py-3 text-sm" placeholder="Vehicle (e.g. Bike — DL 1A 1234)" value={form.vehicle} onChange={(e) => setForm({ ...form, vehicle: e.target.value })} maxLength={80} />
+        <input className="w-full rounded-xl border bg-card px-3 py-3 text-sm" inputMode="numeric" placeholder="Aadhaar number (12 digits)" value={form.aadhaar_number} onChange={(e) => setForm({ ...form, aadhaar_number: e.target.value })} maxLength={14} />
+        <label className="block rounded-xl border bg-card px-3 py-3 text-sm">
+          <span className="block text-xs font-semibold text-muted-foreground">Aadhaar photo (optional)</span>
+          <input type="file" accept="image/*" className="mt-2 w-full text-xs" onChange={(e) => setIdFile(e.target.files?.[0] ?? null)} />
+          <span className="mt-1 block text-[11px] text-muted-foreground">{idFile ? idFile.name : "Only KhanaGharTak admins can see this."}</span>
+        </label>
         <button type="submit" disabled={busy} className="inline-flex h-12 w-full items-center justify-center rounded-xl bg-primary px-6 font-bold text-primary-foreground disabled:opacity-60">
           {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Submit application
         </button>
@@ -125,6 +150,7 @@ function BecomeRider() {
     </div>
   );
 }
+
 
 function RiderPending({ profile, onSignOut }: { profile: RiderProfile; onSignOut: () => Promise<void> }) {
   const map: Record<string, { title: string; body: string; tone: string }> = {
