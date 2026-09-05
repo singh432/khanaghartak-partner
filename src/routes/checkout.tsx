@@ -1,5 +1,5 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { createFileRoute, useNavigate, ClientOnly } from "@tanstack/react-router";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -24,6 +24,8 @@ import { MapPin, Navigation, Loader2, Wallet, AlertTriangle } from "lucide-react
 import { cartHasHandiNonVeg, HANDI_PREP_NOTE, cartHasCake, CAKE_PREP_NOTE } from "@/lib/portions";
 import { fetchActiveZones, zoneForPoint, OUTSIDE_ZONE_MESSAGE, type DeliveryZone } from "@/lib/zones";
 
+const LocationPicker = lazy(() => import("@/components/LocationPicker.client"));
+
 export const Route = createFileRoute("/checkout")({
   component: CheckoutPage,
   head: () => ({
@@ -43,8 +45,6 @@ const schema = z.object({
   name: z.string().trim().min(2).max(80),
   phone: z.string().trim().regex(/^[0-9+\-\s]{7,15}$/, "Enter a valid phone"),
   address: z.string().trim().min(8, "Add a complete address").max(300),
-  landmark: z.string().trim().max(120).optional(),
-  notes: z.string().trim().max(200).optional(),
 });
 
 function CheckoutPage() {
@@ -52,8 +52,9 @@ function CheckoutPage() {
   const { user, loading } = useAuth();
   const { items, ready, subtotal, clear } = useCart();
   const pricing = usePricingSettings();
-  const [form, setForm] = useState({ name: "", phone: "", address: "", landmark: "", notes: "" });
+  const [form, setForm] = useState({ name: "", phone: "", address: "" });
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [showPicker, setShowPicker] = useState(false);
   const [restaurantCoords, setRestaurantCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [restaurantClosed, setRestaurantClosed] = useState(false);
   const [placing, setPlacing] = useState(false);
@@ -106,7 +107,7 @@ function CheckoutPage() {
   // Load saved profile
   useEffect(() => {
     if (!user) return;
-    withTimeout(supabase.from("profiles").select("full_name, phone, address, landmark, latitude, longitude")
+    withTimeout(supabase.from("profiles").select("full_name, phone, address, latitude, longitude")
       .eq("id", user.id).maybeSingle().then(({ data }) => {
         if (data) {
           // keep anything the user already typed (restored draft or live input)
@@ -114,8 +115,6 @@ function CheckoutPage() {
             name: cur.name || data.full_name || "",
             phone: cur.phone || data.phone || "",
             address: cur.address || data.address || "",
-            landmark: cur.landmark || data.landmark || "",
-            notes: cur.notes,
           }));
           if (data.latitude && data.longitude) {
             setCoords((cur) => cur ?? { lat: data.latitude!, lng: data.longitude! });
@@ -220,7 +219,7 @@ function CheckoutPage() {
     if (currentGate?.needs_otp) return toast.error("Please verify your phone number to place the order.");
     if (currentGate && !currentGate.cod_allowed) return toast.error("Cash on Delivery is temporarily disabled for your account.");
 
-    if (!coords) return toast.error("Please share your current location");
+    if (!coords) return toast.error("Please select your delivery location on the map");
     if (outOfRange) return toast.error(OUTSIDE_ZONE_MESSAGE);
     if (!user) return;
 
@@ -231,8 +230,6 @@ function CheckoutPage() {
       _customer_name: form.name,
       _customer_phone: form.phone,
       _address: form.address,
-      _landmark: form.landmark || undefined,
-      _notes: form.notes || undefined,
       _latitude: coords.lat,
       _longitude: coords.lng,
     });
@@ -252,7 +249,7 @@ function CheckoutPage() {
     // fire-and-forget: saving the profile must never block the redirect
     supabase.from("profiles").upsert({
       id: user.id, full_name: form.name, phone: form.phone,
-      address: form.address, landmark: form.landmark || null,
+      address: form.address,
       latitude: coords.lat, longitude: coords.lng,
     }, { onConflict: "id" }).then(() => {}, () => {});
   };
@@ -285,22 +282,28 @@ function CheckoutPage() {
           )}
 
 
-          <Field label="Address">
+          <Field label="Delivery address">
             <textarea className="ck-input" rows={3} value={form.address} maxLength={300}
+              placeholder="House / flat number, street, area"
               onChange={(e) => setForm({ ...form, address: e.target.value })} />
           </Field>
 
-          <button onClick={pinLocation}
+          <button onClick={() => setShowPicker(true)}
             className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-primary/40 bg-accent/40 py-3 text-sm font-semibold text-primary">
-            <Navigation className="h-4 w-4" />
-            {coords ? "Update my current location" : "Use my current location"}
+            <MapPin className="h-4 w-4" />
+            {coords ? "Change location on map" : "Select location on map"}
+          </button>
+          <button onClick={pinLocation}
+            className="flex w-full items-center justify-center gap-2 rounded-xl border py-2.5 text-xs font-semibold text-muted-foreground">
+            <Navigation className="h-3.5 w-3.5" /> Or use my current location (optional)
           </button>
           {coords && !outOfRange && (
             <div className="flex items-center gap-1 text-xs text-success">
-              <MapPin className="h-3.5 w-3.5" /> Current location saved
+              <MapPin className="h-3.5 w-3.5" /> Delivery location confirmed
               {zone ? ` · ${zone.name} delivery zone` : ""}
             </div>
           )}
+
 
           {restaurantClosed && (
             <div className="flex items-start gap-2 rounded-xl border-2 border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive">
@@ -400,12 +403,30 @@ function CheckoutPage() {
           {codBlocked
             ? "Cash on Delivery unavailable"
             : !coords
-                ? "Share location to continue"
+                ? "Select location to continue"
                 : outOfRange
                   ? "Outside delivery area"
                   : `Place Order · ₹${grand.toFixed(0)}`}
         </button>
       </div>
+
+      {showPicker && (
+        <ClientOnly fallback={null}>
+          <Suspense fallback={null}>
+            <LocationPicker
+              value={coords}
+              onCancel={() => setShowPicker(false)}
+              onConfirm={(p, label) => {
+                setCoords(p);
+                setShowPicker(false);
+                if (label && form.address.trim().length < 8) setForm((c) => ({ ...c, address: label }));
+                toast.success("Delivery location confirmed");
+              }}
+            />
+          </Suspense>
+        </ClientOnly>
+      )}
+
 
 
       <style>{`.ck-input { width:100%; border-radius: 12px; padding: 12px 14px; background: var(--color-input); border: 1px solid var(--color-border); font-size: 14px; outline: none; } .ck-input:focus { border-color: var(--color-ring);} `}</style>
