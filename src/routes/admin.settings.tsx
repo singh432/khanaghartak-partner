@@ -19,7 +19,9 @@ type Restaurant = {
   min_order_value: number; delivery_charges: number;
   image_url: string | null; banner_url: string | null;
   latitude: number | null; longitude: number | null;
+  owner_name: string | null; fssai_number: string | null;
 };
+
 
 function AdminSettings() {
   const { user } = useAuth();
