@@ -230,8 +230,7 @@ function CheckoutPage() {
       _customer_name: form.name,
       _customer_phone: form.phone,
       _address: form.address,
-      _landmark: form.landmark || undefined,
-      _notes: form.notes || undefined,
+      _latitude: coords.lat,
       _latitude: coords.lat,
       _longitude: coords.lng,
     });
