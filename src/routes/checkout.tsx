@@ -24,6 +24,8 @@ import { MapPin, Navigation, Loader2, Wallet, AlertTriangle } from "lucide-react
 import { cartHasHandiNonVeg, HANDI_PREP_NOTE, cartHasCake, CAKE_PREP_NOTE } from "@/lib/portions";
 import { fetchActiveZones, zoneForPoint, OUTSIDE_ZONE_MESSAGE, type DeliveryZone } from "@/lib/zones";
 
+const LocationPicker = lazy(() => import("@/components/LocationPicker.client"));
+
 export const Route = createFileRoute("/checkout")({
   component: CheckoutPage,
   head: () => ({
