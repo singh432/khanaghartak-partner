@@ -10,12 +10,15 @@ let loader: Promise<any> | null = null;
 const getGoogleMapsConfig = createServerFn({ method: "GET" })
   .inputValidator((data) => z.object({ useOwnKey: z.boolean().optional() }).parse(data ?? {}))
   .handler(async ({ data }) => {
+    // Always prefer the project's own Google Maps key (GOOGLE_API_KEY);
+    // the managed connector key is only a fallback when it is absent.
+    const ownKey = process.env["GOOGLE_API_KEY"];
+    if (ownKey) {
+      return { key: ownKey, channel: null as string | null };
+    }
+
     if (data.useOwnKey) {
-      const userKey = process.env["GOOGLE_API_KEY"];
-      if (!userKey) {
-        throw new Error("GOOGLE_API_KEY secret is not set. Add it in project settings.");
-      }
-      return { key: userKey, channel: null as string | null };
+      throw new Error("GOOGLE_API_KEY secret is not set. Add it in project settings.");
     }
 
     const key =
