@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 
 /** Mobile number + SMS OTP sign-in. No password is ever required. */
-export function MobileLogin({ onBack }: { onBack: () => void }) {
+export function MobileLogin({ onBack, backLabel = "← Back to all sign-in options" }: { onBack: () => void; backLabel?: string }) {
   const signIn = useServerFn(signInWithPhoneOtp);
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
@@ -129,7 +129,7 @@ export function MobileLogin({ onBack }: { onBack: () => void }) {
       )}
 
       <button type="button" onClick={onBack} className="mt-4 w-full text-center text-xs font-medium text-primary underline">
-        ← Back to all sign-in options
+        {backLabel}
       </button>
     </div>
   );
