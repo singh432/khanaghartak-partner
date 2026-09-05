@@ -941,6 +941,7 @@ export type Database = {
         Returns: undefined
       }
       customer_cancel_order: { Args: { _order_id: string }; Returns: undefined }
+      expire_stale_delivery_offers: { Args: never; Returns: number }
       first_order_discount_status: {
         Args: never
         Returns: {
