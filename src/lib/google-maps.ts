@@ -1,7 +1,7 @@
 // Loads the Google Maps JavaScript API once, client-side only.
-let loader: Promise<typeof google> | null = null;
+let loader: Promise<any> | null = null;
 
-export function loadGoogleMaps(): Promise<typeof google> {
+export function loadGoogleMaps(): Promise<any> {
   if (typeof window === "undefined") return Promise.reject(new Error("browser only"));
   if (loader) return loader;
 
