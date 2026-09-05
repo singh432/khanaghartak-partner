@@ -107,7 +107,7 @@ function CheckoutPage() {
   // Load saved profile
   useEffect(() => {
     if (!user) return;
-    withTimeout(supabase.from("profiles").select("full_name, phone, address, landmark, latitude, longitude")
+    withTimeout(supabase.from("profiles").select("full_name, phone, address, latitude, longitude")
       .eq("id", user.id).maybeSingle().then(({ data }) => {
         if (data) {
           // keep anything the user already typed (restored draft or live input)
@@ -115,8 +115,6 @@ function CheckoutPage() {
             name: cur.name || data.full_name || "",
             phone: cur.phone || data.phone || "",
             address: cur.address || data.address || "",
-            landmark: cur.landmark || data.landmark || "",
-            notes: cur.notes,
           }));
           if (data.latitude && data.longitude) {
             setCoords((cur) => cur ?? { lat: data.latitude!, lng: data.longitude! });
