@@ -403,12 +403,30 @@ function CheckoutPage() {
           {codBlocked
             ? "Cash on Delivery unavailable"
             : !coords
-                ? "Share location to continue"
+                ? "Select location to continue"
                 : outOfRange
                   ? "Outside delivery area"
                   : `Place Order · ₹${grand.toFixed(0)}`}
         </button>
       </div>
+
+      {showPicker && (
+        <ClientOnly fallback={null}>
+          <Suspense fallback={null}>
+            <LocationPicker
+              value={coords}
+              onCancel={() => setShowPicker(false)}
+              onConfirm={(p, label) => {
+                setCoords(p);
+                setShowPicker(false);
+                if (label && form.address.trim().length < 8) setForm((c) => ({ ...c, address: label }));
+                toast.success("Delivery location confirmed");
+              }}
+            />
+          </Suspense>
+        </ClientOnly>
+      )}
+
 
 
       <style>{`.ck-input { width:100%; border-radius: 12px; padding: 12px 14px; background: var(--color-input); border: 1px solid var(--color-border); font-size: 14px; outline: none; } .ck-input:focus { border-color: var(--color-ring);} `}</style>
