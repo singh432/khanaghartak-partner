@@ -249,7 +249,7 @@ function CheckoutPage() {
     // fire-and-forget: saving the profile must never block the redirect
     supabase.from("profiles").upsert({
       id: user.id, full_name: form.name, phone: form.phone,
-      address: form.address, landmark: form.landmark || null,
+      address: form.address,
       latitude: coords.lat, longitude: coords.lng,
     }, { onConflict: "id" }).then(() => {}, () => {});
   };
