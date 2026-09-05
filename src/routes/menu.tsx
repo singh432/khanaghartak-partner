@@ -1,5 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { isRestaurantOpen, hoursLabel } from "@/lib/hours";
+import { browseEta } from "@/lib/eta";
 import { supabase } from "@/integrations/supabase/client";
 import { BrandHeader } from "@/components/BrandHeader";
 import { useCart, cartKey, type Portion } from "@/hooks/useCart";
@@ -66,7 +68,8 @@ function portionsOf(item: MenuItem, opts: { singlePrice?: boolean; sweet?: boole
 }
 
 type Restaurant = {
-  id: string; name: string; rating: number; delivery_time: string;
+  id: string; name: string; rating: number;
+  opening_time: string | null; closing_time: string | null;
   latitude: number | null; longitude: number | null; status: string | null; is_open: boolean | null;
 };
 
@@ -89,7 +92,7 @@ function MenuPage() {
   const [showCatPanel, setShowCatPanel] = useState(false);
   const [dataLoading, setDataLoading] = useState(true);
   const [dataError, setDataError] = useState<string | null>(null);
-  const isClosed = !!restaurant && restaurant.is_open !== true;
+  const isClosed = !!restaurant && !isRestaurantOpen(restaurant);
 
   useEffect(() => { if (!loading && !user) navigate({ to: "/login", search: { as: "customer" } }); }, [user, loading, navigate]);
 
@@ -100,7 +103,7 @@ function MenuPage() {
       setDataError(null);
       try {
         const [{ data: rs, error: rError }, { data: c, error: cError }, { data: m, error: mError }] = await Promise.all([
-          withTimeout(supabase.from("restaurants").select("id, name, rating, delivery_time, latitude, longitude, status, is_open").eq("status", "active")),
+          withTimeout(supabase.from("restaurants").select("id, name, rating, opening_time, closing_time, latitude, longitude, status, is_open").eq("status", "active")),
           withTimeout(supabase.from("categories").select("*").order("priority")),
           withTimeout(supabase.from("menu_items").select("*").order("name")),
         ]);
@@ -198,7 +201,7 @@ function MenuPage() {
                 <Star className="h-3 w-3 fill-current" />{Number(restaurant.rating).toFixed(1)}
               </span>
               <span className="inline-flex items-center gap-1 text-muted-foreground">
-                <Clock className="h-3.5 w-3.5" /> {restaurant.delivery_time}
+                <Clock className="h-3.5 w-3.5" /> {browseEta(null).label}
               </span>
             </div>
             {isClosed && (

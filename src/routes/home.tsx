@@ -1,5 +1,7 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { isRestaurantOpen } from "@/lib/hours";
+import { browseEta } from "@/lib/eta";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocationGate } from "@/hooks/useLocationGate";
@@ -28,7 +30,8 @@ export const Route = createFileRoute("/home")({
 
 type Restaurant = {
   id: string; name: string; tagline: string | null;
-  rating: number | null; rating_count: number; delivery_time: string; is_open: boolean;
+  rating: number | null; rating_count: number; is_open: boolean;
+  opening_time: string | null; closing_time: string | null;
   banner_url: string | null; image_url: string | null; address: string | null;
   latitude: number | null; longitude: number | null;
 };
@@ -53,7 +56,7 @@ function HomePage() {
     let active = true;
     setRestaurantLoading(true);
     setRestaurantError(null);
-    withTimeout(supabase.from("restaurants").select("id, name, tagline, image_url, banner_url, rating, rating_count, delivery_time, is_open, address, opening_time, closing_time, min_order_value, delivery_charges, status, latitude, longitude, created_at").eq("status", "active"))
+    withTimeout(supabase.from("restaurants").select("id, name, tagline, image_url, banner_url, rating, rating_count, is_open, address, opening_time, closing_time, min_order_value, delivery_charges, status, latitude, longitude, created_at").eq("status", "active"))
       .then(({ data, error }) => {
         if (!active) return;
         if (error) throw error;
@@ -174,11 +177,11 @@ function HomePage() {
                 <div className="relative h-48 w-full overflow-hidden">
                   <img src={restaurant.banner_url ?? restaurant.image_url ?? hero} alt={restaurant.name}
                     className="h-full w-full object-cover" width={1600} height={900} loading="lazy" />
-                  <span className={`absolute left-3 top-3 rounded-full px-3 py-1 text-xs font-semibold ${restaurant.is_open ? "bg-success text-success-foreground" : "bg-destructive text-destructive-foreground"}`}>
-                    {restaurant.is_open ? "Open" : "Closed"}
+                  <span className={`absolute left-3 top-3 rounded-full px-3 py-1 text-xs font-semibold ${isRestaurantOpen(restaurant) ? "bg-success text-success-foreground" : "bg-destructive text-destructive-foreground"}`}>
+                    {isRestaurantOpen(restaurant) ? "Open" : "Closed"}
                   </span>
                   <span className="absolute bottom-0 right-0 rounded-tl-2xl bg-card px-3 py-1.5 text-xs font-extrabold tracking-tight">
-                    {restaurant.delivery_time ?? "35 MIN"}
+                    {browseEta(restaurant.distance).label}
                   </span>
                 </div>
 
