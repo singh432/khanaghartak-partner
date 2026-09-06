@@ -27,11 +27,21 @@ export async function loadGoogleMaps(): Promise<any> {
       const cbName = "__khg_initGoogleMaps";
       w[cbName] = () => resolve(w.google);
 
+      // Google calls this when the key itself is rejected (API not enabled,
+      // billing off, or this website not on the key's allowed list).
+      w.gm_authFailure = () =>
+        reject(
+          new Error(
+            `Google rejected the map key for ${window.location.hostname}. In Google Cloud Console: enable "Maps JavaScript API" and "Places API (New)", make sure billing is active, and add ${window.location.origin}/* to the key's website restrictions.`,
+          ),
+        );
+
       const s = document.createElement("script");
       s.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&loading=async&libraries=places,geometry&callback=${cbName}`;
       s.async = true;
       s.onerror = () => reject(new Error("Failed to load Google Maps"));
       document.head.appendChild(s);
+
     } catch (e: any) {
       reject(e);
     }
