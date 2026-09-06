@@ -12,15 +12,18 @@ export default function ZoneMapEditor({
   points,
   onChange,
   center,
+  existing = [],
 }: {
   points: ZonePoint[];
   onChange: (pts: ZonePoint[]) => void;
   center?: ZonePoint;
+  existing?: { id: string; name: string; polygon: ZonePoint[]; is_active: boolean }[];
 }) {
   const holder = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<any>(null);
   const gRef = useRef<any>(null);
   const polyRef = useRef<any>(null);
+  const otherRef = useRef<any[]>([]);
   const markersRef = useRef<any[]>([]);
   const ptsRef = useRef<ZonePoint[]>(points);
   ptsRef.current = points;
