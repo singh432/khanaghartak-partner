@@ -8,6 +8,7 @@ export type DeliveryZone = {
   city: string | null;
   polygon: ZonePoint[];
   is_active: boolean;
+  delivery_charge: number | null;
 };
 
 export const OUTSIDE_ZONE_MESSAGE = "Sorry, we don't deliver to this location yet.";
@@ -42,19 +43,20 @@ function normalise(rows: any[]): DeliveryZone[] {
           .map((pt: any) => ({ lat: pt.lat, lng: pt.lng }))
       : [],
     is_active: !!r.is_active,
+    delivery_charge: r.delivery_charge === null || r.delivery_charge === undefined ? null : Number(r.delivery_charge),
   }));
 }
 
 export async function fetchActiveZones(): Promise<DeliveryZone[]> {
   const { data } = await (supabase.from("delivery_zones") as any)
-    .select("id,name,city,polygon,is_active")
+    .select("id,name,city,polygon,is_active,delivery_charge")
     .eq("is_active", true);
   return normalise(data ?? []);
 }
 
 export async function fetchAllZones(): Promise<DeliveryZone[]> {
   const { data } = await (supabase.from("delivery_zones") as any)
-    .select("id,name,city,polygon,is_active")
+    .select("id,name,city,polygon,is_active,delivery_charge")
     .order("name");
   return normalise(data ?? []);
 }
