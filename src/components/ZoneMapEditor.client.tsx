@@ -12,15 +12,18 @@ export default function ZoneMapEditor({
   points,
   onChange,
   center,
+  existing = [],
 }: {
   points: ZonePoint[];
   onChange: (pts: ZonePoint[]) => void;
   center?: ZonePoint;
+  existing?: { id: string; name: string; polygon: ZonePoint[]; is_active: boolean }[];
 }) {
   const holder = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<any>(null);
   const gRef = useRef<any>(null);
   const polyRef = useRef<any>(null);
+  const otherRef = useRef<any[]>([]);
   const markersRef = useRef<any[]>([]);
   const ptsRef = useRef<ZonePoint[]>(points);
   ptsRef.current = points;
@@ -57,6 +60,7 @@ export default function ZoneMapEditor({
         });
         mapRef.current = map;
         redraw();
+        drawExisting();
       } catch (e: any) {
         setError(e?.message ?? "Map could not load");
       }
@@ -113,10 +117,37 @@ export default function ZoneMapEditor({
     });
   };
 
+  const drawExisting = () => {
+    const g = gRef.current;
+    const map = mapRef.current;
+    if (!g || !map) return;
+    otherRef.current.forEach((p) => p.setMap(null));
+    otherRef.current = [];
+    existing.forEach((z) => {
+      if (!z.polygon || z.polygon.length < 3) return;
+      const poly = new g.maps.Polygon({
+        path: z.polygon,
+        strokeColor: z.is_active ? "#2563eb" : "#94a3b8",
+        strokeWeight: 1.5,
+        fillColor: z.is_active ? "#2563eb" : "#94a3b8",
+        fillOpacity: 0.08,
+        map,
+        clickable: false,
+        zIndex: 1,
+      });
+      otherRef.current.push(poly);
+    });
+  };
+
   useEffect(() => {
     redraw();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [points]);
+
+  useEffect(() => {
+    drawExisting();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [existing]);
 
   useEffect(() => {
     if (!mapRef.current || !center) return;

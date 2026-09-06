@@ -29,6 +29,7 @@ function SuperZones() {
   const [name, setName] = useState("");
   const [city, setCity] = useState("");
   const [points, setPoints] = useState<ZonePoint[]>([]);
+  const [charge, setCharge] = useState("");
   const [managerEmail, setManagerEmail] = useState("");
 
   const load = async () => {
@@ -47,9 +48,10 @@ function SuperZones() {
 
   useEffect(() => { load(); }, []);
 
-  const startNew = () => { setEditing(null); setName(""); setCity(""); setPoints([]); };
+  const startNew = () => { setEditing(null); setName(""); setCity(""); setPoints([]); setCharge(""); };
   const startEdit = (z: DeliveryZone) => {
     setEditing(z); setName(z.name); setCity(z.city ?? ""); setPoints(z.polygon);
+    setCharge(z.delivery_charge === null ? "" : String(z.delivery_charge));
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -57,7 +59,12 @@ function SuperZones() {
     if (name.trim().length < 3) return toast.error("Give the zone a name");
     if (points.length < 3) return toast.error("Draw at least 3 boundary points on the map");
     setBusy(true);
-    const payload = { name: name.trim(), city: city.trim() || null, polygon: points as any };
+    const payload = {
+      name: name.trim(),
+      city: city.trim() || null,
+      polygon: points as any,
+      delivery_charge: charge.trim() === "" ? null : Number(charge),
+    };
     const { error } = editing
       ? await (supabase.from("delivery_zones") as any).update(payload).eq("id", editing.id)
       : await (supabase.from("delivery_zones") as any).insert({ ...payload, is_active: true });
@@ -148,6 +155,12 @@ function SuperZones() {
               placeholder="Prayagraj"
               className="h-11 w-full rounded-xl border bg-input px-3 text-sm outline-none focus:border-primary" />
           </label>
+          <label className="block">
+            <span className="mb-1 block text-xs font-medium text-muted-foreground">Delivery charge ₹ (optional)</span>
+            <input value={charge} onChange={(e) => setCharge(e.target.value.replace(/[^0-9.]/g, ""))}
+              inputMode="decimal" placeholder="e.g. 40"
+              className="h-11 w-full rounded-xl border bg-input px-3 text-sm outline-none focus:border-primary" />
+          </label>
         </div>
 
         <p className="mt-3 text-xs text-muted-foreground">
@@ -156,7 +169,7 @@ function SuperZones() {
         <div className="mt-2">
           <ClientOnly fallback={<div className="h-[380px] w-full animate-pulse rounded-2xl border bg-secondary/40" />}>
             <Suspense fallback={<div className="h-[380px] w-full animate-pulse rounded-2xl border bg-secondary/40" />}>
-              <ZoneMapEditor points={points} onChange={setPoints} />
+              <ZoneMapEditor points={points} onChange={setPoints} existing={zones.filter((z) => z.id !== editing?.id)} />
             </Suspense>
           </ClientOnly>
         </div>
@@ -185,7 +198,7 @@ function SuperZones() {
                   <div>
                     <p className="text-sm font-bold">{z.name}</p>
                     <p className="text-xs text-muted-foreground">
-                      {z.city ?? "—"} · {z.polygon.length} boundary points
+                      {z.city ?? "—"} · {z.polygon.length} boundary points{z.delivery_charge !== null ? ` · ₹${z.delivery_charge} delivery` : ""}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
