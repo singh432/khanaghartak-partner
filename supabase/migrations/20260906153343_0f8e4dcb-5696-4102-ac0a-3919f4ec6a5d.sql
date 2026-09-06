@@ -1,0 +1,1 @@
+ALTER TABLE public.delivery_zones ADD COLUMN IF NOT EXISTS delivery_charge numeric(10,2);
