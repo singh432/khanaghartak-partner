@@ -124,6 +124,8 @@ function ZoneManagerPage() {
       delivered: delivered.length,
       cancelled: filtered.filter((o) => ["cancelled", "rejected"].includes(o.status)).length,
       revenue: delivered.reduce((s, o) => s + Number(o.total), 0),
+      restaurant: pay.restaurant,
+      rider: pay.rider,
       net: pay.platformNet,
     };
   }, [filtered]);
@@ -203,6 +205,8 @@ function ZoneManagerPage() {
           <Stat label="Delivered" value={String(stats.delivered)} />
           <Stat label="Cancelled" value={String(stats.cancelled)} />
           <Stat label="Revenue" value={inr(stats.revenue)} />
+          <Stat label="Restaurant payout" value={inr(stats.restaurant)} />
+          <Stat label="Rider payout" value={inr(stats.rider)} />
           <Stat label="Net profit" value={inr(stats.net)} />
         </div>
 

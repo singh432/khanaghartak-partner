@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Store, Users, ShoppingBag, IndianRupee, CheckCircle2, Clock, TrendingUp, Wallet, Map as MapIcon } from "lucide-react";
-import { sumPayouts, inr, RIDER_SHARE_RATE, COMMISSION_RATE } from "@/lib/payouts";
+import { sumPayouts, inr, RIDER_SHARE_RATE, COMMISSION_RATE, restaurantPayout } from "@/lib/payouts";
 import { DateRangeFilter } from "@/components/DateRangeFilter";
 import { inRange, rangeLabel, todayInputValue, type DateRange } from "@/lib/date-range";
 import { fetchAll } from "@/lib/supabase-paged";
@@ -65,7 +65,7 @@ function SuperDashboard() {
       const id = o.restaurant_id ?? "unknown";
       const cur = byRest[id] ?? { orders: 0, payable: 0 };
       cur.orders += 1;
-      cur.payable += Number(o.subtotal ?? 0) * (1 - COMMISSION_RATE);
+      cur.payable += restaurantPayout(o as any);
       byRest[id] = cur;
     });
     const perRestaurant = Object.entries(byRest)
