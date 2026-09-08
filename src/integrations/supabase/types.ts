@@ -1145,7 +1145,9 @@ export type Database = {
           net_profit: number
           orders_count: number
           platform_fees: number
+          restaurant_payout: number
           revenue: number
+          rider_payout: number
           zone_id: string
           zone_name: string
         }[]
