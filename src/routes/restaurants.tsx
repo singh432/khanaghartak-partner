@@ -45,6 +45,15 @@ type PublicRestaurant = {
 function RestaurantsPage() {
   const [restaurants, setRestaurants] = useState<PublicRestaurant[]>([]);
   const [loading, setLoading] = useState(true);
+  const now = useMinuteTick();
+  const sortedRestaurants = useMemo(() => {
+    return restaurants.slice().sort((a, b) => {
+      const openA = isRestaurantOpen(a, now);
+      const openB = isRestaurantOpen(b, now);
+      if (openA !== openB) return openA ? -1 : 1;
+      return (b.rating ?? 0) - (a.rating ?? 0);
+    });
+  }, [restaurants, now]);
 
   useEffect(() => {
     let active = true;
