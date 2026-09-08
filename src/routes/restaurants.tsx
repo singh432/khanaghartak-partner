@@ -1,5 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { isRestaurantOpen } from "@/lib/hours";
+import { useMinuteTick } from "@/hooks/useMinuteTick";
 import { browseEta } from "@/lib/eta";
 import { supabase } from "@/integrations/supabase/client";
 import { withTimeout } from "@/lib/supabase-query";
