@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Check, X, Power, Trash2, Search } from "lucide-react";
@@ -11,7 +11,7 @@ export const Route = createFileRoute("/super/restaurants")({ component: SuperRes
 type R = {
   id: string; name: string; owner_id: string | null; phone: string | null;
   address: string | null; status: string; is_open: boolean | null;
-  opening_time: string | null; closing_time: string | null;
+  opening_time: string | null; closing_time: string | null; created_at: string;
 };
 
 function SuperRestaurants() {
@@ -71,6 +71,14 @@ function SuperRestaurants() {
   const filtered = rows.filter((r) =>
     !q || r.name.toLowerCase().includes(q.toLowerCase()) || (r.phone ?? "").includes(q)
   );
+  const sortedRows = useMemo(() => {
+    return filtered.slice().sort((a, b) => {
+      const openA = isRestaurantOpen(a, now);
+      const openB = isRestaurantOpen(b, now);
+      if (openA !== openB) return openA ? -1 : 1;
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+  }, [filtered, now]);
 
   return (
     <div className="space-y-4 p-4 md:p-6">
@@ -92,7 +100,7 @@ function SuperRestaurants() {
             <tr><th className="px-4 py-3">Restaurant</th><th className="px-4 py-3">Phone</th><th className="px-4 py-3">Address</th><th className="px-4 py-3">Orders</th><th className="px-4 py-3">Status</th><th className="px-4 py-3 text-right">Actions</th></tr>
           </thead>
           <tbody>
-            {filtered.map((r) => (
+            {sortedRows.map((r) => (
               <tr key={r.id} className="border-t">
                 <td className="px-4 py-3 font-semibold">{r.name}</td>
                 <td className="px-4 py-3 text-muted-foreground">{r.phone ?? "—"}</td>

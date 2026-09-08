@@ -1,5 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { isRestaurantOpen } from "@/lib/hours";
+import { useMinuteTick } from "@/hooks/useMinuteTick";
 import { browseEta } from "@/lib/eta";
 import { supabase } from "@/integrations/supabase/client";
 import { withTimeout } from "@/lib/supabase-query";
@@ -43,6 +45,15 @@ type PublicRestaurant = {
 function RestaurantsPage() {
   const [restaurants, setRestaurants] = useState<PublicRestaurant[]>([]);
   const [loading, setLoading] = useState(true);
+  const now = useMinuteTick();
+  const sortedRestaurants = useMemo(() => {
+    return restaurants.slice().sort((a, b) => {
+      const openA = isRestaurantOpen(a, now);
+      const openB = isRestaurantOpen(b, now);
+      if (openA !== openB) return openA ? -1 : 1;
+      return (b.rating ?? 0) - (a.rating ?? 0);
+    });
+  }, [restaurants, now]);
 
   useEffect(() => {
     let active = true;
@@ -80,7 +91,7 @@ function RestaurantsPage() {
         </p>
       ) : (
         <ul className="grid gap-4 sm:grid-cols-2">
-          {restaurants.map((r) => (
+          {sortedRestaurants.map((r) => (
             <li key={r.id} className="rounded-2xl border bg-card p-5">
               <h2 className="font-display text-xl leading-tight text-foreground">{r.name}</h2>
               {r.tagline && <p className="mt-1 text-sm">{r.tagline}</p>}

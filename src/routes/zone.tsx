@@ -130,6 +130,15 @@ function ZoneManagerPage() {
     return riders.slice().sort((a, b) => rank(a.status) - rank(b.status));
   }, [riders]);
 
+  const sortedRestaurants = useMemo(() => {
+    return restaurants.slice().sort((a, b) => {
+      const openA = isRestaurantOpen(a, now);
+      const openB = isRestaurantOpen(b, now);
+      if (openA !== openB) return openA ? -1 : 1;
+      return 0;
+    });
+  }, [restaurants, now]);
+
   const filtered = useMemo(() => orders.filter((o) => inRange(o.created_at, range)), [orders, range]);
 
   const stats = useMemo(() => {
@@ -308,8 +317,8 @@ function ZoneManagerPage() {
 
         {tab === "restaurants" && (
           <div className="space-y-2">
-            {restaurants.length === 0 && <Empty>No restaurants in this zone.</Empty>}
-            {restaurants.map((r) => (
+            {sortedRestaurants.length === 0 && <Empty>No restaurants in this zone.</Empty>}
+            {sortedRestaurants.map((r) => (
               <div key={r.id} className="flex items-center justify-between gap-3 rounded-2xl border bg-card p-4">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-bold">{r.name}</p>

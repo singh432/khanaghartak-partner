@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { isRestaurantOpen } from "@/lib/hours";
+import { useMinuteTick } from "@/hooks/useMinuteTick";
 import { browseEta } from "@/lib/eta";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -40,6 +41,7 @@ function HomePage() {
   const navigate = useNavigate();
   const { user, loading, signOut } = useAuth();
   const { coords } = useLocationGate();
+  const now = useMinuteTick();
   const [restaurants, setRestaurants] = useState<Array<Restaurant & { distance: number | null }>>([]);
   const [categoryMap, setCategoryMap] = useState<Record<string, string[]>>({});
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
@@ -101,9 +103,17 @@ function HomePage() {
   const categoryNames = Object.keys(categoryMap)
     .filter((name) => categoryMap[name].some((id) => restaurants.some((r) => r.id === id)))
     .sort((a, b) => a.localeCompare(b));
-  const visibleRestaurants = activeCategory
-    ? restaurants.filter((r) => categoryMap[activeCategory]?.includes(r.id))
-    : restaurants;
+  const visibleRestaurants = useMemo(() => {
+    const list = activeCategory
+      ? restaurants.filter((r) => categoryMap[activeCategory]?.includes(r.id))
+      : restaurants;
+    return list.slice().sort((a, b) => {
+      const openA = isRestaurantOpen(a, now);
+      const openB = isRestaurantOpen(b, now);
+      if (openA !== openB) return openA ? -1 : 1;
+      return (a.distance ?? Number.MAX_SAFE_INTEGER) - (b.distance ?? Number.MAX_SAFE_INTEGER);
+    });
+  }, [restaurants, activeCategory, categoryMap, now]);
 
   if (loading) return <PageSpinner label="Checking your session…" />;
   if (!user) return <PageSpinner label="Opening sign in…" />;
