@@ -41,6 +41,7 @@ function HomePage() {
   const navigate = useNavigate();
   const { user, loading, signOut } = useAuth();
   const { coords } = useLocationGate();
+  const now = useMinuteTick();
   const [restaurants, setRestaurants] = useState<Array<Restaurant & { distance: number | null }>>([]);
   const [categoryMap, setCategoryMap] = useState<Record<string, string[]>>({});
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
