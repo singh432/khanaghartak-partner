@@ -78,9 +78,20 @@ function ZoneManagerPage() {
     ]);
     setOrders((o ?? []) as unknown as Order[]);
     setRiders((rd ?? []) as unknown as Rider[]);
-    setRestaurants((rs ?? []) as unknown as Rest[]);
+    const rests = (rs ?? []) as unknown as Rest[];
+    // Opening/closing hours drive the live Open/Closed badge.
+    const ids = rests.map((r) => r.id);
+    if (ids.length) {
+      const { data: hrs } = await supabase.from("restaurants").select("id,opening_time,closing_time").in("id", ids);
+      const hmap: Record<string, { opening_time: string | null; closing_time: string | null }> = {};
+      ((hrs ?? []) as any[]).forEach((h) => { hmap[h.id] = { opening_time: h.opening_time, closing_time: h.closing_time }; });
+      setRestaurants(rests.map((r) => ({ ...r, ...(hmap[r.id] ?? {}) })));
+    } else {
+      setRestaurants(rests);
+    }
     setCustomers((cs ?? []) as unknown as Cust[]);
   };
+
 
   useEffect(() => {
     if (!zoneId) return;
