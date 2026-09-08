@@ -24,7 +24,7 @@ export const Route = createFileRoute("/super/revenue")({
 });
 
 type O = {
-  status: string; total: number; subtotal: number; platform_fee: number;
+  status: string; total: number; subtotal: number; platform_fee: number; discount: number;
   delivery_fee: number; created_at: string; zone_id: string | null; payment_method: string | null;
 };
 
@@ -37,7 +37,7 @@ function SuperRevenue() {
   useEffect(() => {
     (async () => {
       const [o, z] = await Promise.all([
-        fetchAll<O>(() => supabase.from("orders").select("status,total,subtotal,platform_fee,delivery_fee,created_at,zone_id,payment_method") as any),
+        fetchAll<O>(() => supabase.from("orders").select("status,total,subtotal,platform_fee,delivery_fee,discount,created_at,zone_id,payment_method") as any),
         fetchAllZones().catch(() => [] as DeliveryZone[]),
       ]);
       setOrders(o);

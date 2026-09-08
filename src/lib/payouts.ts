@@ -12,6 +12,7 @@ export type PayoutOrder = {
   platform_fee?: number | string | null;
   delivery_fee?: number | string | null;
   total?: number | string | null;
+  discount?: number | string | null;
   payment_method?: string | null;
 };
 
@@ -32,9 +33,9 @@ export function riderEarning(o: PayoutOrder) {
   return platformEarning(o) * RIDER_SHARE_RATE;
 }
 
-/** What KhanaGharTak keeps after paying the rider. */
+/** What KhanaGharTak keeps after paying the rider, minus any discount it funded. */
 export function platformNetEarning(o: PayoutOrder) {
-  return platformEarning(o) * (1 - RIDER_SHARE_RATE);
+  return platformEarning(o) * (1 - RIDER_SHARE_RATE) - n(o.discount);
 }
 
 /** Cash the rider physically collects from the customer (COD orders only). */

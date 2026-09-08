@@ -29,7 +29,7 @@ export const Route = createFileRoute("/zone")({
 type Zone = { id: string; name: string; city: string | null; is_active: boolean; polygon: ZonePoint[] | null };
 type Order = {
   id: string; restaurant_name: string | null; status: string; total: number; subtotal: number;
-  platform_fee: number; delivery_fee: number; customer_name: string; customer_phone: string;
+  platform_fee: number; delivery_fee: number; discount: number; customer_name: string; customer_phone: string;
   address: string; landmark: string | null; rider_id: string | null; rider_name: string | null; created_at: string;
 };
 type Rider = { user_id: string; full_name: string | null; phone: string | null; status: string; is_online: boolean };
