@@ -2,12 +2,13 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { TrendingUp, ShoppingBag, CheckCircle2, XCircle, Clock, IndianRupee } from "lucide-react";
+import { COMMISSION_RATE } from "@/lib/payouts";
 import { DateRangeFilter } from "@/components/DateRangeFilter";
 import { inRange, rangeLabel, todayInputValue, type DateRange } from "@/lib/date-range";
 
 export const Route = createFileRoute("/admin/")({ component: AdminDashboard });
 
-const COMMISSION_RATE = 0.15;
+
 
 type Stats = { total: number; placed: number; accepted: number; preparing: number; out: number; delivered: number; rejected: number; revenue: number; foodSales: number; platformCut: number; deliveryFees: number };
 type Lifetime = { orders: number; revenue: number; foodSales: number; platformCut: number };

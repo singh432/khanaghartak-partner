@@ -1,12 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import { platformNetEarning } from "@/lib/payouts";
 import { supabase } from "@/integrations/supabase/client";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, LineChart, Line } from "recharts";
 import { FUNNEL_STEPS } from "@/lib/analytics";
 
 export const Route = createFileRoute("/super/analytics")({ component: SuperAnalytics });
 
-type O = { restaurant_id: string | null; items: any; total: number; status: string; created_at: string };
+type O = { restaurant_id: string | null; items: any; total: number; subtotal: number; platform_fee: number; delivery_fee: number; status: string; created_at: string };
 type Ev = { event: string; session_id: string; user_id: string | null; device: string | null; created_at: string };
 
 type Preset = "today" | "yesterday" | "7d" | "30d" | "custom";
@@ -47,7 +48,7 @@ function SuperAnalytics() {
       setRmap(m);
     });
     const start = new Date(); start.setDate(start.getDate() - 30);
-    supabase.from("orders").select("restaurant_id,items,total,status,created_at").gte("created_at", start.toISOString()).then(({ data }) => setOrders((data ?? []) as O[]));
+    supabase.from("orders").select("restaurant_id,items,total,subtotal,platform_fee,delivery_fee,status,created_at").gte("created_at", start.toISOString()).then(({ data }) => setOrders((data ?? []) as O[]));
   }, []);
 
   useEffect(() => {
@@ -126,7 +127,7 @@ function SuperAnalytics() {
     return Object.entries(m).map(([name, qty]) => ({ name, qty })).sort((a, b) => b.qty - a.qty).slice(0, 5);
   }, [orders]);
 
-  const totalEarnings = orders.filter(o => o.status === "delivered").reduce((s, o) => s + Number(o.total), 0);
+  const totalEarnings = orders.filter(o => o.status === "delivered").reduce((s, o) => s + platformNetEarning(o as any), 0);
 
   const fmt = (d: string | null) => d ? new Date(d).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "—";
 
