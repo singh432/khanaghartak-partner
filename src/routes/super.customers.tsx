@@ -30,13 +30,13 @@ function SuperCustomers() {
   const [q, setQ] = useState("");
   const [counts, setCounts] = useState<Record<string, { n: number; total: number }>>({});
   const [view, setView] = useState<{ user: P; orders: O[] } | null>(null);
-  const [orderRows, setOrderRows] = useState<{ user_id: string; total: number; status: string }[]>([]);
+  const [orderRows, setOrderRows] = useState<{ user_id: string; total: number; status: string; created_at: string }[]>([]);
 
   const load = async () => {
     const [profiles, blocks, orders] = await Promise.all([
       fetchAll<P>(() => supabase.from("profiles").select("id,full_name,phone,created_at").order("created_at", { ascending: false })),
       fetchAll(() => supabase.from("customer_blocks").select("user_id")),
-      fetchAll(() => supabase.from("orders").select("user_id,total,status")),
+      fetchAll(() => supabase.from("orders").select("user_id,total,status,created_at")),
     ]);
     setRows(profiles);
     setBlocked(new Set((blocks ?? []).map((b: any) => b.user_id)));
@@ -76,7 +76,19 @@ function SuperCustomers() {
     const ordering = new Map<string, number>();
     orderRows.forEach((o) => ordering.set(o.user_id, (ordering.get(o.user_id) ?? 0) + 1));
     const withOrders = ordering.size;
-    const repeat = [...ordering.values()].filter((n) => n > 1).length;
+    // Repeat = placed another order AFTER having at least one delivered order.
+    const byUser = new Map<string, { status: string; created_at: string }[]>();
+    orderRows.forEach((o) => {
+      const list = byUser.get(o.user_id) ?? [];
+      list.push(o);
+      byUser.set(o.user_id, list);
+    });
+    let repeat = 0;
+    byUser.forEach((list) => {
+      const sorted = [...list].sort((a, b) => a.created_at.localeCompare(b.created_at));
+      const firstDelivered = sorted.findIndex((o) => o.status === "delivered");
+      if (firstDelivered >= 0 && sorted.length > firstDelivered + 1) repeat++;
+    });
     const delivered = orderRows.filter((o) => o.status === "delivered");
     const cancelled = orderRows.filter((o) => ["cancelled", "rejected"].includes(o.status)).length;
     const revenue = delivered.reduce((s, o) => s + Number(o.total), 0);
