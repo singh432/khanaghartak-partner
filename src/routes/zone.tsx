@@ -311,11 +311,15 @@ function ZoneManagerPage() {
               <div key={r.id} className="flex items-center justify-between gap-3 rounded-2xl border bg-card p-4">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-bold">{r.name}</p>
-                  <p className="truncate text-xs text-muted-foreground">{r.address ?? "—"}{r.phone ? ` · ${r.phone}` : ""}</p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {r.address ?? "—"}{r.phone ? ` · ${r.phone}` : ""}
+                    {hoursLabel(r.opening_time, r.closing_time) ? ` · ${hoursLabel(r.opening_time, r.closing_time)}` : ""}
+                  </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-1.5 text-[11px] font-bold">
                   <span className="rounded-full bg-secondary px-2 py-1 capitalize">{r.status}</span>
-                  <span className={`rounded-full px-2 py-1 ${r.is_open ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}`}>{r.is_open ? "Open" : "Closed"}</span>
+                  <span className={`rounded-full px-2 py-1 ${isRestaurantOpen(r, now) ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}`}>{isRestaurantOpen(r, now) ? "Open" : "Closed"}</span>
+
                   <button disabled={busy === r.id} onClick={() => setRestaurantOpen(r.id, !r.is_open)}
                     className="rounded-full border px-2.5 py-1 disabled:opacity-50">
                     {r.is_open ? "Close" : "Open"}
