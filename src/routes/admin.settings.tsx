@@ -36,19 +36,49 @@ function AdminSettings() {
     if (d) setR((cur) => (cur ? { ...cur, ...d } : cur));
   });
 
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
+
   useEffect(() => {
     if (!user) return;
     let active = true;
     setLoadingRestaurant(true);
+    setLoadError(null);
     (async () => {
-      const { data } = await supabase.from("restaurants").select("id, name, owner_name, fssai_number, tagline, address, is_open, opening_time, closing_time, min_order_value, delivery_charges, image_url, banner_url, latitude, longitude").eq("owner_id", user.id).limit(1).maybeSingle();
+      const fetchRestaurant = async () =>
+        await supabase
+          .from("restaurants")
+          .select("id, name, owner_name, fssai_number, tagline, address, is_open, opening_time, closing_time, min_order_value, delivery_charges, image_url, banner_url, latitude, longitude")
+          .eq("owner_id", user.id)
+          .order("created_at", { ascending: true })
+          .limit(1)
+          .maybeSingle();
+
+      let res = await fetchRestaurant();
+      // A slow/failed read must never look like "no restaurant" — retry before giving up.
+      for (let attempt = 0; attempt < 2 && res.error; attempt++) {
+        await new Promise((r) => setTimeout(r, 600));
+        res = await fetchRestaurant();
+      }
+      if (!active) return;
+
+      if (res.error) {
+        setLoadError(res.error.message);
+        setR(null);
+        setLoadingRestaurant(false);
+        return;
+      }
+
+      const data = res.data;
       let phone: string | null = null;
       let phone_alt: string | null = null;
       if (data?.id) {
-        const { data: ph } = await supabase.rpc("get_restaurant_contacts" as any, { _restaurant_id: data.id });
-        const row = Array.isArray(ph) ? (ph[0] as any) : (ph as any);
-        phone = row?.phone ?? null;
-        phone_alt = row?.phone_alt ?? null;
+        try {
+          const { data: ph } = await supabase.rpc("get_restaurant_contacts" as any, { _restaurant_id: data.id });
+          const row = Array.isArray(ph) ? (ph[0] as any) : (ph as any);
+          phone = row?.phone ?? null;
+          phone_alt = row?.phone_alt ?? null;
+        } catch { /* contacts are optional */ }
       }
       if (active) {
         setR(data ? ({ ...data, phone, phone_alt } as Restaurant) : null);
@@ -56,7 +86,8 @@ function AdminSettings() {
       }
     })();
     return () => { active = false; };
-  }, [user]);
+  }, [user, reloadKey]);
+
 
   const save = async () => {
     if (!r) return;
@@ -117,12 +148,21 @@ function AdminSettings() {
     return (
       <div className="p-6 text-center">
         <img src={khanaGharTakLogoUrl} alt="KhanaGharTak" width={72} height={72} className="mx-auto h-18 w-18 rounded-2xl object-contain" />
-        <h1 className="mt-4 text-lg font-bold">No restaurant added</h1>
-        <p className="mt-2 text-sm text-muted-foreground">Go back to Admin Dashboard and add your restaurant first.</p>
-        <a href="/admin" className="mt-5 inline-flex rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground">Add restaurant</a>
+        <h1 className="mt-4 text-lg font-bold">{loadError ? "Couldn't load your restaurant" : "No restaurant added"}</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          {loadError
+            ? "Your restaurant details didn't load. Please check your connection and try again."
+            : "Go back to Admin Dashboard and add your restaurant first."}
+        </p>
+        {loadError ? (
+          <button onClick={() => setReloadKey((k) => k + 1)} className="mt-5 inline-flex rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground">Try again</button>
+        ) : (
+          <a href="/admin" className="mt-5 inline-flex rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground">Add restaurant</a>
+        )}
       </div>
     );
   }
+
 
   return (
     <div className="space-y-4 p-4 md:p-6">
