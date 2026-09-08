@@ -81,7 +81,7 @@ export const signInWithPhoneOtp = createServerFn({ method: "POST" })
       for (const r of (restRows ?? []) as { owner_id: string }[]) candidates.push(r.owner_id);
     }
 
-    let userId = candidates[0] ?? null;
+    let userId: string | null = candidates[0] ?? null;
     let email: string | null = null;
 
     if (userId) {
