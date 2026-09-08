@@ -100,7 +100,7 @@ function SuperRestaurants() {
             <tr><th className="px-4 py-3">Restaurant</th><th className="px-4 py-3">Phone</th><th className="px-4 py-3">Address</th><th className="px-4 py-3">Orders</th><th className="px-4 py-3">Status</th><th className="px-4 py-3 text-right">Actions</th></tr>
           </thead>
           <tbody>
-            {filtered.map((r) => (
+            {sortedRows.map((r) => (
               <tr key={r.id} className="border-t">
                 <td className="px-4 py-3 font-semibold">{r.name}</td>
                 <td className="px-4 py-3 text-muted-foreground">{r.phone ?? "—"}</td>
