@@ -9,6 +9,9 @@ import { DateRangeFilter } from "@/components/DateRangeFilter";
 import { inRange, rangeLabel, todayInputValue, type DateRange } from "@/lib/date-range";
 import { sumPayouts, inr } from "@/lib/payouts";
 import type { ZonePoint } from "@/lib/zones";
+import { isRestaurantOpen, hoursLabel } from "@/lib/hours";
+import { useMinuteTick } from "@/hooks/useMinuteTick";
+
 
 const ZoneMapEditor = lazy(() => import("@/components/ZoneMapEditor.client"));
 
@@ -33,7 +36,7 @@ type Order = {
   address: string; landmark: string | null; rider_id: string | null; rider_name: string | null; created_at: string;
 };
 type Rider = { user_id: string; full_name: string | null; phone: string | null; status: string; is_online: boolean };
-type Rest = { id: string; name: string; status: string; is_open: boolean; address: string | null; phone: string | null };
+type Rest = { id: string; name: string; status: string; is_open: boolean; address: string | null; phone: string | null; opening_time?: string | null; closing_time?: string | null };
 type Cust = { user_id: string; full_name: string | null; phone: string | null; orders_count: number; total_spent: number | null; last_order_at: string };
 
 type Tab = "orders" | "restaurants" | "riders" | "customers" | "map";
@@ -53,6 +56,8 @@ function ZoneManagerPage() {
   const [busy, setBusy] = useState<string | null>(null);
   const [points, setPoints] = useState<ZonePoint[]>([]);
   const [savingMap, setSavingMap] = useState(false);
+  const now = useMinuteTick();
+
 
   useEffect(() => {
     if (!authLoading && !user) navigate({ to: "/login", search: { as: "manager" } });
@@ -78,9 +83,20 @@ function ZoneManagerPage() {
     ]);
     setOrders((o ?? []) as unknown as Order[]);
     setRiders((rd ?? []) as unknown as Rider[]);
-    setRestaurants((rs ?? []) as unknown as Rest[]);
+    const rests = (rs ?? []) as unknown as Rest[];
+    // Opening/closing hours drive the live Open/Closed badge.
+    const ids = rests.map((r) => r.id);
+    if (ids.length) {
+      const { data: hrs } = await supabase.from("restaurants").select("id,opening_time,closing_time").in("id", ids);
+      const hmap: Record<string, { opening_time: string | null; closing_time: string | null }> = {};
+      ((hrs ?? []) as any[]).forEach((h) => { hmap[h.id] = { opening_time: h.opening_time, closing_time: h.closing_time }; });
+      setRestaurants(rests.map((r) => ({ ...r, ...(hmap[r.id] ?? {}) })));
+    } else {
+      setRestaurants(rests);
+    }
     setCustomers((cs ?? []) as unknown as Cust[]);
   };
+
 
   useEffect(() => {
     if (!zoneId) return;
@@ -297,11 +313,15 @@ function ZoneManagerPage() {
               <div key={r.id} className="flex items-center justify-between gap-3 rounded-2xl border bg-card p-4">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-bold">{r.name}</p>
-                  <p className="truncate text-xs text-muted-foreground">{r.address ?? "—"}{r.phone ? ` · ${r.phone}` : ""}</p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {r.address ?? "—"}{r.phone ? ` · ${r.phone}` : ""}
+                    {hoursLabel(r.opening_time, r.closing_time) ? ` · ${hoursLabel(r.opening_time, r.closing_time)}` : ""}
+                  </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-1.5 text-[11px] font-bold">
                   <span className="rounded-full bg-secondary px-2 py-1 capitalize">{r.status}</span>
-                  <span className={`rounded-full px-2 py-1 ${r.is_open ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}`}>{r.is_open ? "Open" : "Closed"}</span>
+                  <span className={`rounded-full px-2 py-1 ${isRestaurantOpen(r, now) ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}`}>{isRestaurantOpen(r, now) ? "Open" : "Closed"}</span>
+
                   <button disabled={busy === r.id} onClick={() => setRestaurantOpen(r.id, !r.is_open)}
                     className="rounded-full border px-2.5 py-1 disabled:opacity-50">
                     {r.is_open ? "Close" : "Open"}
