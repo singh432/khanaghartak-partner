@@ -11,7 +11,7 @@ export const Route = createFileRoute("/super/restaurants")({ component: SuperRes
 type R = {
   id: string; name: string; owner_id: string | null; phone: string | null;
   address: string | null; status: string; is_open: boolean | null;
-  opening_time: string | null; closing_time: string | null;
+  opening_time: string | null; closing_time: string | null; created_at: string;
 };
 
 function SuperRestaurants() {
