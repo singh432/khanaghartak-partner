@@ -94,10 +94,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     restore().finally(() => { if (active) setLoading(false); });
 
-    return () => { active = false; sub.subscription.unsubscribe(); };
+    // Phones freeze background tabs, so the access token can expire while the app is
+    // hidden. Re-read/refresh the stored session when the user comes back.
+    const revive = async () => {
+      if (explicitSignOutRef.current) return;
+      try {
+        const { data } = await withTimeout(supabase.auth.getSession(), 15000);
+        if (!active || !data.session) return;
+        setSession(data.session);
+        setUser(data.session.user);
+      } catch { /* keep current session */ }
+    };
+    const onVisible = () => { if (document.visibilityState === "visible") void revive(); };
+    if (typeof window !== "undefined") {
+      document.addEventListener("visibilitychange", onVisible);
+      window.addEventListener("focus", revive);
+      window.addEventListener("pageshow", revive);
+    }
+
+    return () => {
+      active = false;
+      sub.subscription.unsubscribe();
+      if (typeof window !== "undefined") {
+        document.removeEventListener("visibilitychange", onVisible);
+        window.removeEventListener("focus", revive);
+        window.removeEventListener("pageshow", revive);
+      }
+    };
   }, []);
 
-  const signOut = async () => { await supabase.auth.signOut(); if (typeof window !== "undefined") window.location.assign("/"); };
+  const signOut = async () => {
+    explicitSignOutRef.current = true;
+    // 'local' keeps other devices signed in; only this device's session ends.
+    await supabase.auth.signOut({ scope: "local" });
+    if (typeof window !== "undefined") window.location.assign("/");
+  };
 
   return (
     <Ctx.Provider value={{ user, session, loading, isAdmin, isSuperAdmin, isRider, signOut }}>
