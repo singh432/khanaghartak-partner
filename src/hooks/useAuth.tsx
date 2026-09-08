@@ -24,6 +24,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [isRider, setIsRider] = useState(false);
+  const explicitSignOutRef = useRef(false);
+
 
   useEffect(() => {
     let active = true;
