@@ -3,21 +3,25 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Check, X, Power, Trash2, Search } from "lucide-react";
+import { isRestaurantOpen, hoursLabel } from "@/lib/hours";
+import { useMinuteTick } from "@/hooks/useMinuteTick";
 
 export const Route = createFileRoute("/super/restaurants")({ component: SuperRestaurants });
 
 type R = {
   id: string; name: string; owner_id: string | null; phone: string | null;
   address: string | null; status: string; is_open: boolean | null;
+  opening_time: string | null; closing_time: string | null;
 };
 
 function SuperRestaurants() {
   const [rows, setRows] = useState<R[]>([]);
   const [q, setQ] = useState("");
   const [counts, setCounts] = useState<Record<string, number>>({});
+  const now = useMinuteTick();
 
   const load = async () => {
-    const { data } = await supabase.from("restaurants").select("id,name,owner_id,address,status,is_open,created_at").order("created_at", { ascending: false });
+    const { data } = await supabase.from("restaurants").select("id,name,owner_id,address,status,is_open,opening_time,closing_time,created_at").order("created_at", { ascending: false });
     const { data: phones } = await supabase.rpc("super_list_restaurant_phones" as any);
     const pmap: Record<string, string | null> = {};
     ((phones ?? []) as any[]).forEach((p) => { pmap[p.id] = p.phone; });
@@ -28,7 +32,12 @@ function SuperRestaurants() {
     setCounts(map);
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    const t = setInterval(load, 30000);
+    return () => clearInterval(t);
+  }, []);
+
 
   const setStatus = async (id: string, status: string) => {
     const { error } = await supabase.from("restaurants").update({ status }).eq("id", id);
