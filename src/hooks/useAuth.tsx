@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { withTimeout } from "@/lib/supabase-query";
@@ -24,6 +24,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [isRider, setIsRider] = useState(false);
+  const explicitSignOutRef = useRef(false);
+
 
   useEffect(() => {
     let active = true;
@@ -45,7 +47,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, sess) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, sess) => {
+      // Only an explicit logout ends the session. A transient SIGNED_OUT (e.g. a failed
+      // token refresh after the phone suspended the tab) must not log the user out.
+      if (!sess && event === "SIGNED_OUT" && !explicitSignOutRef.current) return;
       setLoading(true);
       setSession(sess);
       setUser(sess?.user ?? null);
@@ -58,6 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsAdmin(false); setIsSuperAdmin(false); setIsRider(false); setLoading(false);
       }
     });
+
 
     // Restoring the stored session can be slow (brokered preview storage), so retry
     // instead of treating a slow read as "signed out" — that is what forced re-login.
@@ -88,10 +94,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     restore().finally(() => { if (active) setLoading(false); });
 
-    return () => { active = false; sub.subscription.unsubscribe(); };
+    // Phones freeze background tabs, so the access token can expire while the app is
+    // hidden. Re-read/refresh the stored session when the user comes back.
+    const revive = async () => {
+      if (explicitSignOutRef.current) return;
+      try {
+        const { data } = await withTimeout(supabase.auth.getSession(), 15000);
+        if (!active || !data.session) return;
+        setSession(data.session);
+        setUser(data.session.user);
+      } catch { /* keep current session */ }
+    };
+    const onVisible = () => { if (document.visibilityState === "visible") void revive(); };
+    if (typeof window !== "undefined") {
+      document.addEventListener("visibilitychange", onVisible);
+      window.addEventListener("focus", revive);
+      window.addEventListener("pageshow", revive);
+    }
+
+    return () => {
+      active = false;
+      sub.subscription.unsubscribe();
+      if (typeof window !== "undefined") {
+        document.removeEventListener("visibilitychange", onVisible);
+        window.removeEventListener("focus", revive);
+        window.removeEventListener("pageshow", revive);
+      }
+    };
   }, []);
 
-  const signOut = async () => { await supabase.auth.signOut(); if (typeof window !== "undefined") window.location.assign("/"); };
+  const signOut = async () => {
+    explicitSignOutRef.current = true;
+    // 'local' keeps other devices signed in; only this device's session ends.
+    await supabase.auth.signOut({ scope: "local" });
+    if (typeof window !== "undefined") window.location.assign("/");
+  };
 
   return (
     <Ctx.Provider value={{ user, session, loading, isAdmin, isSuperAdmin, isRider, signOut }}>
