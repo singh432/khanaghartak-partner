@@ -34,16 +34,54 @@ export const signInWithPhoneOtp = createServerFn({ method: "POST" })
       return { ok: false as const, error: verified.error ?? "Verification failed", token_hash: null, email: null };
     }
 
-    // 1) Existing account already owning this verified number?
-    const { data: existing } = await supabaseAdmin
+    // 1) Find any existing account that already belongs to this number.
+    //    Order of trust: verified phone → customer profile → rider profile → restaurant contact.
+    //    This makes a Google/Gmail signup (restaurant, rider, zone manager, customer)
+    //    reachable by its mobile number instead of creating a second account.
+    const like = `%${phone10}`;
+
+    const candidates: string[] = [];
+
+    const { data: verifiedRows } = await supabaseAdmin
       .from("verified_phones")
       .select("user_id")
       .eq("phone", phone10)
       .order("verified_at", { ascending: true })
-      .limit(1)
-      .maybeSingle();
+      .limit(1);
+    for (const r of (verifiedRows ?? []) as { user_id: string }[]) candidates.push(r.user_id);
 
-    let userId = (existing as { user_id?: string } | null)?.user_id ?? null;
+    if (!candidates.length) {
+      const { data: profileRows } = await supabaseAdmin
+        .from("profiles")
+        .select("id")
+        .like("phone", like)
+        .order("created_at", { ascending: true })
+        .limit(1);
+      for (const r of (profileRows ?? []) as { id: string }[]) candidates.push(r.id);
+    }
+
+    if (!candidates.length) {
+      const { data: riderRows } = await supabaseAdmin
+        .from("rider_profiles")
+        .select("user_id")
+        .like("phone", like)
+        .order("created_at", { ascending: true })
+        .limit(1);
+      for (const r of (riderRows ?? []) as { user_id: string }[]) candidates.push(r.user_id);
+    }
+
+    if (!candidates.length) {
+      const { data: restRows } = await supabaseAdmin
+        .from("restaurants")
+        .select("owner_id")
+        .like("phone", like)
+        .not("owner_id", "is", null)
+        .order("created_at", { ascending: true })
+        .limit(1);
+      for (const r of (restRows ?? []) as { owner_id: string }[]) candidates.push(r.owner_id);
+    }
+
+    let userId = candidates[0] ?? null;
     let email: string | null = null;
 
     if (userId) {
