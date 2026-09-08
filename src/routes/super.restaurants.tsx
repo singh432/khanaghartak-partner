@@ -94,13 +94,24 @@ function SuperRestaurants() {
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
                     <StatusBadge status={r.status} />
-                    {r.status === "active" && (
-                      <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${r.is_open ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive"}`}>
-                        {r.is_open ? "Open" : "Closed"}
-                      </span>
-                    )}
+                    {r.status === "active" && (() => {
+                      const live = isRestaurantOpen(r, now);
+                      const label = hoursLabel(r.opening_time, r.closing_time);
+                      return (
+                        <span
+                          title={label ? `Hours: ${label}` : "No hours set"}
+                          className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${live ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive"}`}
+                        >
+                          {live ? "Open" : "Closed"}
+                        </span>
+                      );
+                    })()}
                   </div>
+                  {r.status === "active" && hoursLabel(r.opening_time, r.closing_time) && (
+                    <p className="mt-1 text-[11px] text-muted-foreground">{hoursLabel(r.opening_time, r.closing_time)}</p>
+                  )}
                 </td>
+
                 <td className="px-4 py-3">
                   <div className="flex justify-end gap-1.5">
                     {r.status === "active" && (
