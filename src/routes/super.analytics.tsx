@@ -7,7 +7,7 @@ import { FUNNEL_STEPS } from "@/lib/analytics";
 
 export const Route = createFileRoute("/super/analytics")({ component: SuperAnalytics });
 
-type O = { restaurant_id: string | null; items: any; total: number; subtotal: number; platform_fee: number; delivery_fee: number; status: string; created_at: string };
+type O = { restaurant_id: string | null; items: any; total: number; subtotal: number; platform_fee: number; delivery_fee: number; discount: number; status: string; created_at: string };
 type Ev = { event: string; session_id: string; user_id: string | null; device: string | null; created_at: string };
 
 type Preset = "today" | "yesterday" | "7d" | "30d" | "custom";
@@ -48,7 +48,7 @@ function SuperAnalytics() {
       setRmap(m);
     });
     const start = new Date(); start.setDate(start.getDate() - 30);
-    supabase.from("orders").select("restaurant_id,items,total,subtotal,platform_fee,delivery_fee,status,created_at").gte("created_at", start.toISOString()).then(({ data }) => setOrders((data ?? []) as O[]));
+    supabase.from("orders").select("restaurant_id,items,total,subtotal,platform_fee,delivery_fee,discount,status,created_at").gte("created_at", start.toISOString()).then(({ data }) => setOrders((data ?? []) as O[]));
   }, []);
 
   useEffect(() => {
