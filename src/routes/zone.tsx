@@ -130,6 +130,15 @@ function ZoneManagerPage() {
     return riders.slice().sort((a, b) => rank(a.status) - rank(b.status));
   }, [riders]);
 
+  const sortedRestaurants = useMemo(() => {
+    return restaurants.slice().sort((a, b) => {
+      const openA = isRestaurantOpen(a, now);
+      const openB = isRestaurantOpen(b, now);
+      if (openA !== openB) return openA ? -1 : 1;
+      return 0;
+    });
+  }, [restaurants, now]);
+
   const filtered = useMemo(() => orders.filter((o) => inRange(o.created_at, range)), [orders, range]);
 
   const stats = useMemo(() => {
