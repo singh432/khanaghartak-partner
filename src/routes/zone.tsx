@@ -33,7 +33,7 @@ type Order = {
   address: string; landmark: string | null; rider_id: string | null; rider_name: string | null; created_at: string;
 };
 type Rider = { user_id: string; full_name: string | null; phone: string | null; status: string; is_online: boolean };
-type Rest = { id: string; name: string; status: string; is_open: boolean; address: string | null; phone: string | null };
+type Rest = { id: string; name: string; status: string; is_open: boolean; address: string | null; phone: string | null; opening_time?: string | null; closing_time?: string | null };
 type Cust = { user_id: string; full_name: string | null; phone: string | null; orders_count: number; total_spent: number | null; last_order_at: string };
 
 type Tab = "orders" | "restaurants" | "riders" | "customers" | "map";
