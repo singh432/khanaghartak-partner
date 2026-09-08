@@ -46,6 +46,13 @@ function SuperRestaurants() {
     load();
   };
 
+  const setHours = async (id: string, opening_time: string | null, closing_time: string | null) => {
+    const { error } = await supabase.from("restaurants").update({ opening_time, closing_time }).eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success("Timings updated");
+    load();
+  };
+
   const setOpen = async (id: string, is_open: boolean) => {
     const { error } = await supabase.from("restaurants").update({ is_open }).eq("id", id);
     if (error) return toast.error(error.message);
@@ -107,9 +114,7 @@ function SuperRestaurants() {
                       );
                     })()}
                   </div>
-                  {r.status === "active" && hoursLabel(r.opening_time, r.closing_time) && (
-                    <p className="mt-1 text-[11px] text-muted-foreground">{hoursLabel(r.opening_time, r.closing_time)}</p>
-                  )}
+                  <HoursEditor row={r} onSave={setHours} />
                 </td>
 
                 <td className="px-4 py-3">
@@ -144,6 +149,27 @@ function SuperRestaurants() {
           </tbody>
         </table>
       </div>
+    </div>
+  );
+}
+
+function HoursEditor({ row, onSave }: { row: R; onSave: (id: string, o: string | null, c: string | null) => void }) {
+  const trim = (t: string | null) => (t ? t.slice(0, 5) : "");
+  const [open, setOpen] = useState(trim(row.opening_time));
+  const [close, setClose] = useState(trim(row.closing_time));
+  useEffect(() => { setOpen(trim(row.opening_time)); setClose(trim(row.closing_time)); }, [row.opening_time, row.closing_time]);
+  const dirty = open !== trim(row.opening_time) || close !== trim(row.closing_time);
+  return (
+    <div className="mt-1.5 flex items-center gap-1.5">
+      <input type="time" value={open} onChange={(e) => setOpen(e.target.value)}
+        className="h-8 rounded-lg border bg-background px-2 text-xs" aria-label="Opening time" />
+      <span className="text-xs text-muted-foreground">–</span>
+      <input type="time" value={close} onChange={(e) => setClose(e.target.value)}
+        className="h-8 rounded-lg border bg-background px-2 text-xs" aria-label="Closing time" />
+      {dirty && (
+        <button onClick={() => onSave(row.id, open || null, close || null)}
+          className="rounded-lg bg-primary px-2.5 py-1.5 text-xs font-bold text-primary-foreground">Save</button>
+      )}
     </div>
   );
 }
