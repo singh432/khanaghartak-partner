@@ -148,12 +148,21 @@ function AdminSettings() {
     return (
       <div className="p-6 text-center">
         <img src={khanaGharTakLogoUrl} alt="KhanaGharTak" width={72} height={72} className="mx-auto h-18 w-18 rounded-2xl object-contain" />
-        <h1 className="mt-4 text-lg font-bold">No restaurant added</h1>
-        <p className="mt-2 text-sm text-muted-foreground">Go back to Admin Dashboard and add your restaurant first.</p>
-        <a href="/admin" className="mt-5 inline-flex rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground">Add restaurant</a>
+        <h1 className="mt-4 text-lg font-bold">{loadError ? "Couldn't load your restaurant" : "No restaurant added"}</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          {loadError
+            ? "Your restaurant details didn't load. Please check your connection and try again."
+            : "Go back to Admin Dashboard and add your restaurant first."}
+        </p>
+        {loadError ? (
+          <button onClick={() => setReloadKey((k) => k + 1)} className="mt-5 inline-flex rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground">Try again</button>
+        ) : (
+          <a href="/admin" className="mt-5 inline-flex rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground">Add restaurant</a>
+        )}
       </div>
     );
   }
+
 
   return (
     <div className="space-y-4 p-4 md:p-6">
