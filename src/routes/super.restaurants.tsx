@@ -71,6 +71,14 @@ function SuperRestaurants() {
   const filtered = rows.filter((r) =>
     !q || r.name.toLowerCase().includes(q.toLowerCase()) || (r.phone ?? "").includes(q)
   );
+  const sortedRows = useMemo(() => {
+    return filtered.slice().sort((a, b) => {
+      const openA = isRestaurantOpen(a, now);
+      const openB = isRestaurantOpen(b, now);
+      if (openA !== openB) return openA ? -1 : 1;
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+  }, [filtered, now]);
 
   return (
     <div className="space-y-4 p-4 md:p-6">
