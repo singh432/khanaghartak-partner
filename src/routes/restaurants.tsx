@@ -91,7 +91,7 @@ function RestaurantsPage() {
         </p>
       ) : (
         <ul className="grid gap-4 sm:grid-cols-2">
-          {restaurants.map((r) => (
+          {sortedRestaurants.map((r) => (
             <li key={r.id} className="rounded-2xl border bg-card p-5">
               <h2 className="font-display text-xl leading-tight text-foreground">{r.name}</h2>
               {r.tagline && <p className="mt-1 text-sm">{r.tagline}</p>}
