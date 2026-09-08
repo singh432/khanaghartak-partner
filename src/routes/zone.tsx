@@ -56,6 +56,8 @@ function ZoneManagerPage() {
   const [busy, setBusy] = useState<string | null>(null);
   const [points, setPoints] = useState<ZonePoint[]>([]);
   const [savingMap, setSavingMap] = useState(false);
+  const now = useMinuteTick();
+
 
   useEffect(() => {
     if (!authLoading && !user) navigate({ to: "/login", search: { as: "manager" } });
