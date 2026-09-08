@@ -140,7 +140,7 @@ function SuperCustomers() {
               const isBlocked = blocked.has(r.id);
               return (
                 <tr key={r.id} className="border-t">
-                  <td className="px-4 py-3 font-semibold">{r.full_name ?? "—"}</td>
+                  <td className="px-4 py-3 font-semibold">{(r.full_name ?? "").trim() || r.phone || "—"}</td>
                   <td className="px-4 py-3 text-muted-foreground">{r.phone ?? "—"}</td>
                   <td className="px-4 py-3">{c.n}</td>
                   <td className="px-4 py-3 font-semibold">₹{c.total.toFixed(0)}</td>
@@ -167,7 +167,7 @@ function SuperCustomers() {
       {view && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setView(null)}>
           <div className="max-h-[80vh] w-full max-w-lg overflow-auto rounded-2xl bg-card p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-lg font-bold">{view.user.full_name}</h2>
+            <h2 className="text-lg font-bold">{(view.user.full_name ?? "").trim() || view.user.phone || "Customer"}</h2>
             <p className="text-xs text-muted-foreground">{view.user.phone}</p>
             <div className="mt-4 space-y-2">
               {view.orders.map(o => (
