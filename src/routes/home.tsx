@@ -103,9 +103,17 @@ function HomePage() {
   const categoryNames = Object.keys(categoryMap)
     .filter((name) => categoryMap[name].some((id) => restaurants.some((r) => r.id === id)))
     .sort((a, b) => a.localeCompare(b));
-  const visibleRestaurants = activeCategory
-    ? restaurants.filter((r) => categoryMap[activeCategory]?.includes(r.id))
-    : restaurants;
+  const visibleRestaurants = useMemo(() => {
+    const list = activeCategory
+      ? restaurants.filter((r) => categoryMap[activeCategory]?.includes(r.id))
+      : restaurants;
+    return list.slice().sort((a, b) => {
+      const openA = isRestaurantOpen(a, now);
+      const openB = isRestaurantOpen(b, now);
+      if (openA !== openB) return openA ? -1 : 1;
+      return (a.distance ?? Number.MAX_SAFE_INTEGER) - (b.distance ?? Number.MAX_SAFE_INTEGER);
+    });
+  }, [restaurants, activeCategory, categoryMap, now]);
 
   if (loading) return <PageSpinner label="Checking your session…" />;
   if (!user) return <PageSpinner label="Opening sign in…" />;
