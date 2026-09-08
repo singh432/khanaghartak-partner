@@ -1179,6 +1179,7 @@ export type Database = {
           customer_name: string
           customer_phone: string
           delivery_fee: number
+          discount: number
           distance_km: number
           id: string
           is_fake: boolean
