@@ -45,7 +45,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, sess) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, sess) => {
+      // Only an explicit logout ends the session. A transient SIGNED_OUT (e.g. a failed
+      // token refresh after the phone suspended the tab) must not log the user out.
+      if (!sess && event === "SIGNED_OUT" && !explicitSignOutRef.current) return;
       setLoading(true);
       setSession(sess);
       setUser(sess?.user ?? null);
@@ -58,6 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsAdmin(false); setIsSuperAdmin(false); setIsRider(false); setLoading(false);
       }
     });
+
 
     // Restoring the stored session can be slow (brokered preview storage), so retry
     // instead of treating a slow read as "signed out" — that is what forced re-login.
