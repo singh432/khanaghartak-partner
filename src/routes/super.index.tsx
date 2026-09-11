@@ -55,7 +55,8 @@ function SuperDashboard() {
     const delivered = allOrders.filter((o: any) => o.status === "delivered");
     const filteredDelivered = delivered.filter((o: any) => inRange(o.created_at, payoutRange));
 
-    const revenue = delivered.reduce((s, o: any) => s + Number(o.total), 0);
+    const grossOrderValue = delivered.reduce((s, o: any) => s + Number(o.total), 0);
+    const lifetimePayout = sumPayouts(delivered as any);
     const payout = sumPayouts(filteredDelivered as any);
 
     const nameById: Record<string, string> = {};
@@ -119,7 +120,8 @@ function SuperDashboard() {
       activeRestaurants: rs.filter((r: any) => r.status === "active").length,
       totalCustomers: raw.customerCount,
       totalOrders: allOrders.length,
-      totalRevenue: revenue,
+      totalRevenue: lifetimePayout.platformGross,
+      grossOrderValue,
       todayOrders: todayOrders.length,
       pendingOrders: allOrders.filter((o: any) => ["placed", "accepted", "preparing", "ready_for_pickup", "out_for_delivery"].includes(o.status)).length,
       deliveredOrders: delivered.length,
@@ -167,7 +169,7 @@ function SuperDashboard() {
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
         <Card label="Pending" value={s?.pendingOrders ?? "—"} icon={Clock} tone="warn" />
         <Card label="Delivered" value={s?.deliveredOrders ?? "—"} icon={CheckCircle2} tone="success" />
-        <Card label="Avg Order" value={s && s.totalOrders ? `₹${Math.round(s.totalRevenue / Math.max(s.deliveredOrders, 1))}` : "—"} icon={TrendingUp} />
+        <Card label="Avg Order" value={s && s.totalOrders ? `₹${Math.round(s.grossOrderValue / Math.max(s.deliveredOrders, 1))}` : "—"} icon={TrendingUp} />
       </div>
 
       <section className="rounded-2xl border bg-card p-5 shadow-sm">
