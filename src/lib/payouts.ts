@@ -2,7 +2,7 @@
 // Restaurant keeps 85% of food value (subtotal); KhanaGharTak collects 15% commission
 // + platform fee + the delivery fee charged to the customer.
 // Riders earn 60% of that KhanaGharTak earning.
-// Invariant: restaurantPayout + platformEarning === order total.
+// Discounts never change platform earning, rider payout, or platform net.
 
 export const COMMISSION_RATE = 0.15;
 export const RIDER_SHARE_RATE = 0.6;
@@ -33,9 +33,9 @@ export function riderEarning(o: PayoutOrder) {
   return platformEarning(o) * RIDER_SHARE_RATE;
 }
 
-/** What KhanaGharTak keeps after paying the rider, minus any discount it funded. */
+/** KhanaGharTak net = exactly 40% of its earning; discounts are excluded. */
 export function platformNetEarning(o: PayoutOrder) {
-  return platformEarning(o) * (1 - RIDER_SHARE_RATE) - n(o.discount);
+  return platformEarning(o) * (1 - RIDER_SHARE_RATE);
 }
 
 /** Cash the rider physically collects from the customer (COD orders only). */
