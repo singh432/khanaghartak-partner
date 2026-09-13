@@ -50,6 +50,7 @@ function SuperRevenue() {
 
   const totals = useMemo(() => {
     const delivered = scoped.filter((o) => o.status === "delivered");
+    const allRevenue = sumPayouts(scoped as any);
     const p = sumPayouts(delivered as any);
     return {
       orders: scoped.length,
@@ -57,12 +58,12 @@ function SuperRevenue() {
       cancelled: scoped.filter((o) => ["cancelled", "rejected"].includes(o.status)).length,
       revenue: delivered.reduce((s, o) => s + Number(o.total), 0),
       restaurant: p.restaurant,
-      gross: p.platformGross,
-      discounts: p.discount,
-      adjustments: p.adjustment,
-      actual: p.platformActual,
+      gross: allRevenue.platformGross,
+      discounts: allRevenue.discount,
+      adjustments: allRevenue.adjustment,
+      actual: allRevenue.platformActual,
       rider: p.rider,
-      net: p.platformNet,
+      net: allRevenue.platformNet,
     };
   }, [scoped]);
 
@@ -72,6 +73,7 @@ function SuperRevenue() {
     return rows
       .map((r) => {
         const delivered = r.orders.filter((o) => o.status === "delivered");
+        const allRevenue = sumPayouts(r.orders as any);
         const p = sumPayouts(delivered as any);
         return {
           id: r.id,
@@ -79,10 +81,10 @@ function SuperRevenue() {
           count: r.orders.length,
           delivered: delivered.length,
           cancelled: r.orders.filter((o) => ["cancelled", "rejected"].includes(o.status)).length,
-          revenue: delivered.reduce((s, o) => s + Number(o.total), 0),
+          revenue: allRevenue.platformActual,
           restaurant: p.restaurant,
           rider: p.rider,
-          net: p.platformNet,
+          net: allRevenue.platformNet,
         };
       })
       .filter((r) => r.count > 0 || r.id !== "none")
@@ -98,7 +100,7 @@ function SuperRevenue() {
           <IndianRupee className="h-5 w-5 text-primary" />
           <div>
             <h1 className="text-2xl font-extrabold tracking-tight">Revenue &amp; Profit</h1>
-            <p className="text-sm text-muted-foreground">{rangeLabel(range)} · delivered orders only</p>
+            <p className="text-sm text-muted-foreground">{rangeLabel(range)} · platform revenue includes all orders</p>
           </div>
         </div>
         <DateRangeFilter value={range} onChange={setRange} />
@@ -108,13 +110,13 @@ function SuperRevenue() {
         <Stat label="Orders" value={String(totals.orders)} />
         <Stat label="Delivered" value={String(totals.delivered)} />
         <Stat label="Cancelled" value={String(totals.cancelled)} />
-        <Stat label="Revenue" value={inr(totals.revenue)} />
+        <Stat label="Customer payments (delivered)" value={inr(totals.revenue)} />
         <Stat label="Restaurant payout" value={inr(totals.restaurant)} />
-        <Stat label="Gross platform revenue" value={inr(totals.gross)} />
+        <Stat label="Gross platform revenue (all orders)" value={inr(totals.gross)} />
         <Stat label="Customer discounts" value={inr(-totals.discounts)} />
         {totals.adjustments !== 0 && <Stat label="Other adjustments" value={inr(totals.adjustments)} />}
-        <Stat label="Actual platform earning" value={inr(totals.actual)} />
-        <Stat label="Rider payout" value={inr(totals.rider)} />
+        <Stat label="Total platform revenue" value={inr(totals.actual)} />
+        <Stat label="Rider payout (delivered)" value={inr(totals.rider)} />
         <Stat label="Final net profit" value={inr(totals.net)} highlight />
         <Stat label="AOV" value={inr(totals.delivered ? totals.revenue / totals.delivered : 0)} />
       </div>

@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { TrendingUp, ShoppingBag, CheckCircle2, XCircle, Clock, IndianRupee } from "lucide-react";
-import { COMMISSION_RATE } from "@/lib/payouts";
+import { sumPayouts, COMMISSION_RATE } from "@/lib/payouts";
 import { DateRangeFilter } from "@/components/DateRangeFilter";
 import { inRange, rangeLabel, todayInputValue, type DateRange } from "@/lib/date-range";
 
@@ -22,7 +22,8 @@ function AdminDashboard() {
   const period = useMemo(() => {
     const list = deliveredRows.filter((r) => inRange(r.created_at, range));
     const foodSales = list.reduce((s, r) => s + Number(r.subtotal ?? 0), 0);
-    return { orders: list.length, foodSales };
+    const p = sumPayouts(list);
+    return { orders: list.length, foodSales, platformCut: p.platformGross - p.discount };
   }, [deliveredRows, range]);
 
   const load = async () => {
@@ -102,7 +103,7 @@ function AdminDashboard() {
         </div>
         <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
           <Money label="Your Food Sales" value={period.foodSales} strong />
-          <Money label={`KhanaGharTak Cut (${Math.round(COMMISSION_RATE * 100)}%)`} value={period.foodSales * COMMISSION_RATE} tone="text-destructive" />
+          <Money label={`KhanaGharTak Cut (${Math.round(COMMISSION_RATE * 100)}%)`} value={sumPayouts(deliveredRows.filter(r => inRange(r.created_at, range))).platformGross - sumPayouts(deliveredRows.filter(r => inRange(r.created_at, range))).discount} tone="text-destructive" />
           <Money label="Your Net Payout" value={period.foodSales * (1 - COMMISSION_RATE)} tone="text-success" />
         </div>
         <p className="mt-3 text-[11px] text-muted-foreground">

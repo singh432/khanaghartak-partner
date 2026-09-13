@@ -1,9 +1,8 @@
 // Shared payout math for KhanaGharTak
 // Restaurant keeps 85% of food value (subtotal); KhanaGharTak collects 15% commission
 // + platform fee + the delivery fee charged to the customer.
-// Riders earn 60% of that KhanaGharTak earning.
-// Discounts never inflate platform revenue or rider payout. They are an explicit
-// platform-funded deduction when reconciling the customer's actual payment.
+// Discounts are deducted before actual KhanaGharTak earning is split:
+// riders receive 60% and KhanaGharTak retains 40%.
 
 export const COMMISSION_RATE = 0.15;
 export const RIDER_SHARE_RATE = 0.6;
@@ -47,9 +46,14 @@ export function customerDiscount(o: PayoutOrder) {
   return Math.max(0, n(o.discount));
 }
 
-/** Rider's cut = 60% of the KhanaGharTak earning. */
+/** Platform revenue available for the rider/KhanaGharTak split. */
+export function actualPlatformEarning(o: PayoutOrder) {
+  return Math.max(0, platformEarning(o) - customerDiscount(o));
+}
+
+/** Rider's cut = 60% of actual platform revenue after discounts. */
 export function riderEarning(o: PayoutOrder) {
-  return platformEarning(o) * RIDER_SHARE_RATE;
+  return actualPlatformEarning(o) * RIDER_SHARE_RATE;
 }
 
 /**
@@ -63,9 +67,9 @@ export function orderLedger(o: PayoutOrder) {
   const discount = customerDiscount(o);
   const expectedCustomerPayment = n(o.subtotal) + n(o.platform_fee) + n(o.delivery_fee) - discount;
   const adjustment = customerPayment - expectedCustomerPayment;
-  const platformActual = customerPayment - restaurant;
+  const platformActual = actualPlatformEarning(o);
   const rider = riderEarning(o);
-  const platformNet = platformActual - rider;
+  const platformNet = platformActual * (1 - RIDER_SHARE_RATE);
 
   return {
     customerPayment,
@@ -79,7 +83,7 @@ export function orderLedger(o: PayoutOrder) {
   };
 }
 
-/** Final cash remaining after restaurant payout, rider payout, discounts, and adjustments. */
+/** KhanaGharTak's 40% share of actual platform revenue after discounts. */
 export function platformNetEarning(o: PayoutOrder) {
   return orderLedger(o).platformNet;
 }

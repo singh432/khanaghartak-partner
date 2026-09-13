@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { platformNetEarning } from "@/lib/payouts";
+import { actualPlatformEarning } from "@/lib/payouts";
 import { supabase } from "@/integrations/supabase/client";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, LineChart, Line } from "recharts";
 import { FUNNEL_STEPS } from "@/lib/analytics";
@@ -104,16 +104,15 @@ function SuperAnalytics() {
       m[d.toISOString().slice(0, 10)] = 0;
     }
     orders.forEach(o => {
-      if (o.status !== "delivered") return;
       const k = new Date(o.created_at).toISOString().slice(0, 10);
-      if (k in m) m[k] += Number(o.total);
+      if (k in m) m[k] += actualPlatformEarning(o);
     });
     return Object.entries(m).map(([d, v]) => ({ day: d.slice(5), revenue: Math.round(v) }));
   }, [orders]);
 
   const topRestaurants = useMemo(() => {
     const m: Record<string, number> = {};
-    orders.forEach(o => { if (o.restaurant_id) m[o.restaurant_id] = (m[o.restaurant_id] ?? 0) + Number(o.total); });
+    orders.forEach(o => { if (o.restaurant_id) m[o.restaurant_id] = (m[o.restaurant_id] ?? 0) + actualPlatformEarning(o); });
     return Object.entries(m).map(([id, v]) => ({ name: rmap[id] ?? id.slice(0, 6), revenue: Math.round(v) }))
       .sort((a, b) => b.revenue - a.revenue).slice(0, 5);
   }, [orders, rmap]);
@@ -127,7 +126,7 @@ function SuperAnalytics() {
     return Object.entries(m).map(([name, qty]) => ({ name, qty })).sort((a, b) => b.qty - a.qty).slice(0, 5);
   }, [orders]);
 
-  const totalEarnings = orders.filter(o => o.status === "delivered").reduce((s, o) => s + platformNetEarning(o as any), 0);
+  const totalEarnings = orders.reduce((s, o) => s + actualPlatformEarning(o), 0);
 
   const fmt = (d: string | null) => d ? new Date(d).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "—";
 
@@ -228,12 +227,12 @@ function SuperAnalytics() {
 
       {/* ---- Revenue (existing) ---- */}
       <div className="rounded-2xl border bg-card p-5 shadow-sm">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Reconciled Net Profit (30d)</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Total Platform Revenue After Discounts (30d)</p>
         <p className="mt-2 text-4xl font-extrabold">₹{totalEarnings.toFixed(0)}</p>
       </div>
 
       <div className="rounded-2xl border bg-card p-5 shadow-sm">
-        <p className="mb-4 text-sm font-bold">Daily Revenue (last 7 days)</p>
+        <p className="mb-4 text-sm font-bold">Daily Platform Revenue (last 7 days)</p>
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={daily}>
