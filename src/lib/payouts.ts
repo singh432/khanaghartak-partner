@@ -17,6 +17,19 @@ export type PayoutOrder = {
   payment_method?: string | null;
 };
 
+export type PayoutTotals = {
+  restaurant: number;
+  platformGross: number;
+  discount: number;
+  adjustment: number;
+  platformActual: number;
+  rider: number;
+  platformNet: number;
+  orderTotal: number;
+  cash: number;
+  deposit: number;
+};
+
 
 const n = (v: unknown) => Number(v ?? 0) || 0;
 
@@ -83,7 +96,7 @@ export function riderDeposit(o: PayoutOrder) {
 }
 
 export function sumPayouts(orders: PayoutOrder[]) {
-  return orders.reduce(
+  return orders.reduce<PayoutTotals>(
     (acc, o) => {
       const ledger = orderLedger(o);
       acc.restaurant += ledger.restaurant;

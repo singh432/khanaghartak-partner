@@ -108,7 +108,7 @@ function SuperOrders() {
       <div className="overflow-x-auto rounded-2xl border bg-card">
         <table className="w-full text-sm">
           <thead className="bg-secondary/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
-            <tr><th className="px-4 py-3">Order ID</th><th className="px-4 py-3">Restaurant</th><th className="px-4 py-3">Customer</th><th className="px-4 py-3">Paid</th><th className="px-4 py-3">Restaurant</th><th className="px-4 py-3">Gross revenue</th><th className="px-4 py-3">Discount</th><th className="px-4 py-3">Rider</th><th className="px-4 py-3">Final net</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Courier</th><th className="px-4 py-3">Date</th><th className="px-4 py-3 text-right">Actions</th></tr>
+            <tr><th className="px-4 py-3">Order ID</th><th className="px-4 py-3">Restaurant</th><th className="px-4 py-3">Customer</th><th className="px-4 py-3">Paid</th><th className="px-4 py-3">Restaurant</th><th className="px-4 py-3">Gross revenue</th><th className="px-4 py-3">Discount</th><th className="px-4 py-3">Adjustment</th><th className="px-4 py-3">Actual earning</th><th className="px-4 py-3">Rider</th><th className="px-4 py-3">Final net</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Courier</th><th className="px-4 py-3">Date</th><th className="px-4 py-3 text-right">Actions</th></tr>
           </thead>
           <tbody>
             {filtered.map((o) => {
@@ -121,6 +121,8 @@ function SuperOrders() {
                 <td className="px-4 py-3 font-semibold text-success">₹{ledger.restaurant.toFixed(0)}</td>
                 <td className="px-4 py-3 font-semibold text-primary">₹{ledger.platformGross.toFixed(0)}</td>
                 <td className="px-4 py-3 text-amber-600">{ledger.discount ? `−₹${ledger.discount.toFixed(0)}` : "—"}</td>
+                <td className="px-4 py-3 text-amber-600">{ledger.adjustment ? `${ledger.adjustment > 0 ? "+" : "−"}₹${Math.abs(ledger.adjustment).toFixed(0)}` : "—"}</td>
+                <td className="px-4 py-3 font-semibold text-primary">₹{ledger.platformActual.toFixed(0)}</td>
                 <td className="px-4 py-3 text-amber-600">₹{ledger.rider.toFixed(0)}</td>
                 <td className="px-4 py-3 font-bold text-success">₹{ledger.platformNet.toFixed(0)}</td>
                 <td className="px-4 py-3">
@@ -145,7 +147,7 @@ function SuperOrders() {
                 </td>
               </tr>;
             })}
-            {filtered.length === 0 && <tr><td colSpan={13} className="px-4 py-10 text-center text-sm text-muted-foreground">No orders</td></tr>}
+            {filtered.length === 0 && <tr><td colSpan={15} className="px-4 py-10 text-center text-sm text-muted-foreground">No orders</td></tr>}
           </tbody>
         </table>
       </div>
