@@ -228,7 +228,7 @@ function SuperAnalytics() {
 
       {/* ---- Revenue (existing) ---- */}
       <div className="rounded-2xl border bg-card p-5 shadow-sm">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Net Profit (30d) — 40% share</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Reconciled Net Profit (30d)</p>
         <p className="mt-2 text-4xl font-extrabold">₹{totalEarnings.toFixed(0)}</p>
       </div>
 
