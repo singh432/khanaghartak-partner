@@ -1,0 +1,1 @@
+ALTER FUNCTION public.super_zone_stats(timestamptz, timestamptz) SECURITY INVOKER;
