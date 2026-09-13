@@ -7,7 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { khanaGharTakLogoUrl } from "@/assets/brand";
 import { DateRangeFilter } from "@/components/DateRangeFilter";
 import { inRange, rangeLabel, todayInputValue, type DateRange } from "@/lib/date-range";
-import { sumPayouts, inr } from "@/lib/payouts";
+import { sumPayouts, sumPlatformRevenue, inr } from "@/lib/payouts";
 import type { ZonePoint } from "@/lib/zones";
 import { isRestaurantOpen, hoursLabel } from "@/lib/hours";
 import { useMinuteTick } from "@/hooks/useMinuteTick";
@@ -143,18 +143,19 @@ function ZoneManagerPage() {
 
   const stats = useMemo(() => {
     const delivered = filtered.filter((o) => o.status === "delivered");
-    const allRevenue = sumPayouts(filtered as any);
+    const allRevenue = sumPlatformRevenue(filtered as any);
     const pay = sumPayouts(delivered as any);
     return {
       orders: filtered.length,
       delivered: delivered.length,
       cancelled: filtered.filter((o) => ["cancelled", "rejected"].includes(o.status)).length,
-      gross: allRevenue.platformGross,
-      revenue: allRevenue.platformActual,
+      gross: pay.platformGross,
+      revenue: allRevenue.actual,
       restaurant: pay.restaurant,
-      discounts: allRevenue.discount,
-      rider: allRevenue.rider,
-      net: allRevenue.platformNet,
+      discounts: pay.discount,
+      settlement: pay.platformActual,
+      rider: pay.rider,
+      net: pay.platformNet,
     };
   }, [filtered]);
 
@@ -232,11 +233,12 @@ function ZoneManagerPage() {
           <Stat label="Orders" value={String(stats.orders)} />
           <Stat label="Delivered" value={String(stats.delivered)} />
           <Stat label="Cancelled" value={String(stats.cancelled)} />
-          <Stat label="Gross platform revenue" value={inr(stats.gross)} />
+          <Stat label="Gross settlement amount" value={inr(stats.gross)} />
           <Stat label="Restaurant payout" value={inr(stats.restaurant)} />
-          <Stat label="Customer discounts" value={inr(-stats.discounts)} />
-          <Stat label="Total platform revenue" value={inr(stats.revenue)} />
-          <Stat label="Rider cut" value={inr(stats.rider)} />
+          <Stat label="Delivered-order discounts" value={inr(-stats.discounts)} />
+          <Stat label="Platform revenue (all orders)" value={inr(stats.revenue)} />
+          <Stat label="Settlement after discounts" value={inr(stats.settlement)} />
+          <Stat label="Rider payout (delivered)" value={inr(stats.rider)} />
           <Stat label="Final net profit" value={inr(stats.net)} />
         </div>
 

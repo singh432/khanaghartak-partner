@@ -6,7 +6,7 @@ import { fetchAll } from "@/lib/supabase-paged";
 import { fetchAllZones, type DeliveryZone } from "@/lib/zones";
 import { DateRangeFilter } from "@/components/DateRangeFilter";
 import { inRange, rangeLabel, todayInputValue, type DateRange } from "@/lib/date-range";
-import { sumPayouts, inr } from "@/lib/payouts";
+import { sumPayouts, sumPlatformRevenue, inr } from "@/lib/payouts";
 
 export const Route = createFileRoute("/super/revenue")({
   component: SuperRevenue,
@@ -50,7 +50,7 @@ function SuperRevenue() {
 
   const totals = useMemo(() => {
     const delivered = scoped.filter((o) => o.status === "delivered");
-    const allRevenue = sumPayouts(scoped as any);
+    const allRevenue = sumPlatformRevenue(scoped as any);
     const deliveredPayouts = sumPayouts(delivered as any);
     return {
       orders: scoped.length,
@@ -58,12 +58,14 @@ function SuperRevenue() {
       cancelled: scoped.filter((o) => ["cancelled", "rejected"].includes(o.status)).length,
       revenue: delivered.reduce((s, o) => s + Number(o.total), 0),
       restaurant: deliveredPayouts.restaurant,
-      gross: allRevenue.platformGross,
-      discounts: allRevenue.discount,
-      adjustments: allRevenue.adjustment,
-      actual: allRevenue.platformActual,
-      rider: allRevenue.rider,
-      net: allRevenue.platformNet,
+      bookedGross: allRevenue.gross,
+      gross: deliveredPayouts.platformGross,
+      discounts: deliveredPayouts.discount,
+      adjustments: deliveredPayouts.adjustment,
+      actual: allRevenue.actual,
+      settlement: deliveredPayouts.platformActual,
+      rider: deliveredPayouts.rider,
+      net: deliveredPayouts.platformNet,
     };
   }, [scoped]);
 
@@ -73,7 +75,7 @@ function SuperRevenue() {
     return rows
       .map((r) => {
         const delivered = r.orders.filter((o) => o.status === "delivered");
-        const allRevenue = sumPayouts(r.orders as any);
+        const allRevenue = sumPlatformRevenue(r.orders as any);
         const deliveredPayouts = sumPayouts(delivered as any);
         return {
           id: r.id,
@@ -81,10 +83,10 @@ function SuperRevenue() {
           count: r.orders.length,
           delivered: delivered.length,
           cancelled: r.orders.filter((o) => ["cancelled", "rejected"].includes(o.status)).length,
-          revenue: allRevenue.platformActual,
+          revenue: allRevenue.actual,
           restaurant: deliveredPayouts.restaurant,
-          rider: allRevenue.rider,
-          net: allRevenue.platformNet,
+          rider: deliveredPayouts.rider,
+          net: deliveredPayouts.platformNet,
         };
       })
       .filter((r) => r.count > 0 || r.id !== "none")
@@ -112,11 +114,13 @@ function SuperRevenue() {
         <Stat label="Cancelled" value={String(totals.cancelled)} />
         <Stat label="Customer payments (delivered)" value={inr(totals.revenue)} />
         <Stat label="Restaurant payout" value={inr(totals.restaurant)} />
-        <Stat label="Gross platform revenue (all orders)" value={inr(totals.gross)} />
-        <Stat label="Customer discounts" value={inr(-totals.discounts)} />
+        <Stat label="All-order gross revenue" value={inr(totals.bookedGross)} />
+        <Stat label="Total platform revenue (all orders)" value={inr(totals.actual)} />
+        <Stat label="Gross settlement amount" value={inr(totals.gross)} />
+        <Stat label="Delivered-order discounts" value={inr(-totals.discounts)} />
         {totals.adjustments !== 0 && <Stat label="Other adjustments" value={inr(totals.adjustments)} />}
-        <Stat label="Total platform revenue" value={inr(totals.actual)} />
-        <Stat label="Rider cut" value={inr(totals.rider)} />
+        <Stat label="Settlement after discounts" value={inr(totals.settlement)} />
+        <Stat label="Rider payout (delivered)" value={inr(totals.rider)} />
         <Stat label="Final net profit" value={inr(totals.net)} highlight />
         <Stat label="AOV" value={inr(totals.delivered ? totals.revenue / totals.delivered : 0)} />
       </div>

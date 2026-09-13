@@ -4,3 +4,4 @@
 - [x] Include all order statuses in Total Platform Revenue.
 - [x] Align backend zone revenue report.
 - [x] Validate dashboard, payouts, analytics, and calculation examples.
+- [ ] Reconcile delivered-order payouts from customer payments through final net without mixing all-order revenue.

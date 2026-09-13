@@ -108,7 +108,7 @@ function SuperOrders() {
       <div className="overflow-x-auto rounded-2xl border bg-card">
         <table className="w-full text-sm">
           <thead className="bg-secondary/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
-            <tr><th className="px-4 py-3">Order ID</th><th className="px-4 py-3">Restaurant</th><th className="px-4 py-3">Customer</th><th className="px-4 py-3">Paid</th><th className="px-4 py-3">Restaurant</th><th className="px-4 py-3">Gross revenue</th><th className="px-4 py-3">Discount</th><th className="px-4 py-3">Adjustment</th><th className="px-4 py-3">Actual earning</th><th className="px-4 py-3">Rider</th><th className="px-4 py-3">Final net</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Courier</th><th className="px-4 py-3">Date</th><th className="px-4 py-3 text-right">Actions</th></tr>
+            <tr><th className="px-4 py-3">Order ID</th><th className="px-4 py-3">Restaurant</th><th className="px-4 py-3">Customer</th><th className="px-4 py-3">Paid</th><th className="px-4 py-3">Restaurant</th><th className="px-4 py-3">Gross available</th><th className="px-4 py-3">Discount</th><th className="px-4 py-3">Adjustment</th><th className="px-4 py-3">Settlement</th><th className="px-4 py-3">Rider</th><th className="px-4 py-3">Final net</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Courier</th><th className="px-4 py-3">Date</th><th className="px-4 py-3 text-right">Actions</th></tr>
           </thead>
           <tbody>
             {filtered.map((o) => {

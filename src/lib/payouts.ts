@@ -29,6 +29,11 @@ export type PayoutTotals = {
   deposit: number;
 };
 
+export type PlatformRevenueTotals = {
+  gross: number;
+  discount: number;
+  actual: number;
+};
 
 const n = (v: unknown) => Number(v ?? 0) || 0;
 
@@ -46,29 +51,24 @@ export function customerDiscount(o: PayoutOrder) {
   return Math.max(0, n(o.discount));
 }
 
-/** Platform revenue available for the rider/KhanaGharTak split. */
+/** Booked platform revenue after discounts, used for all-order revenue reporting. */
 export function actualPlatformEarning(o: PayoutOrder) {
   return platformEarning(o) - customerDiscount(o);
 }
 
-/** Rider's cut = 60% of actual platform revenue after discounts. */
-export function riderEarning(o: PayoutOrder) {
-  return actualPlatformEarning(o) * RIDER_SHARE_RATE;
-}
-
 /**
- * Full cash ledger for one order. `adjustment` exposes any variance between the
- * stored customer total and the expected subtotal + fees - discount identity.
+ * Delivered-order settlement ledger. It starts from the money actually paid,
+ * removes the restaurant payable and customer discount, then splits the balance.
  */
 export function orderLedger(o: PayoutOrder) {
   const customerPayment = n(o.total);
   const restaurant = restaurantPayout(o);
-  const platformGross = platformEarning(o);
+  const platformGross = customerPayment - restaurant;
   const discount = customerDiscount(o);
   const expectedCustomerPayment = n(o.subtotal) + n(o.platform_fee) + n(o.delivery_fee) - discount;
   const adjustment = customerPayment - expectedCustomerPayment;
-  const platformActual = actualPlatformEarning(o);
-  const rider = riderEarning(o);
+  const platformActual = platformGross - discount;
+  const rider = platformActual * RIDER_SHARE_RATE;
   const platformNet = platformActual * (1 - RIDER_SHARE_RATE);
 
   return {
@@ -83,7 +83,12 @@ export function orderLedger(o: PayoutOrder) {
   };
 }
 
-/** KhanaGharTak's 40% share of actual platform revenue after discounts. */
+/** Rider's cut from a completed-order settlement. */
+export function riderEarning(o: PayoutOrder) {
+  return orderLedger(o).rider;
+}
+
+/** KhanaGharTak's share of a completed-order settlement. */
 export function platformNetEarning(o: PayoutOrder) {
   return orderLedger(o).platformNet;
 }
@@ -116,6 +121,19 @@ export function sumPayouts(orders: PayoutOrder[]) {
       return acc;
     },
     { restaurant: 0, platformGross: 0, discount: 0, adjustment: 0, platformActual: 0, rider: 0, platformNet: 0, orderTotal: 0, cash: 0, deposit: 0 },
+  );
+}
+
+/** Revenue booked from all orders, independent from delivered-order settlement. */
+export function sumPlatformRevenue(orders: PayoutOrder[]) {
+  return orders.reduce<PlatformRevenueTotals>(
+    (acc, o) => {
+      acc.gross += platformEarning(o);
+      acc.discount += customerDiscount(o);
+      acc.actual += actualPlatformEarning(o);
+      return acc;
+    },
+    { gross: 0, discount: 0, actual: 0 },
   );
 }
 

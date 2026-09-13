@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Store, Users, ShoppingBag, IndianRupee, CheckCircle2, Clock, TrendingUp, Wallet, Map as MapIcon } from "lucide-react";
-import { sumPayouts, inr, RIDER_SHARE_RATE, restaurantPayout } from "@/lib/payouts";
+import { sumPayouts, sumPlatformRevenue, inr, RIDER_SHARE_RATE, restaurantPayout } from "@/lib/payouts";
 import { DateRangeFilter } from "@/components/DateRangeFilter";
 import { inRange, rangeLabel, todayInputValue, type DateRange } from "@/lib/date-range";
 import { fetchAll } from "@/lib/supabase-paged";
@@ -57,9 +57,9 @@ function SuperDashboard() {
     const filteredAll = allOrders.filter((o: any) => inRange(o.created_at, payoutRange));
 
     const grossOrderValue = delivered.reduce((s, o: any) => s + Number(o.total), 0);
-    const lifetimePayout = sumPayouts(allOrders as any);
+    const lifetimeRevenue = sumPlatformRevenue(allOrders as any);
     const payout = sumPayouts(filteredDelivered as any);
-    const allPayout = sumPayouts(filteredAll as any);
+    const allRevenue = sumPlatformRevenue(filteredAll as any);
 
     const nameById: Record<string, string> = {};
     rs.forEach((r: any) => { nameById[r.id] = r.name; });
@@ -100,11 +100,11 @@ function SuperDashboard() {
       const id = (o.zone_id as string) ?? "unassigned";
       const cur = byZone[id] ?? { orders: 0, delivered: 0, cancelled: 0, revenue: 0, net: 0 };
       cur.orders += 1;
-      const one = sumPayouts([o] as any);
-      cur.revenue += one.platformActual;
-      cur.net += one.platformNet;
+      const revenue = sumPlatformRevenue([o] as any);
+      cur.revenue += revenue.actual;
       if (o.status === "delivered") {
         cur.delivered += 1;
+        cur.net += sumPayouts([o] as any).platformNet;
       }
       if (o.status === "cancelled" || o.status === "rejected") cur.cancelled += 1;
       byZone[id] = cur;
@@ -123,13 +123,13 @@ function SuperDashboard() {
       activeRestaurants: rs.filter((r: any) => r.status === "active").length,
       totalCustomers: raw.customerCount,
       totalOrders: allOrders.length,
-      totalRevenue: lifetimePayout.platformActual,
+      totalRevenue: lifetimeRevenue.actual,
       grossOrderValue,
       todayOrders: todayOrders.length,
       pendingOrders: allOrders.filter((o: any) => ["placed", "accepted", "preparing", "ready_for_pickup", "out_for_delivery"].includes(o.status)).length,
       deliveredOrders: delivered.length,
       filteredDeliveredCount: filteredDelivered.length,
-      payout, allPayout,
+      payout, allRevenue,
       perRestaurant,
       perRider,
       perZone,
@@ -221,16 +221,16 @@ function SuperDashboard() {
         <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-4">
           <Money label="Customer Payments" value={s?.payout.orderTotal ?? 0} hint="actual amount paid on delivered orders" />
           <Money label="Payable to Restaurants" value={s?.payout.restaurant ?? 0} tone="success" hint="85% of food value" />
-          <Money label="Gross Platform Revenue" value={s?.allPayout.platformGross ?? 0} hint="15% commission + platform fee + delivery fee" />
-          <Money label="Customer Discounts" value={-(s?.allPayout.discount ?? 0)} tone="warn" hint="funded by KhanaGharTak; never counted as earning" />
+          <Money label="Gross Available Amount" value={s?.payout.platformGross ?? 0} hint="customer payments minus restaurant payable" />
+          <Money label="Customer Discounts" value={-(s?.payout.discount ?? 0)} tone="warn" hint="deducted before the rider and KhanaGharTak split" />
           {(s?.payout.adjustment ?? 0) !== 0 && <Money label="Other Adjustments" value={s?.payout.adjustment ?? 0} tone="warn" hint="stored payment variance requiring review" />}
-          <Money label="Total Platform Revenue" value={s?.allPayout.platformActual ?? 0} hint="gross platform revenue minus discounts across all orders" />
-          <Money label="Rider Cut" value={s?.allPayout.rider ?? 0} tone="warn" hint={`${Math.round(RIDER_SHARE_RATE * 100)}% of total platform revenue across all orders`} />
-          <Money label="KhanaGharTak Final Net" value={s?.allPayout.platformNet ?? 0} hint="40% of actual platform revenue from all orders" />
+          <Money label="Settlement Amount" value={s?.payout.platformActual ?? 0} hint="gross available amount minus discounts on delivered orders" />
+          <Money label="Rider Cut" value={s?.payout.rider ?? 0} tone="warn" hint={`${Math.round(RIDER_SHARE_RATE * 100)}% of delivered-order settlement`} />
+          <Money label="KhanaGharTak Final Net" value={s?.payout.platformNet ?? 0} hint="40% of delivered-order settlement" />
         </div>
 
         <p className="mt-3 text-xs text-muted-foreground">
-          Formula: gross platform revenue − discounts = actual earning; rider receives 60% and KhanaGharTak keeps 40%.
+          Settlement formula: customer payments − restaurant payable − discounts = rider payout + KhanaGharTak final net.
         </p>
 
         <div className="mt-5 overflow-x-auto">
