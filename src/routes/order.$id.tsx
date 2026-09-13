@@ -105,13 +105,13 @@ function OrderSuccess() {
             <p className="mt-1 text-sm"><span className="text-muted-foreground">Address: </span>{order.address}</p>
             <div className="mt-3 space-y-1 text-sm">
               <Row label="Items total" value={`₹${Number(order.subtotal ?? 0).toFixed(0)}`} />
-              <Row label={`Delivery${order.distance_km != null ? ` (${Number(order.distance_km).toFixed(1)} km)` : ""}`} value={`₹${Number(order.delivery_fee ?? 0).toFixed(0)}`} />
+              <Row label={`Delivery${order.distance_km != null ? ` (${Number(order.distance_km).toFixed(1)} km)` : ""}`} value={`₹${Number(order.delivery_fee ?? 0).toFixed(2)}`} />
               <Row label="Platform fee" value={`₹${Number(order.platform_fee ?? 0).toFixed(0)}`} />
               {Number(order.discount ?? 0) > 0 && (
                 <Row label="First order offer (5% off)" value={`− ₹${Number(order.discount).toFixed(0)}`} />
               )}
               <div className="my-1 h-px bg-border" />
-              <Row label="Grand total (COD)" value={`₹${Number(order.total).toFixed(0)}`} bold />
+              <Row label="Grand total (COD)" value={`₹${Number(order.total).toFixed(2)}`} bold />
             </div>
             <p className="mt-3 inline-flex items-center gap-2 rounded-full bg-accent px-3 py-1 text-xs font-semibold">
               <span className="capitalize">{order.status.replace(/_/g, " ")}</span>

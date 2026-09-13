@@ -42,7 +42,7 @@ function SuperSettings() {
         delivery_slabs: Array.isArray(row.delivery_slabs) && row.delivery_slabs.length
           ? row.delivery_slabs
           : DEFAULT_DELIVERY_SLABS,
-        delivery_extra_per_km: Number(row.delivery_extra_per_km ?? 8),
+        delivery_extra_per_km: Number(row.delivery_extra_per_km ?? 15),
       });
     });
     supabase.from("qr_settings").select("*").limit(1).maybeSingle().then(({ data }) => setQr(data as QR | null));
@@ -116,7 +116,7 @@ function SuperSettings() {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <h2 className="text-sm font-bold">Delivery charge table</h2>
-              <p className="text-xs text-muted-foreground">Charge by order value and restaurant→customer distance. 0 means FREE.</p>
+              <p className="text-xs text-muted-foreground">Above 5 km, the 3–5 km charge plus the exact extra distance rate applies.</p>
             </div>
             <Field label="Extra ₹ per km beyond 5 km">
               <input type="number" min={0} step="1" className="ai" value={s.delivery_extra_per_km}
