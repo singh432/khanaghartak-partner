@@ -63,7 +63,7 @@ function SuperRevenue() {
       adjustments: allRevenue.adjustment,
       actual: allRevenue.platformActual,
       rider: p.rider,
-      net: p.platformNet,
+      net: allRevenue.platformNet,
     };
   }, [scoped]);
 
@@ -84,7 +84,7 @@ function SuperRevenue() {
           revenue: allRevenue.platformActual,
           restaurant: p.restaurant,
           rider: p.rider,
-          net: p.platformNet,
+          net: allRevenue.platformNet,
         };
       })
       .filter((r) => r.count > 0 || r.id !== "none")

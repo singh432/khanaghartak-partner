@@ -143,16 +143,17 @@ function ZoneManagerPage() {
 
   const stats = useMemo(() => {
     const delivered = filtered.filter((o) => o.status === "delivered");
-    const pay = sumPayouts(filtered as any);
+    const allRevenue = sumPayouts(filtered as any);
+    const pay = sumPayouts(delivered as any);
     return {
       orders: filtered.length,
       delivered: delivered.length,
       cancelled: filtered.filter((o) => ["cancelled", "rejected"].includes(o.status)).length,
-      revenue: filtered.reduce((s, o) => s + Number(o.total), 0),
+      revenue: allRevenue.platformActual,
       restaurant: pay.restaurant,
-      discounts: pay.discount,
+      discounts: allRevenue.discount,
       rider: pay.rider,
-      net: pay.platformNet,
+      net: allRevenue.platformNet,
     };
   }, [filtered]);
 
@@ -230,7 +231,7 @@ function ZoneManagerPage() {
           <Stat label="Orders" value={String(stats.orders)} />
           <Stat label="Delivered" value={String(stats.delivered)} />
           <Stat label="Cancelled" value={String(stats.cancelled)} />
-          <Stat label="Revenue" value={inr(stats.revenue)} />
+          <Stat label="Platform revenue (all orders)" value={inr(stats.revenue)} />
           <Stat label="Restaurant payout" value={inr(stats.restaurant)} />
           <Stat label="Discount deductions" value={inr(-stats.discounts)} />
           <Stat label="Rider payout" value={inr(stats.rider)} />
