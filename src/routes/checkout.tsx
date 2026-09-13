@@ -353,7 +353,7 @@ function CheckoutPage() {
                   ? "—"
                   : deliveryFee === 0
                     ? "FREE"
-                    : `₹${deliveryFee.toFixed(0)}`
+                    : `₹${deliveryFee.toFixed(2)}`
                 : "Share location"
             }
           />
@@ -367,7 +367,7 @@ function CheckoutPage() {
             </>
           )}
           <div className="my-2 h-px bg-border" />
-          <Row label="Grand total" value={outOfRange ? "—" : `₹${grand.toFixed(0)}`} bold />
+          <Row label="Grand total" value={outOfRange ? "—" : `₹${grand.toFixed(2)}`} bold />
         </Section>
 
         <Section title="Payment">
@@ -378,7 +378,7 @@ function CheckoutPage() {
               <p className="text-[11px] text-muted-foreground">
                 {codBlocked
                   ? "Temporarily unavailable for your account"
-                  : `Pay ₹${outOfRange ? "—" : grand.toFixed(0)} when your order arrives`}
+                  : `Pay ₹${outOfRange ? "—" : grand.toFixed(2)} when your order arrives`}
               </p>
             </div>
             {!codBlocked && <span className="h-4 w-4 rounded-full border-4 border-primary" />}
@@ -406,7 +406,7 @@ function CheckoutPage() {
                 ? "Select location to continue"
                 : outOfRange
                   ? "Outside delivery area"
-                  : `Place Order · ₹${grand.toFixed(0)}`}
+                   : `Place Order · ₹${grand.toFixed(2)}`}
         </button>
       </div>
 
