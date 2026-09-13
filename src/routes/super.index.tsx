@@ -54,6 +54,7 @@ function SuperDashboard() {
     const allOrders = raw.allOrders;
     const delivered = allOrders.filter((o: any) => o.status === "delivered");
     const filteredDelivered = delivered.filter((o: any) => inRange(o.created_at, payoutRange));
+    const filteredAll = allOrders.filter((o: any) => inRange(o.created_at, payoutRange));
 
     const grossOrderValue = delivered.reduce((s, o: any) => s + Number(o.total), 0);
     const lifetimePayout = sumPayouts(allOrders as any);
@@ -126,7 +127,7 @@ function SuperDashboard() {
       pendingOrders: allOrders.filter((o: any) => ["placed", "accepted", "preparing", "ready_for_pickup", "out_for_delivery"].includes(o.status)).length,
       deliveredOrders: delivered.length,
       filteredDeliveredCount: filteredDelivered.length,
-      payout,
+      payout, allPayout,
       perRestaurant,
       perRider,
       perZone,
@@ -218,12 +219,12 @@ function SuperDashboard() {
         <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-4">
           <Money label="Customer Payments" value={s?.payout.orderTotal ?? 0} hint="actual amount paid on delivered orders" />
           <Money label="Payable to Restaurants" value={s?.payout.restaurant ?? 0} tone="success" hint="85% of food value" />
-          <Money label="Gross Platform Revenue" value={s?.payout.platformGross ?? 0} hint="15% commission + platform fee + delivery fee" />
-          <Money label="Customer Discounts" value={-(s?.payout.discount ?? 0)} tone="warn" hint="funded by KhanaGharTak; never counted as earning" />
+          <Money label="Gross Platform Revenue" value={s?.allPayout.platformGross ?? 0} hint="15% commission + platform fee + delivery fee" />
+          <Money label="Customer Discounts" value={-(s?.allPayout.discount ?? 0)} tone="warn" hint="funded by KhanaGharTak; never counted as earning" />
           {(s?.payout.adjustment ?? 0) !== 0 && <Money label="Other Adjustments" value={s?.payout.adjustment ?? 0} tone="warn" hint="stored payment variance requiring review" />}
-          <Money label="Actual Platform Earning" value={s?.payout.platformActual ?? 0} hint="customer payments minus restaurant payable" />
-          <Money label="Payable to Riders" value={s?.payout.rider ?? 0} tone="warn" hint={`${Math.round(RIDER_SHARE_RATE * 100)}% of gross platform revenue`} />
-          <Money label="KhanaGharTak Final Net" value={s?.payout.platformNet ?? 0} hint="actual earning after rider payout" />
+          <Money label="Actual Platform Earning" value={s?.allPayout.platformActual ?? 0} hint="customer payments minus restaurant payable" />
+          <Money label="Payable to Riders" value={s?.allPayout.rider ?? 0} tone="warn" hint={`${Math.round(RIDER_SHARE_RATE * 100)}% of gross platform revenue`} />
+          <Money label="KhanaGharTak Final Net" value={s?.allPayout.platformNet ?? 0} hint="actual earning after rider payout" />
         </div>
 
         <p className="mt-3 text-xs text-muted-foreground">
@@ -267,7 +268,7 @@ function SuperDashboard() {
         </div>
         <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
           <Money label="Cash Collected (COD)" value={s?.payout.cash ?? 0} hint="collected from customers on delivery" />
-          <Money label="Riders Keep" value={s?.payout.rider ?? 0} tone="success" hint={`${Math.round(RIDER_SHARE_RATE * 100)}% of gross platform revenue`} />
+          <Money label="Riders Keep" value={s?.allPayout.rider ?? 0} tone="success" hint={`${Math.round(RIDER_SHARE_RATE * 100)}% of gross platform revenue`} />
           <Money label="Recoverable from Riders" value={s?.payout.deposit ?? 0} tone="warn" hint={payoutRange.kind === "today" ? "today's COD minus rider share" : `Today: ${inr(s?.riderTodayDue ?? 0)}`} />
         </div>
 
