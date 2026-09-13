@@ -59,6 +59,7 @@ function SuperDashboard() {
     const grossOrderValue = delivered.reduce((s, o: any) => s + Number(o.total), 0);
     const lifetimePayout = sumPayouts(allOrders as any);
     const payout = sumPayouts(filteredDelivered as any);
+    const allPayout = sumPayouts(filteredAll as any);
 
     const nameById: Record<string, string> = {};
     rs.forEach((r: any) => { nameById[r.id] = r.name; });
@@ -121,7 +122,7 @@ function SuperDashboard() {
       activeRestaurants: rs.filter((r: any) => r.status === "active").length,
       totalCustomers: raw.customerCount,
       totalOrders: allOrders.length,
-      totalRevenue: lifetimePayout.platformGross,
+      totalRevenue: lifetimePayout.platformActual,
       grossOrderValue,
       todayOrders: todayOrders.length,
       pendingOrders: allOrders.filter((o: any) => ["placed", "accepted", "preparing", "ready_for_pickup", "out_for_delivery"].includes(o.status)).length,
@@ -223,12 +224,12 @@ function SuperDashboard() {
           <Money label="Customer Discounts" value={-(s?.allPayout.discount ?? 0)} tone="warn" hint="funded by KhanaGharTak; never counted as earning" />
           {(s?.payout.adjustment ?? 0) !== 0 && <Money label="Other Adjustments" value={s?.payout.adjustment ?? 0} tone="warn" hint="stored payment variance requiring review" />}
           <Money label="Actual Platform Earning" value={s?.allPayout.platformActual ?? 0} hint="customer payments minus restaurant payable" />
-          <Money label="Payable to Riders" value={s?.allPayout.rider ?? 0} tone="warn" hint={`${Math.round(RIDER_SHARE_RATE * 100)}% of gross platform revenue`} />
-          <Money label="KhanaGharTak Final Net" value={s?.allPayout.platformNet ?? 0} hint="actual earning after rider payout" />
+          <Money label="Payable to Riders" value={s?.payout.rider ?? 0} tone="warn" hint={`${Math.round(RIDER_SHARE_RATE * 100)}% after discounts on delivered orders`} />
+          <Money label="KhanaGharTak Final Net" value={s?.allPayout.platformNet ?? 0} hint="40% of actual platform revenue from all orders" />
         </div>
 
         <p className="mt-3 text-xs text-muted-foreground">
-          Reconciliation: customer payments − restaurant payable − rider payout = final net. Gross revenue − discounts + other adjustments = actual platform earning.
+          Formula: gross platform revenue − discounts = actual earning; rider receives 60% and KhanaGharTak keeps 40%.
         </p>
 
         <div className="mt-5 overflow-x-auto">
@@ -268,7 +269,7 @@ function SuperDashboard() {
         </div>
         <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
           <Money label="Cash Collected (COD)" value={s?.payout.cash ?? 0} hint="collected from customers on delivery" />
-          <Money label="Riders Keep" value={s?.allPayout.rider ?? 0} tone="success" hint={`${Math.round(RIDER_SHARE_RATE * 100)}% of gross platform revenue`} />
+          <Money label="Riders Keep" value={s?.payout.rider ?? 0} tone="success" hint={`${Math.round(RIDER_SHARE_RATE * 100)}% after discounts on delivered orders`} />
           <Money label="Recoverable from Riders" value={s?.payout.deposit ?? 0} tone="warn" hint={payoutRange.kind === "today" ? "today's COD minus rider share" : `Today: ${inr(s?.riderTodayDue ?? 0)}`} />
         </div>
 

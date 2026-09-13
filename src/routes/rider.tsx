@@ -245,7 +245,7 @@ function RiderDashboard({
     // Earnings from completed deliveries
     const { data: done } = await supabase
       .from("orders")
-      .select("subtotal,platform_fee,delivery_fee,total,payment_method,created_at")
+      .select("subtotal,platform_fee,delivery_fee,total,discount,payment_method,created_at")
       .eq("rider_id", riderId)
       .eq("status", "delivered")
       .limit(1000);
@@ -417,8 +417,7 @@ function RiderDashboard({
           </div>
 
           <p className="mt-2 text-[11px] text-muted-foreground">
-            You earn {Math.round(RIDER_SHARE_RATE * 100)}% of actual platform revenue (gross minus discounts) on each delivered order
-            (actual platform revenue (gross minus discounts) so far: {inr(earnings.platformGross)}).
+             You earn {Math.round(RIDER_SHARE_RATE * 100)}% of platform revenue after discounts on each delivered order.
           </p>
         </div>
 
