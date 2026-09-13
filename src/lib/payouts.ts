@@ -49,7 +49,8 @@ export function customerDiscount(o: PayoutOrder) {
 
 /** Rider's cut = 60% of the KhanaGharTak earning. */
 export function riderEarning(o: PayoutOrder) {
-  return platformEarning(o) * RIDER_SHARE_RATE;
+  const actual = platformEarning(o) - customerDiscount(o);
+  return Math.max(0, actual) * RIDER_SHARE_RATE;
 }
 
 /**

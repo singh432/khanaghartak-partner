@@ -56,7 +56,7 @@ function SuperDashboard() {
     const filteredDelivered = delivered.filter((o: any) => inRange(o.created_at, payoutRange));
 
     const grossOrderValue = delivered.reduce((s, o: any) => s + Number(o.total), 0);
-    const lifetimePayout = sumPayouts(delivered as any);
+    const lifetimePayout = sumPayouts(allOrders as any);
     const payout = sumPayouts(filteredDelivered as any);
 
     const nameById: Record<string, string> = {};
@@ -156,7 +156,7 @@ function SuperDashboard() {
           <div className="mt-2 flex items-end gap-2">
             <IndianRupee className="mb-1 h-6 w-6 text-primary" />
             <span className="text-4xl font-extrabold tracking-tight">{Number(s?.totalRevenue ?? 0).toFixed(0)}</span>
-            <span className="mb-1 text-xs text-muted-foreground">from delivered orders</span>
+            <span className="mb-1 text-xs text-muted-foreground">from all orders regardless of status</span>
           </div>
         </div>
         <div className="rounded-2xl border bg-card p-5 shadow-sm">

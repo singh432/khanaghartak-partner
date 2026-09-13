@@ -50,7 +50,7 @@ function SuperRevenue() {
 
   const totals = useMemo(() => {
     const delivered = scoped.filter((o) => o.status === "delivered");
-    const p = sumPayouts(delivered as any);
+    const p = sumPayouts(scoped as any);
     return {
       orders: scoped.length,
       delivered: delivered.length,
@@ -98,7 +98,7 @@ function SuperRevenue() {
           <IndianRupee className="h-5 w-5 text-primary" />
           <div>
             <h1 className="text-2xl font-extrabold tracking-tight">Revenue &amp; Profit</h1>
-            <p className="text-sm text-muted-foreground">{rangeLabel(range)} · delivered orders only</p>
+            <p className="text-sm text-muted-foreground">{rangeLabel(range)} · all orders regardless of status</p>
           </div>
         </div>
         <DateRangeFilter value={range} onChange={setRange} />

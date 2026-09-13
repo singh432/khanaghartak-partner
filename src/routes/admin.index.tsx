@@ -102,7 +102,7 @@ function AdminDashboard() {
         </div>
         <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
           <Money label="Your Food Sales" value={period.foodSales} strong />
-          <Money label={`KhanaGharTak Cut (${Math.round(COMMISSION_RATE * 100)}%)`} value={period.foodSales * COMMISSION_RATE} tone="text-destructive" />
+          <Money label={`KhanaGharTak Cut (${Math.round(COMMISSION_RATE * 100)}%)`} value={sumPayouts(deliveredRows.filter(r => inRange(r.created_at, range))).platformGross - sumPayouts(deliveredRows.filter(r => inRange(r.created_at, range))).discount} tone="text-destructive" />
           <Money label="Your Net Payout" value={period.foodSales * (1 - COMMISSION_RATE)} tone="text-success" />
         </div>
         <p className="mt-3 text-[11px] text-muted-foreground">
