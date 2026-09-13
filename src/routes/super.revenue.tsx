@@ -62,7 +62,7 @@ function SuperRevenue() {
       discounts: allRevenue.discount,
       adjustments: allRevenue.adjustment,
       actual: allRevenue.platformActual,
-      rider: p.rider,
+      rider: allRevenue.rider,
       net: allRevenue.platformNet,
     };
   }, [scoped]);
@@ -83,7 +83,7 @@ function SuperRevenue() {
           cancelled: r.orders.filter((o) => ["cancelled", "rejected"].includes(o.status)).length,
           revenue: allRevenue.platformActual,
           restaurant: p.restaurant,
-          rider: p.rider,
+          rider: allRevenue.rider,
           net: allRevenue.platformNet,
         };
       })
@@ -116,7 +116,7 @@ function SuperRevenue() {
         <Stat label="Customer discounts" value={inr(-totals.discounts)} />
         {totals.adjustments !== 0 && <Stat label="Other adjustments" value={inr(totals.adjustments)} />}
         <Stat label="Total platform revenue" value={inr(totals.actual)} />
-        <Stat label="Rider payout (delivered)" value={inr(totals.rider)} />
+        <Stat label="Rider cut" value={inr(totals.rider)} />
         <Stat label="Final net profit" value={inr(totals.net)} highlight />
         <Stat label="AOV" value={inr(totals.delivered ? totals.revenue / totals.delivered : 0)} />
       </div>

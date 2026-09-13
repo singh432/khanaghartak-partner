@@ -152,7 +152,7 @@ function ZoneManagerPage() {
       revenue: allRevenue.platformActual,
       restaurant: pay.restaurant,
       discounts: allRevenue.discount,
-      rider: pay.rider,
+      rider: allRevenue.rider,
       net: allRevenue.platformNet,
     };
   }, [filtered]);
