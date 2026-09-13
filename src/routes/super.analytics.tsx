@@ -127,7 +127,7 @@ function SuperAnalytics() {
     return Object.entries(m).map(([name, qty]) => ({ name, qty })).sort((a, b) => b.qty - a.qty).slice(0, 5);
   }, [orders]);
 
-  const totalEarnings = orders.filter(o => o.status === "delivered").reduce((s, o) => s + platformNetEarning(o as any), 0);
+  const totalEarnings = orders.reduce((s, o) => s + platformNetEarning(o as any), 0);
 
   const fmt = (d: string | null) => d ? new Date(d).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "—";
 
@@ -228,7 +228,7 @@ function SuperAnalytics() {
 
       {/* ---- Revenue (existing) ---- */}
       <div className="rounded-2xl border bg-card p-5 shadow-sm">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Reconciled Net Profit (30d)</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Platform Net Profit (30d, all orders)</p>
         <p className="mt-2 text-4xl font-extrabold">₹{totalEarnings.toFixed(0)}</p>
       </div>
 

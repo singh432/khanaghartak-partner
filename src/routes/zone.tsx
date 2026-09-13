@@ -143,12 +143,12 @@ function ZoneManagerPage() {
 
   const stats = useMemo(() => {
     const delivered = filtered.filter((o) => o.status === "delivered");
-    const pay = sumPayouts(delivered as any);
+    const pay = sumPayouts(filtered as any);
     return {
       orders: filtered.length,
       delivered: delivered.length,
       cancelled: filtered.filter((o) => ["cancelled", "rejected"].includes(o.status)).length,
-      revenue: delivered.reduce((s, o) => s + Number(o.total), 0),
+      revenue: filtered.reduce((s, o) => s + Number(o.total), 0),
       restaurant: pay.restaurant,
       discounts: pay.discount,
       rider: pay.rider,
