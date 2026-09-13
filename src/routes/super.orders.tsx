@@ -3,14 +3,14 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Flag, XCircle } from "lucide-react";
-import { restaurantPayout, platformEarning } from "@/lib/payouts";
+import { orderLedger } from "@/lib/payouts";
 
 export const Route = createFileRoute("/super/orders")({ component: SuperOrders });
 
 type O = {
   id: string; restaurant_id: string | null; customer_name: string;
   total: number; subtotal: number; platform_fee: number; delivery_fee: number;
-  status: string; created_at: string; is_fake: boolean; user_id: string;
+  discount: number; status: string; created_at: string; is_fake: boolean; user_id: string;
   rider_id: string | null;
 };
 
@@ -47,7 +47,7 @@ function SuperOrders() {
   }, []);
 
   useEffect(() => {
-    let q = supabase.from("orders").select("id,restaurant_id,customer_name,total,subtotal,platform_fee,delivery_fee,status,created_at,is_fake,user_id,rider_id").order("created_at", { ascending: false }).limit(500);
+    let q = supabase.from("orders").select("id,restaurant_id,customer_name,total,subtotal,platform_fee,delivery_fee,discount,status,created_at,is_fake,user_id,rider_id").order("created_at", { ascending: false }).limit(500);
     if (range !== "all") {
       const d = new Date();
       if (range === "today") d.setHours(0, 0, 0, 0);
@@ -108,17 +108,23 @@ function SuperOrders() {
       <div className="overflow-x-auto rounded-2xl border bg-card">
         <table className="w-full text-sm">
           <thead className="bg-secondary/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
-            <tr><th className="px-4 py-3">Order ID</th><th className="px-4 py-3">Restaurant</th><th className="px-4 py-3">Customer</th><th className="px-4 py-3">Restaurant ₹</th><th className="px-4 py-3">KhanaGharTak ₹</th><th className="px-4 py-3">Order ₹</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Rider</th><th className="px-4 py-3">Date</th><th className="px-4 py-3 text-right">Actions</th></tr>
+            <tr><th className="px-4 py-3">Order ID</th><th className="px-4 py-3">Restaurant</th><th className="px-4 py-3">Customer</th><th className="px-4 py-3">Paid</th><th className="px-4 py-3">Restaurant</th><th className="px-4 py-3">Gross revenue</th><th className="px-4 py-3">Discount</th><th className="px-4 py-3">Adjustment</th><th className="px-4 py-3">Actual earning</th><th className="px-4 py-3">Rider</th><th className="px-4 py-3">Final net</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Courier</th><th className="px-4 py-3">Date</th><th className="px-4 py-3 text-right">Actions</th></tr>
           </thead>
           <tbody>
-            {filtered.map((o) => (
-              <tr key={o.id} className="border-t">
+            {filtered.map((o) => {
+              const ledger = orderLedger(o);
+              return <tr key={o.id} className="border-t">
                 <td className="px-4 py-3 font-mono text-xs">{o.id.slice(0, 8)}</td>
                 <td className="px-4 py-3">{restaurants[o.restaurant_id ?? ""] ?? "—"}</td>
                 <td className="px-4 py-3">{o.customer_name}</td>
-                <td className="px-4 py-3 font-semibold text-success">₹{restaurantPayout(o).toFixed(0)}</td>
-                <td className="px-4 py-3 font-semibold text-primary">₹{platformEarning(o).toFixed(0)}</td>
-                <td className="px-4 py-3 text-muted-foreground">₹{Number(o.total).toFixed(0)}</td>
+                <td className="px-4 py-3 font-semibold">₹{ledger.customerPayment.toFixed(0)}</td>
+                <td className="px-4 py-3 font-semibold text-success">₹{ledger.restaurant.toFixed(0)}</td>
+                <td className="px-4 py-3 font-semibold text-primary">₹{ledger.platformGross.toFixed(0)}</td>
+                <td className="px-4 py-3 text-amber-600">{ledger.discount ? `−₹${ledger.discount.toFixed(0)}` : "—"}</td>
+                <td className="px-4 py-3 text-amber-600">{ledger.adjustment ? `${ledger.adjustment > 0 ? "+" : "−"}₹${Math.abs(ledger.adjustment).toFixed(0)}` : "—"}</td>
+                <td className="px-4 py-3 font-semibold text-primary">₹{ledger.platformActual.toFixed(0)}</td>
+                <td className="px-4 py-3 text-amber-600">₹{ledger.rider.toFixed(0)}</td>
+                <td className="px-4 py-3 font-bold text-success">₹{ledger.platformNet.toFixed(0)}</td>
                 <td className="px-4 py-3">
                   <span className="rounded-full bg-secondary px-2 py-0.5 text-xs capitalize">{o.status.replace(/_/g, " ")}</span>
                   {o.is_fake && <span className="ml-1.5 rounded-full bg-destructive/15 px-2 py-0.5 text-xs font-bold text-destructive">Fake</span>}
@@ -139,9 +145,9 @@ function SuperOrders() {
                     )}
                   </div>
                 </td>
-              </tr>
-            ))}
-            {filtered.length === 0 && <tr><td colSpan={10} className="px-4 py-10 text-center text-sm text-muted-foreground">No orders</td></tr>}
+              </tr>;
+            })}
+            {filtered.length === 0 && <tr><td colSpan={15} className="px-4 py-10 text-center text-sm text-muted-foreground">No orders</td></tr>}
           </tbody>
         </table>
       </div>

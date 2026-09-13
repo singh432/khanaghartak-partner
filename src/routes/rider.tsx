@@ -417,8 +417,8 @@ function RiderDashboard({
           </div>
 
           <p className="mt-2 text-[11px] text-muted-foreground">
-            You earn {Math.round(RIDER_SHARE_RATE * 100)}% of the KhanaGharTak earning on each delivered order
-            (KhanaGharTak earning so far: {inr(earnings.platformGross)}).
+            You earn {Math.round(RIDER_SHARE_RATE * 100)}% of gross platform revenue on each delivered order
+            (gross platform revenue so far: {inr(earnings.platformGross)}).
           </p>
         </div>
 

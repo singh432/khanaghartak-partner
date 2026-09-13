@@ -57,6 +57,10 @@ function SuperRevenue() {
       cancelled: scoped.filter((o) => ["cancelled", "rejected"].includes(o.status)).length,
       revenue: delivered.reduce((s, o) => s + Number(o.total), 0),
       restaurant: p.restaurant,
+      gross: p.platformGross,
+      discounts: p.discount,
+      adjustments: p.adjustment,
+      actual: p.platformActual,
       rider: p.rider,
       net: p.platformNet,
     };
@@ -106,8 +110,12 @@ function SuperRevenue() {
         <Stat label="Cancelled" value={String(totals.cancelled)} />
         <Stat label="Revenue" value={inr(totals.revenue)} />
         <Stat label="Restaurant payout" value={inr(totals.restaurant)} />
+        <Stat label="Gross platform revenue" value={inr(totals.gross)} />
+        <Stat label="Customer discounts" value={inr(-totals.discounts)} />
+        {totals.adjustments !== 0 && <Stat label="Other adjustments" value={inr(totals.adjustments)} />}
+        <Stat label="Actual platform earning" value={inr(totals.actual)} />
         <Stat label="Rider payout" value={inr(totals.rider)} />
-        <Stat label="Net profit" value={inr(totals.net)} highlight />
+        <Stat label="Final net profit" value={inr(totals.net)} highlight />
         <Stat label="AOV" value={inr(totals.delivered ? totals.revenue / totals.delivered : 0)} />
       </div>
 

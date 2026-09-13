@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Store, Users, ShoppingBag, IndianRupee, CheckCircle2, Clock, TrendingUp, Wallet, Map as MapIcon } from "lucide-react";
-import { sumPayouts, inr, RIDER_SHARE_RATE, COMMISSION_RATE, restaurantPayout } from "@/lib/payouts";
+import { sumPayouts, inr, RIDER_SHARE_RATE, restaurantPayout } from "@/lib/payouts";
 import { DateRangeFilter } from "@/components/DateRangeFilter";
 import { inRange, rangeLabel, todayInputValue, type DateRange } from "@/lib/date-range";
 import { fetchAll } from "@/lib/supabase-paged";
@@ -216,11 +216,19 @@ function SuperDashboard() {
           <DateRangeFilter value={payoutRange} onChange={setPayoutRange} />
         </div>
         <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-4">
+          <Money label="Customer Payments" value={s?.payout.orderTotal ?? 0} hint="actual amount paid on delivered orders" />
           <Money label="Payable to Restaurants" value={s?.payout.restaurant ?? 0} tone="success" hint="85% of food value" />
-          <Money label="KhanaGharTak Earning" value={s?.payout.platformGross ?? 0} hint="15% commission + platform fee + delivery fee" />
-          <Money label="Payable to Riders" value={s?.payout.rider ?? 0} tone="warn" hint={`${Math.round(RIDER_SHARE_RATE * 100)}% of KhanaGharTak earning`} />
-          <Money label="KhanaGharTak Net" value={s?.payout.platformNet ?? 0} hint={`${Math.round((1 - RIDER_SHARE_RATE) * 100)}% after rider payout`} />
+          <Money label="Gross Platform Revenue" value={s?.payout.platformGross ?? 0} hint="15% commission + platform fee + delivery fee" />
+          <Money label="Customer Discounts" value={-(s?.payout.discount ?? 0)} tone="warn" hint="funded by KhanaGharTak; never counted as earning" />
+          {(s?.payout.adjustment ?? 0) !== 0 && <Money label="Other Adjustments" value={s?.payout.adjustment ?? 0} tone="warn" hint="stored payment variance requiring review" />}
+          <Money label="Actual Platform Earning" value={s?.payout.platformActual ?? 0} hint="customer payments minus restaurant payable" />
+          <Money label="Payable to Riders" value={s?.payout.rider ?? 0} tone="warn" hint={`${Math.round(RIDER_SHARE_RATE * 100)}% of gross platform revenue`} />
+          <Money label="KhanaGharTak Final Net" value={s?.payout.platformNet ?? 0} hint="actual earning after rider payout" />
         </div>
+
+        <p className="mt-3 text-xs text-muted-foreground">
+          Reconciliation: customer payments − restaurant payable − rider payout = final net. Gross revenue − discounts + other adjustments = actual platform earning.
+        </p>
 
         <div className="mt-5 overflow-x-auto">
           <table className="w-full text-sm">
@@ -259,7 +267,7 @@ function SuperDashboard() {
         </div>
         <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
           <Money label="Cash Collected (COD)" value={s?.payout.cash ?? 0} hint="collected from customers on delivery" />
-          <Money label="Riders Keep" value={s?.payout.rider ?? 0} tone="success" hint={`${Math.round(RIDER_SHARE_RATE * 100)}% of KhanaGharTak earning`} />
+          <Money label="Riders Keep" value={s?.payout.rider ?? 0} tone="success" hint={`${Math.round(RIDER_SHARE_RATE * 100)}% of gross platform revenue`} />
           <Money label="Recoverable from Riders" value={s?.payout.deposit ?? 0} tone="warn" hint={payoutRange.kind === "today" ? "today's COD minus rider share" : `Today: ${inr(s?.riderTodayDue ?? 0)}`} />
         </div>
 
