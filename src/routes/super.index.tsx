@@ -100,10 +100,11 @@ function SuperDashboard() {
       const id = (o.zone_id as string) ?? "unassigned";
       const cur = byZone[id] ?? { orders: 0, delivered: 0, cancelled: 0, revenue: 0, net: 0 };
       cur.orders += 1;
+      const one = sumPayouts([o] as any);
+      cur.revenue += one.platformActual;
+      cur.net += one.platformNet;
       if (o.status === "delivered") {
         cur.delivered += 1;
-        cur.revenue += Number(o.total ?? 0);
-        cur.net += sumPayouts([o] as any).platformNet;
       }
       if (o.status === "cancelled" || o.status === "rejected") cur.cancelled += 1;
       byZone[id] = cur;
@@ -223,7 +224,7 @@ function SuperDashboard() {
           <Money label="Gross Platform Revenue" value={s?.allPayout.platformGross ?? 0} hint="15% commission + platform fee + delivery fee" />
           <Money label="Customer Discounts" value={-(s?.allPayout.discount ?? 0)} tone="warn" hint="funded by KhanaGharTak; never counted as earning" />
           {(s?.payout.adjustment ?? 0) !== 0 && <Money label="Other Adjustments" value={s?.payout.adjustment ?? 0} tone="warn" hint="stored payment variance requiring review" />}
-          <Money label="Actual Platform Earning" value={s?.allPayout.platformActual ?? 0} hint="customer payments minus restaurant payable" />
+          <Money label="Total Platform Revenue" value={s?.allPayout.platformActual ?? 0} hint="gross platform revenue minus discounts across all orders" />
           <Money label="Payable to Riders" value={s?.payout.rider ?? 0} tone="warn" hint={`${Math.round(RIDER_SHARE_RATE * 100)}% after discounts on delivered orders`} />
           <Money label="KhanaGharTak Final Net" value={s?.allPayout.platformNet ?? 0} hint="40% of actual platform revenue from all orders" />
         </div>

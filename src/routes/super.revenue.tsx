@@ -116,7 +116,7 @@ function SuperRevenue() {
         <Stat label="Customer discounts" value={inr(-totals.discounts)} />
         {totals.adjustments !== 0 && <Stat label="Other adjustments" value={inr(totals.adjustments)} />}
         <Stat label="Total platform revenue" value={inr(totals.actual)} />
-        <Stat label="Rider payout" value={inr(totals.rider)} />
+        <Stat label="Rider payout (delivered)" value={inr(totals.rider)} />
         <Stat label="Final net profit" value={inr(totals.net)} highlight />
         <Stat label="AOV" value={inr(totals.delivered ? totals.revenue / totals.delivered : 0)} />
       </div>

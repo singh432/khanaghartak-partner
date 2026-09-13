@@ -234,7 +234,7 @@ function ZoneManagerPage() {
           <Stat label="Platform revenue (all orders)" value={inr(stats.revenue)} />
           <Stat label="Restaurant payout" value={inr(stats.restaurant)} />
           <Stat label="Discount deductions" value={inr(-stats.discounts)} />
-          <Stat label="Rider payout" value={inr(stats.rider)} />
+          <Stat label="Rider payout (delivered)" value={inr(stats.rider)} />
           <Stat label="Final net profit" value={inr(stats.net)} />
         </div>
 
