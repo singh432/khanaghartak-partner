@@ -51,13 +51,13 @@ function SuperRevenue() {
   const totals = useMemo(() => {
     const delivered = scoped.filter((o) => o.status === "delivered");
     const allRevenue = sumPayouts(scoped as any);
-    const p = sumPayouts(delivered as any);
+    const deliveredPayouts = sumPayouts(delivered as any);
     return {
       orders: scoped.length,
       delivered: delivered.length,
       cancelled: scoped.filter((o) => ["cancelled", "rejected"].includes(o.status)).length,
       revenue: delivered.reduce((s, o) => s + Number(o.total), 0),
-      restaurant: p.restaurant,
+      restaurant: deliveredPayouts.restaurant,
       gross: allRevenue.platformGross,
       discounts: allRevenue.discount,
       adjustments: allRevenue.adjustment,
@@ -74,7 +74,7 @@ function SuperRevenue() {
       .map((r) => {
         const delivered = r.orders.filter((o) => o.status === "delivered");
         const allRevenue = sumPayouts(r.orders as any);
-        const p = sumPayouts(delivered as any);
+        const deliveredPayouts = sumPayouts(delivered as any);
         return {
           id: r.id,
           name: r.name,
@@ -82,7 +82,7 @@ function SuperRevenue() {
           delivered: delivered.length,
           cancelled: r.orders.filter((o) => ["cancelled", "rejected"].includes(o.status)).length,
           revenue: allRevenue.platformActual,
-          restaurant: p.restaurant,
+          restaurant: deliveredPayouts.restaurant,
           rider: allRevenue.rider,
           net: allRevenue.platformNet,
         };
