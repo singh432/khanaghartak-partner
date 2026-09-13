@@ -48,7 +48,7 @@ export function customerDiscount(o: PayoutOrder) {
 
 /** Platform revenue available for the rider/KhanaGharTak split. */
 export function actualPlatformEarning(o: PayoutOrder) {
-  return Math.max(0, platformEarning(o) - customerDiscount(o));
+  return platformEarning(o) - customerDiscount(o);
 }
 
 /** Rider's cut = 60% of actual platform revenue after discounts. */

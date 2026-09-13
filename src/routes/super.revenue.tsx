@@ -51,18 +51,18 @@ function SuperRevenue() {
   const totals = useMemo(() => {
     const delivered = scoped.filter((o) => o.status === "delivered");
     const allRevenue = sumPayouts(scoped as any);
-    const p = sumPayouts(delivered as any);
+    const deliveredPayouts = sumPayouts(delivered as any);
     return {
       orders: scoped.length,
       delivered: delivered.length,
       cancelled: scoped.filter((o) => ["cancelled", "rejected"].includes(o.status)).length,
       revenue: delivered.reduce((s, o) => s + Number(o.total), 0),
-      restaurant: p.restaurant,
+      restaurant: deliveredPayouts.restaurant,
       gross: allRevenue.platformGross,
       discounts: allRevenue.discount,
       adjustments: allRevenue.adjustment,
       actual: allRevenue.platformActual,
-      rider: p.rider,
+      rider: allRevenue.rider,
       net: allRevenue.platformNet,
     };
   }, [scoped]);
@@ -74,7 +74,7 @@ function SuperRevenue() {
       .map((r) => {
         const delivered = r.orders.filter((o) => o.status === "delivered");
         const allRevenue = sumPayouts(r.orders as any);
-        const p = sumPayouts(delivered as any);
+        const deliveredPayouts = sumPayouts(delivered as any);
         return {
           id: r.id,
           name: r.name,
@@ -82,8 +82,8 @@ function SuperRevenue() {
           delivered: delivered.length,
           cancelled: r.orders.filter((o) => ["cancelled", "rejected"].includes(o.status)).length,
           revenue: allRevenue.platformActual,
-          restaurant: p.restaurant,
-          rider: p.rider,
+          restaurant: deliveredPayouts.restaurant,
+          rider: allRevenue.rider,
           net: allRevenue.platformNet,
         };
       })
@@ -116,7 +116,7 @@ function SuperRevenue() {
         <Stat label="Customer discounts" value={inr(-totals.discounts)} />
         {totals.adjustments !== 0 && <Stat label="Other adjustments" value={inr(totals.adjustments)} />}
         <Stat label="Total platform revenue" value={inr(totals.actual)} />
-        <Stat label="Rider payout (delivered)" value={inr(totals.rider)} />
+        <Stat label="Rider cut" value={inr(totals.rider)} />
         <Stat label="Final net profit" value={inr(totals.net)} highlight />
         <Stat label="AOV" value={inr(totals.delivered ? totals.revenue / totals.delivered : 0)} />
       </div>

@@ -225,7 +225,7 @@ function SuperDashboard() {
           <Money label="Customer Discounts" value={-(s?.allPayout.discount ?? 0)} tone="warn" hint="funded by KhanaGharTak; never counted as earning" />
           {(s?.payout.adjustment ?? 0) !== 0 && <Money label="Other Adjustments" value={s?.payout.adjustment ?? 0} tone="warn" hint="stored payment variance requiring review" />}
           <Money label="Total Platform Revenue" value={s?.allPayout.platformActual ?? 0} hint="gross platform revenue minus discounts across all orders" />
-          <Money label="Payable to Riders" value={s?.payout.rider ?? 0} tone="warn" hint={`${Math.round(RIDER_SHARE_RATE * 100)}% after discounts on delivered orders`} />
+          <Money label="Rider Cut" value={s?.allPayout.rider ?? 0} tone="warn" hint={`${Math.round(RIDER_SHARE_RATE * 100)}% of total platform revenue across all orders`} />
           <Money label="KhanaGharTak Final Net" value={s?.allPayout.platformNet ?? 0} hint="40% of actual platform revenue from all orders" />
         </div>
 
