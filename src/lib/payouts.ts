@@ -51,7 +51,7 @@ export function customerDiscount(o: PayoutOrder) {
   return Math.max(0, n(o.discount));
 }
 
-/** Booked platform revenue after discounts, used for all-order revenue reporting. */
+/** Platform revenue after discounts for whichever order scope the caller supplies. */
 export function actualPlatformEarning(o: PayoutOrder) {
   return platformEarning(o) - customerDiscount(o);
 }
@@ -124,7 +124,7 @@ export function sumPayouts(orders: PayoutOrder[]) {
   );
 }
 
-/** Revenue booked from all orders, independent from delivered-order settlement. */
+/** Platform revenue for the supplied orders; revenue screens pass delivered orders only. */
 export function sumPlatformRevenue(orders: PayoutOrder[]) {
   return orders.reduce<PlatformRevenueTotals>(
     (acc, o) => {

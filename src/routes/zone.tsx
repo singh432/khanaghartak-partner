@@ -143,14 +143,14 @@ function ZoneManagerPage() {
 
   const stats = useMemo(() => {
     const delivered = filtered.filter((o) => o.status === "delivered");
-    const allRevenue = sumPlatformRevenue(filtered as any);
+    const deliveredRevenue = sumPlatformRevenue(delivered as any);
     const pay = sumPayouts(delivered as any);
     return {
       orders: filtered.length,
       delivered: delivered.length,
       cancelled: filtered.filter((o) => ["cancelled", "rejected"].includes(o.status)).length,
       gross: pay.platformGross,
-      revenue: allRevenue.actual,
+      revenue: deliveredRevenue.actual,
       restaurant: pay.restaurant,
       discounts: pay.discount,
       settlement: pay.platformActual,
@@ -236,7 +236,7 @@ function ZoneManagerPage() {
           <Stat label="Gross settlement amount" value={inr(stats.gross)} />
           <Stat label="Restaurant payout" value={inr(stats.restaurant)} />
           <Stat label="Delivered-order discounts" value={inr(-stats.discounts)} />
-          <Stat label="Platform revenue (all orders)" value={inr(stats.revenue)} />
+          <Stat label="Platform revenue (delivered)" value={inr(stats.revenue)} />
           <Stat label="Settlement after discounts" value={inr(stats.settlement)} />
           <Stat label="Rider payout (delivered)" value={inr(stats.rider)} />
           <Stat label="Final net profit" value={inr(stats.net)} />

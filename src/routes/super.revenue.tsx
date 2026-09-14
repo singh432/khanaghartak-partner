@@ -50,7 +50,7 @@ function SuperRevenue() {
 
   const totals = useMemo(() => {
     const delivered = scoped.filter((o) => o.status === "delivered");
-    const allRevenue = sumPlatformRevenue(scoped as any);
+    const deliveredRevenue = sumPlatformRevenue(delivered as any);
     const deliveredPayouts = sumPayouts(delivered as any);
     return {
       orders: scoped.length,
@@ -58,11 +58,11 @@ function SuperRevenue() {
       cancelled: scoped.filter((o) => ["cancelled", "rejected"].includes(o.status)).length,
       revenue: delivered.reduce((s, o) => s + Number(o.total), 0),
       restaurant: deliveredPayouts.restaurant,
-      bookedGross: allRevenue.gross,
+      bookedGross: deliveredRevenue.gross,
       gross: deliveredPayouts.platformGross,
       discounts: deliveredPayouts.discount,
       adjustments: deliveredPayouts.adjustment,
-      actual: allRevenue.actual,
+      actual: deliveredRevenue.actual,
       settlement: deliveredPayouts.platformActual,
       rider: deliveredPayouts.rider,
       net: deliveredPayouts.platformNet,
@@ -75,7 +75,7 @@ function SuperRevenue() {
     return rows
       .map((r) => {
         const delivered = r.orders.filter((o) => o.status === "delivered");
-        const allRevenue = sumPlatformRevenue(r.orders as any);
+        const deliveredRevenue = sumPlatformRevenue(delivered as any);
         const deliveredPayouts = sumPayouts(delivered as any);
         return {
           id: r.id,
@@ -83,7 +83,7 @@ function SuperRevenue() {
           count: r.orders.length,
           delivered: delivered.length,
           cancelled: r.orders.filter((o) => ["cancelled", "rejected"].includes(o.status)).length,
-          revenue: allRevenue.actual,
+          revenue: deliveredRevenue.actual,
           restaurant: deliveredPayouts.restaurant,
           rider: deliveredPayouts.rider,
           net: deliveredPayouts.platformNet,
@@ -102,7 +102,7 @@ function SuperRevenue() {
           <IndianRupee className="h-5 w-5 text-primary" />
           <div>
             <h1 className="text-2xl font-extrabold tracking-tight">Revenue &amp; Profit</h1>
-            <p className="text-sm text-muted-foreground">{rangeLabel(range)} · platform revenue includes all orders</p>
+            <p className="text-sm text-muted-foreground">{rangeLabel(range)} · platform revenue includes delivered orders only</p>
           </div>
         </div>
         <DateRangeFilter value={range} onChange={setRange} />
@@ -114,8 +114,8 @@ function SuperRevenue() {
         <Stat label="Cancelled" value={String(totals.cancelled)} />
         <Stat label="Customer payments (delivered)" value={inr(totals.revenue)} />
         <Stat label="Restaurant payout" value={inr(totals.restaurant)} />
-        <Stat label="All-order gross revenue" value={inr(totals.bookedGross)} />
-        <Stat label="Total platform revenue (all orders)" value={inr(totals.actual)} />
+        <Stat label="Gross platform revenue (delivered)" value={inr(totals.bookedGross)} />
+        <Stat label="Total platform revenue (delivered)" value={inr(totals.actual)} />
         <Stat label="Gross settlement amount" value={inr(totals.gross)} />
         <Stat label="Delivered-order discounts" value={inr(-totals.discounts)} />
         {totals.adjustments !== 0 && <Stat label="Other adjustments" value={inr(totals.adjustments)} />}
