@@ -104,6 +104,7 @@ function SuperAnalytics() {
       m[d.toISOString().slice(0, 10)] = 0;
     }
     orders.forEach(o => {
+      if (o.status !== "delivered") return;
       const k = new Date(o.created_at).toISOString().slice(0, 10);
       if (k in m) m[k] += actualPlatformEarning(o);
     });
@@ -112,7 +113,9 @@ function SuperAnalytics() {
 
   const topRestaurants = useMemo(() => {
     const m: Record<string, number> = {};
-    orders.forEach(o => { if (o.restaurant_id) m[o.restaurant_id] = (m[o.restaurant_id] ?? 0) + actualPlatformEarning(o); });
+    orders.forEach(o => {
+      if (o.status === "delivered" && o.restaurant_id) m[o.restaurant_id] = (m[o.restaurant_id] ?? 0) + actualPlatformEarning(o);
+    });
     return Object.entries(m).map(([id, v]) => ({ name: rmap[id] ?? id.slice(0, 6), revenue: Math.round(v) }))
       .sort((a, b) => b.revenue - a.revenue).slice(0, 5);
   }, [orders, rmap]);
@@ -126,7 +129,9 @@ function SuperAnalytics() {
     return Object.entries(m).map(([name, qty]) => ({ name, qty })).sort((a, b) => b.qty - a.qty).slice(0, 5);
   }, [orders]);
 
-  const totalEarnings = orders.reduce((s, o) => s + actualPlatformEarning(o), 0);
+  const totalEarnings = orders
+    .filter((o) => o.status === "delivered")
+    .reduce((s, o) => s + actualPlatformEarning(o), 0);
 
   const fmt = (d: string | null) => d ? new Date(d).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "—";
 
@@ -227,12 +232,12 @@ function SuperAnalytics() {
 
       {/* ---- Revenue (existing) ---- */}
       <div className="rounded-2xl border bg-card p-5 shadow-sm">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Total Platform Revenue After Discounts (30d)</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Delivered Platform Revenue After Discounts (30d)</p>
         <p className="mt-2 text-4xl font-extrabold">₹{totalEarnings.toFixed(0)}</p>
       </div>
 
       <div className="rounded-2xl border bg-card p-5 shadow-sm">
-        <p className="mb-4 text-sm font-bold">Daily Platform Revenue (last 7 days)</p>
+        <p className="mb-4 text-sm font-bold">Daily Delivered Platform Revenue (last 7 days)</p>
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={daily}>

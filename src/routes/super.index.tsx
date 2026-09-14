@@ -54,12 +54,10 @@ function SuperDashboard() {
     const allOrders = raw.allOrders;
     const delivered = allOrders.filter((o: any) => o.status === "delivered");
     const filteredDelivered = delivered.filter((o: any) => inRange(o.created_at, payoutRange));
-    const filteredAll = allOrders.filter((o: any) => inRange(o.created_at, payoutRange));
 
     const grossOrderValue = delivered.reduce((s, o: any) => s + Number(o.total), 0);
-    const lifetimeRevenue = sumPlatformRevenue(allOrders as any);
+    const lifetimeRevenue = sumPlatformRevenue(delivered as any);
     const payout = sumPayouts(filteredDelivered as any);
-    const allRevenue = sumPlatformRevenue(filteredAll as any);
 
     const nameById: Record<string, string> = {};
     rs.forEach((r: any) => { nameById[r.id] = r.name; });
@@ -100,10 +98,9 @@ function SuperDashboard() {
       const id = (o.zone_id as string) ?? "unassigned";
       const cur = byZone[id] ?? { orders: 0, delivered: 0, cancelled: 0, revenue: 0, net: 0 };
       cur.orders += 1;
-      const revenue = sumPlatformRevenue([o] as any);
-      cur.revenue += revenue.actual;
       if (o.status === "delivered") {
         cur.delivered += 1;
+         cur.revenue += sumPlatformRevenue([o] as any).actual;
         cur.net += sumPayouts([o] as any).platformNet;
       }
       if (o.status === "cancelled" || o.status === "rejected") cur.cancelled += 1;
@@ -129,7 +126,7 @@ function SuperDashboard() {
       pendingOrders: allOrders.filter((o: any) => ["placed", "accepted", "preparing", "ready_for_pickup", "out_for_delivery"].includes(o.status)).length,
       deliveredOrders: delivered.length,
       filteredDeliveredCount: filteredDelivered.length,
-      payout, allRevenue,
+      payout,
       perRestaurant,
       perRider,
       perZone,
@@ -159,7 +156,7 @@ function SuperDashboard() {
           <div className="mt-2 flex items-end gap-2">
             <IndianRupee className="mb-1 h-6 w-6 text-primary" />
             <span className="text-4xl font-extrabold tracking-tight">{Number(s?.totalRevenue ?? 0).toFixed(0)}</span>
-            <span className="mb-1 text-xs text-muted-foreground">from all orders regardless of status</span>
+            <span className="mb-1 text-xs text-muted-foreground">from delivered orders only</span>
           </div>
         </div>
         <div className="rounded-2xl border bg-card p-5 shadow-sm">
