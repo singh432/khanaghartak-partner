@@ -1,7 +1,7 @@
 # Roadmap
 
 - [x] Apply discount-first platform revenue formula.
-- [x] Include all order statuses in Total Platform Revenue.
+- [ ] Limit Total Platform Revenue and related revenue reports to delivered orders only.
 - [x] Align backend zone revenue report.
 - [x] Validate dashboard, payouts, analytics, and calculation examples.
 - [x] Reconcile delivered-order payouts from customer payments through final net without mixing all-order revenue.
