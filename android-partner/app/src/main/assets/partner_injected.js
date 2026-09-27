@@ -18,8 +18,10 @@
     style.id = 'kgt-partner-native-style';
     style.innerHTML =
       'html, body, #root, main, .app-shell { background-color: #FFFFFF !important; background: #FFFFFF !important; color: #0F172A !important; }' +
-      // Hide customer-facing website cart, customer footer, customer bottom bar, and back-to-home links
-      'a[href*="/cart"], header a[aria-label*="Cart"], header a[aria-label*="cart"], .customer-cart-btn, #kgt-customer-bottom-bar, [data-testid="customer-bottom-nav"], [data-testid="back-to-home"], a[href="/"]:not(#partner-portal-logo-link) { display: none !important; }' +
+      // Completely eradicate customer-facing website cart, customer footer, customer bottom bar, and customer tabs
+      'a[href*="/cart"], header a[aria-label*="Cart"], header a[aria-label*="cart"], .customer-cart-btn, #kgt-customer-bottom-bar, [data-testid="customer-bottom-nav"], [data-testid="back-to-home"], a[href="/"]:not(#partner-portal-logo-link) { display: none !important; visibility: hidden !important; pointer-events: none !important; }' +
+      'nav:has(a[href*="/cart"]), nav:has(a[href="/orders"]), nav:has(a[href="/home"]), nav[class*="max-w-[480px]"]:not(#kgt-rider-bottom-nav), ul:has(a[href*="/cart"]), a[href="/orders"]:not(#admin-orders-link):not([href*="/admin"]), a[href="/home"] { display: none !important; visibility: hidden !important; pointer-events: none !important; height: 0 !important; max-height: 0 !important; overflow: hidden !important; position: absolute !important; bottom: -9999px !important; }' +
+      'body:not(.is-admin-route) nav.fixed.bottom-0:not(#kgt-rider-bottom-nav), body:not(.is-admin-route) nav[class*="bottom-0"]:not(#kgt-rider-bottom-nav) { display: none !important; }' +
       'footer.site-footer, footer:not(.partner-footer) { display: none !important; }' +
       // Hide desktop aside on mobile partner app
       'aside.h-screen, aside[class*="w-64"] { display: none !important; }' +
@@ -27,7 +29,7 @@
       '.fixed.inset-0:not(#kgt-partner-portal) {' +
       '  z-index: 9999999 !important;' +
       '}' +
-      'body:has(.fixed.inset-0:not(#kgt-partner-portal)) nav.fixed.bottom-0, body.has-modal-open nav.fixed.bottom-0 {' +
+      'body:has(.fixed.inset-0:not(#kgt-partner-portal)) nav.fixed.bottom-0, body.has-modal-open nav.fixed.bottom-0, body.has-modal-open #kgt-rider-bottom-nav {' +
       '  display: none !important;' +
       '}' +
       '.fixed.inset-0:not(#kgt-partner-portal) > div {' +
@@ -39,7 +41,7 @@
       '  overscroll-behavior: contain !important;' +
       '}' +
       // RESTAURANT BOTTOM FOOTER NAVIGATION BAR (DASHBOARD, ORDERS, MENU, ANALYTICS, SETTINGS)
-      'nav.fixed.bottom-0, nav[class*="fixed"][class*="bottom-0"] {' +
+      'body.is-admin-route nav.fixed.bottom-0:has(a[href*="/admin"]), body.is-admin-route nav[class*="fixed"][class*="bottom-0"]:has(a[href*="/admin"]) {' +
       '  display: grid !important;' +
       '  position: fixed !important;' +
       '  bottom: 0 !important;' +
@@ -52,7 +54,7 @@
       '  box-shadow: 0 -2px 10px rgba(0,0,0,0.06) !important;' +
       '  padding-bottom: max(6px, env(safe-area-inset-bottom, 6px)) !important;' +
       '}' +
-      'nav.fixed.bottom-0 a, nav[class*="fixed"][class*="bottom-0"] a {' +
+      'body.is-admin-route nav.fixed.bottom-0 a, body.is-admin-route nav[class*="fixed"][class*="bottom-0"] a {' +
       '  display: flex !important;' +
       '  flex-direction: column !important;' +
       '  align-items: center !important;' +
@@ -63,11 +65,51 @@
       '  font-weight: 600 !important;' +
       '  text-decoration: none !important;' +
       '}' +
-      'nav.fixed.bottom-0 a.text-primary, nav.fixed.bottom-0 a[aria-current="page"] {' +
+      'body.is-admin-route nav.fixed.bottom-0 a.text-primary, body.is-admin-route nav.fixed.bottom-0 a[aria-current="page"] {' +
       '  color: #F45D2C !important;' +
       '  font-weight: 800 !important;' +
       '}' +
-      'nav.fixed.bottom-0 a svg {' +
+      'body.is-admin-route nav.fixed.bottom-0 a svg {' +
+      '  display: block !important;' +
+      '  width: 22px !important;' +
+      '  height: 22px !important;' +
+      '}' +
+      // RIDER BOTTOM FOOTER NAVIGATION BAR (NEW OFFERS, MY DELIVERIES, MY EARNINGS)
+      '#kgt-rider-bottom-nav {' +
+      '  display: grid !important;' +
+      '  grid-template-columns: repeat(3, 1fr) !important;' +
+      '  position: fixed !important;' +
+      '  bottom: 0 !important;' +
+      '  left: 0 !important;' +
+      '  right: 0 !important;' +
+      '  width: 100% !important;' +
+      '  height: 60px !important;' +
+      '  z-index: 99998 !important;' +
+      '  background-color: #FFFFFF !important;' +
+      '  background: #FFFFFF !important;' +
+      '  border-top: 1px solid #E2E8F0 !important;' +
+      '  box-shadow: 0 -2px 10px rgba(0,0,0,0.06) !important;' +
+      '  padding-bottom: max(6px, env(safe-area-inset-bottom, 6px)) !important;' +
+      '}' +
+      '#kgt-rider-bottom-nav button {' +
+      '  display: flex !important;' +
+      '  flex-direction: column !important;' +
+      '  align-items: center !important;' +
+      '  justify-content: center !important;' +
+      '  background: transparent !important;' +
+      '  border: none !important;' +
+      '  padding: 6px 2px !important;' +
+      '  color: #64748B !important;' +
+      '  font-size: 11px !important;' +
+      '  font-weight: 600 !important;' +
+      '  cursor: pointer !important;' +
+      '  -webkit-tap-highlight-color: transparent !important;' +
+      '}' +
+      '#kgt-rider-bottom-nav button.active {' +
+      '  color: #F45D2C !important;' +
+      '  font-weight: 800 !important;' +
+      '}' +
+      '#kgt-rider-bottom-nav button svg {' +
       '  display: block !important;' +
       '  width: 22px !important;' +
       '  height: 22px !important;' +
@@ -580,6 +622,8 @@
     if (setDiv) setDiv.remove();
     var riderDiv = document.getElementById('kgt-partner-rider-signout');
     if (riderDiv) riderDiv.remove();
+    var rNav = document.getElementById('kgt-rider-bottom-nav');
+    if (rNav) rNav.remove();
 
     syncAuthWithNative();
 
@@ -932,13 +976,37 @@
   // ==========================================
   function enhancePartnerDashboard() {
     try {
+      var pathname = window.location.pathname || '';
+      if (document.body) {
+        document.body.classList.toggle('is-admin-route', pathname.indexOf('/admin') !== -1);
+        document.body.classList.toggle('is-rider-route', pathname.indexOf('/rider') !== -1);
+        document.body.classList.toggle('is-zone-route', pathname.indexOf('/zone') !== -1);
+      }
+      purgeCustomerNav();
       enhanceSignOutButtons();
       enhanceMenuModal();
       enhanceRestaurantNav();
       enhanceSettingsPage();
       enhanceRiderPage();
+      enhanceRiderNav();
       enhanceZonePage();
       ensureFallbackSignout();
+    } catch (e) {}
+  }
+
+  function purgeCustomerNav() {
+    try {
+      var navs = document.querySelectorAll('nav');
+      for (var i = 0; i < navs.length; i++) {
+        var n = navs[i];
+        if (n.id === 'kgt-rider-bottom-nav') continue;
+        var hasCart = n.querySelector('a[href*="/cart"], a[href="/orders"], a[href="/home"]');
+        var hasAdmin = n.querySelector('a[href*="/admin"]');
+        var isCustomerNavClass = n.className && (n.className.indexOf('max-w-[480px]') !== -1 || n.getAttribute('data-testid') === 'customer-bottom-nav');
+        if (hasCart || isCustomerNavClass || (!hasAdmin && window.location.pathname.indexOf('/admin') === -1)) {
+          n.remove();
+        }
+      }
     } catch (e) {}
   }
 
@@ -1075,7 +1143,7 @@
     if (container) {
       var div = document.createElement('div');
       div.id = 'kgt-partner-rider-signout';
-      div.style.cssText = 'margin:24px 12px;padding:16px;background:#FFF;border:1.5px solid #FEE2E2;border-radius:18px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.04);';
+      div.style.cssText = 'margin:24px 12px 36px 12px;padding:16px;background:#FFF;border:1.5px solid #FEE2E2;border-radius:18px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.04);';
       div.innerHTML =
         '<div style="font-size:14px;font-weight:800;color:#991B1B;margin-bottom:4px;">Sign Out of Rider Account</div>' +
         '<p style="font-size:12px;color:#64748B;margin:0 0 14px 0;">Go offline and return to Partner Login</p>' +
@@ -1093,6 +1161,136 @@
           doPartnerSignOut();
         };
       }
+    }
+  }
+
+  function enhanceRiderNav() {
+    var pathname = window.location.pathname || '';
+    if (pathname.indexOf('/rider') === -1) {
+      var existingRNav = document.getElementById('kgt-rider-bottom-nav');
+      if (existingRNav) existingRNav.remove();
+      return;
+    }
+
+    var riderContainer = document.querySelector('.mx-auto.max-w-md, main');
+    if (riderContainer) {
+      riderContainer.style.paddingBottom = '88px';
+    }
+
+    var rNav = document.getElementById('kgt-rider-bottom-nav');
+    if (!rNav) {
+      rNav = document.createElement('nav');
+      rNav.id = 'kgt-rider-bottom-nav';
+      rNav.innerHTML =
+        '<button id="kgt-tab-offers" type="button" class="active">' +
+        '  <div style="position:relative;display:inline-flex;align-items:center;justify-content:center;">' +
+        '    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+        '      <circle cx="18.5" cy="17.5" r="3.5"/><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="15" cy="5" r="1"/><path d="M12 17.5V14l-3-3 4-3 2 3h2"/>' +
+        '    </svg>' +
+        '    <span id="kgt-badge-offers" style="display:none;position:absolute;top:-6px;right:-12px;background:#EF4444;color:#FFFFFF;border-radius:9999px;font-size:10px;font-weight:800;padding:1px 5px;min-width:16px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.2);">0</span>' +
+        '  </div>' +
+        '  <span style="font-size:11px;font-weight:700;margin-top:2px;">New Offers</span>' +
+        '</button>' +
+        '<button id="kgt-tab-deliveries" type="button">' +
+        '  <div style="position:relative;display:inline-flex;align-items:center;justify-content:center;">' +
+        '    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+        '      <path d="M16.5 9.4 7.55 4.24a1.78 1.78 0 0 0-1.8 0l-4.1 2.37A1.78 1.78 0 0 0 .75 8.15v7.7a1.78 1.78 0 0 0 .9 1.54l4.1 2.37a1.78 1.78 0 0 0 1.8 0l8.95-5.16a1.78 1.78 0 0 0 .9-1.54V9.4z"/><polyline points="3.29 7 12 12.01 20.71 7"/><line x1="12" y1="22.08" x2="12" y2="12"/>' +
+        '    </svg>' +
+        '    <span id="kgt-badge-deliveries" style="display:none;position:absolute;top:-6px;right:-12px;background:#3B82F6;color:#FFFFFF;border-radius:9999px;font-size:10px;font-weight:800;padding:1px 5px;min-width:16px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.2);">0</span>' +
+        '  </div>' +
+        '  <span style="font-size:11px;font-weight:700;margin-top:2px;">My Deliveries</span>' +
+        '</button>' +
+        '<button id="kgt-tab-earnings" type="button">' +
+        '  <div style="position:relative;display:inline-flex;align-items:center;justify-content:center;">' +
+        '    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+        '      <path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>' +
+        '    </svg>' +
+        '  </div>' +
+        '  <span style="font-size:11px;font-weight:700;margin-top:2px;">My Earnings</span>' +
+        '</button>';
+
+      (document.body || document.documentElement).appendChild(rNav);
+
+      document.getElementById('kgt-tab-offers').onclick = function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var allBtns = document.querySelectorAll('button');
+        for (var i = 0; i < allBtns.length; i++) {
+          if ((allBtns[i].textContent || '').indexOf('Offered to you') !== -1) {
+            allBtns[i].click();
+            allBtns[i].scrollIntoView({ behavior: 'smooth', block: 'start' });
+            break;
+          }
+        }
+      };
+
+      document.getElementById('kgt-tab-deliveries').onclick = function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var allBtns = document.querySelectorAll('button');
+        for (var i = 0; i < allBtns.length; i++) {
+          if ((allBtns[i].textContent || '').indexOf('My Deliveries') !== -1) {
+            allBtns[i].click();
+            allBtns[i].scrollIntoView({ behavior: 'smooth', block: 'start' });
+            break;
+          }
+        }
+      };
+
+      document.getElementById('kgt-tab-earnings').onclick = function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      };
+    }
+
+    // Dynamic sync of tab states and badge numbers from page DOM
+    var allBtns = document.querySelectorAll('button');
+    var offersBtn = null;
+    var deliveriesBtn = null;
+    for (var b = 0; b < allBtns.length; b++) {
+      var txt = (allBtns[b].textContent || '').trim();
+      if (txt.indexOf('Offered to you') !== -1) offersBtn = allBtns[b];
+      else if (txt.indexOf('My Deliveries') !== -1) deliveriesBtn = allBtns[b];
+    }
+
+    var tabOffers = document.getElementById('kgt-tab-offers');
+    var tabDeliveries = document.getElementById('kgt-tab-deliveries');
+    var tabEarnings = document.getElementById('kgt-tab-earnings');
+    var badgeOffers = document.getElementById('kgt-badge-offers');
+    var badgeDeliveries = document.getElementById('kgt-badge-deliveries');
+
+    if (offersBtn && badgeOffers) {
+      var m = (offersBtn.textContent || '').match(/\((\d+)\)/);
+      var cnt = m ? parseInt(m[1], 10) : 0;
+      if (cnt > 0) {
+        badgeOffers.textContent = cnt;
+        badgeOffers.style.display = 'block';
+      } else {
+        badgeOffers.style.display = 'none';
+      }
+    }
+
+    if (deliveriesBtn && badgeDeliveries) {
+      var m2 = (deliveriesBtn.textContent || '').match(/\((\d+)\)/);
+      var cnt2 = m2 ? parseInt(m2[1], 10) : 0;
+      if (cnt2 > 0) {
+        badgeDeliveries.textContent = cnt2;
+        badgeDeliveries.style.display = 'block';
+      } else {
+        badgeDeliveries.style.display = 'none';
+      }
+    }
+
+    // Sync active tab highlight
+    if (deliveriesBtn && deliveriesBtn.classList.contains('bg-foreground')) {
+      if (tabOffers) tabOffers.className = '';
+      if (tabDeliveries) tabDeliveries.className = 'active';
+      if (tabEarnings) tabEarnings.className = '';
+    } else {
+      if (tabOffers) tabOffers.className = 'active';
+      if (tabDeliveries) tabDeliveries.className = '';
+      if (tabEarnings) tabEarnings.className = '';
     }
   }
 
@@ -1120,12 +1318,13 @@
     }
 
     // Always provide visible "🔔 Test Siren" button when authenticated so partner can verify alarm anytime
+    // Placed at bottom-right above bottom navigation so it never overlaps the header title or manager info
     if (!document.getElementById('kgt-fallback-testsiren')) {
       var testPill = document.createElement('button');
       testPill.id = 'kgt-fallback-testsiren';
       testPill.type = 'button';
       testPill.style.cssText =
-        'position:fixed;top:10px;left:12px;z-index:999999;background:#FEF2F2;color:#DC2626;border:1px solid #FECACA;border-radius:9999px;padding:6px 11px;font-size:11px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:4px;box-shadow:0 1px 4px rgba(0,0,0,0.12);';
+        'position:fixed;bottom:78px;right:14px;z-index:99999;background:#FEF2F2;color:#DC2626;border:1.5px solid #FECACA;border-radius:9999px;padding:7px 12px;font-size:11px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:5px;box-shadow:0 4px 14px rgba(220,38,38,0.22);';
       testPill.innerHTML = '<span>🔔 Test Siren</span>';
       testPill.onclick = function (e) {
         e.preventDefault();
@@ -1202,6 +1401,8 @@
     if (setDiv) setDiv.remove();
     var riderDiv = document.getElementById('kgt-partner-rider-signout');
     if (riderDiv) riderDiv.remove();
+    var rNav = document.getElementById('kgt-rider-bottom-nav');
+    if (rNav) rNav.remove();
 
     // Unauthenticated: always stay on /login
     if (isRoot || isHome) {
