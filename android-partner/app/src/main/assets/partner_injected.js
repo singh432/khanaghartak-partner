@@ -20,8 +20,8 @@
       'html, body, #root, main, .app-shell { background-color: #FFFFFF !important; background: #FFFFFF !important; color: #0F172A !important; }' +
       // Completely eradicate customer-facing website cart, customer footer, customer bottom bar, and customer tabs
       'a[href*="/cart"], header a[aria-label*="Cart"], header a[aria-label*="cart"], .customer-cart-btn, #kgt-customer-bottom-bar, [data-testid="customer-bottom-nav"], [data-testid="back-to-home"], a[href="/"]:not(#partner-portal-logo-link) { display: none !important; visibility: hidden !important; pointer-events: none !important; }' +
-      'nav:has(a[href*="/cart"]), nav:has(a[href="/orders"]), nav:has(a[href="/home"]), nav[class*="max-w-[480px]"]:not(#kgt-rider-bottom-nav), ul:has(a[href*="/cart"]), a[href="/orders"]:not(#admin-orders-link):not([href*="/admin"]), a[href="/home"] { display: none !important; visibility: hidden !important; pointer-events: none !important; height: 0 !important; max-height: 0 !important; overflow: hidden !important; position: absolute !important; bottom: -9999px !important; }' +
-      'body:not(.is-admin-route) nav.fixed.bottom-0:not(#kgt-rider-bottom-nav), body:not(.is-admin-route) nav[class*="bottom-0"]:not(#kgt-rider-bottom-nav) { display: none !important; }' +
+      'nav:has(a[href*="/cart"]), nav:has(a[href="/orders"]), nav:has(a[href="/home"]), nav[class*="max-w-[480px]"]:not(#kgt-rider-bottom-nav):not(#kgt-zone-bottom-nav), ul:has(a[href*="/cart"]), a[href="/orders"]:not(#admin-orders-link):not([href*="/admin"]), a[href="/home"] { display: none !important; visibility: hidden !important; pointer-events: none !important; height: 0 !important; max-height: 0 !important; overflow: hidden !important; position: absolute !important; bottom: -9999px !important; }' +
+      'body:not(.is-admin-route) nav.fixed.bottom-0:not(#kgt-rider-bottom-nav):not(#kgt-zone-bottom-nav), body:not(.is-admin-route) nav[class*="bottom-0"]:not(#kgt-rider-bottom-nav):not(#kgt-zone-bottom-nav) { display: none !important; }' +
       'footer.site-footer, footer:not(.partner-footer) { display: none !important; }' +
       // Hide desktop aside on mobile partner app
       'aside.h-screen, aside[class*="w-64"] { display: none !important; }' +
@@ -29,7 +29,7 @@
       '.fixed.inset-0:not(#kgt-partner-portal) {' +
       '  z-index: 9999999 !important;' +
       '}' +
-      'body:has(.fixed.inset-0:not(#kgt-partner-portal)) nav.fixed.bottom-0, body.has-modal-open nav.fixed.bottom-0, body.has-modal-open #kgt-rider-bottom-nav {' +
+      'body:has(.fixed.inset-0:not(#kgt-partner-portal)) nav.fixed.bottom-0, body.has-modal-open nav.fixed.bottom-0, body.has-modal-open #kgt-rider-bottom-nav, body.has-modal-open #kgt-zone-bottom-nav {' +
       '  display: none !important;' +
       '}' +
       '.fixed.inset-0:not(#kgt-partner-portal) > div {' +
@@ -113,6 +113,46 @@
       '  display: block !important;' +
       '  width: 22px !important;' +
       '  height: 22px !important;' +
+      '}' +
+      // ZONE MANAGER BOTTOM FOOTER NAVIGATION BAR (ORDERS, RESTAURANTS, RIDERS, CUSTOMERS, MAP)
+      '#kgt-zone-bottom-nav {' +
+      '  display: grid !important;' +
+      '  grid-template-columns: repeat(5, 1fr) !important;' +
+      '  position: fixed !important;' +
+      '  bottom: 0 !important;' +
+      '  left: 0 !important;' +
+      '  right: 0 !important;' +
+      '  width: 100% !important;' +
+      '  height: 60px !important;' +
+      '  z-index: 99998 !important;' +
+      '  background-color: #FFFFFF !important;' +
+      '  background: #FFFFFF !important;' +
+      '  border-top: 1px solid #E2E8F0 !important;' +
+      '  box-shadow: 0 -2px 10px rgba(0,0,0,0.06) !important;' +
+      '  padding-bottom: max(6px, env(safe-area-inset-bottom, 6px)) !important;' +
+      '}' +
+      '#kgt-zone-bottom-nav button {' +
+      '  display: flex !important;' +
+      '  flex-direction: column !important;' +
+      '  align-items: center !important;' +
+      '  justify-content: center !important;' +
+      '  background: transparent !important;' +
+      '  border: none !important;' +
+      '  padding: 6px 1px !important;' +
+      '  color: #64748B !important;' +
+      '  font-size: 10px !important;' +
+      '  font-weight: 600 !important;' +
+      '  cursor: pointer !important;' +
+      '  -webkit-tap-highlight-color: transparent !important;' +
+      '}' +
+      '#kgt-zone-bottom-nav button.active {' +
+      '  color: #F45D2C !important;' +
+      '  font-weight: 800 !important;' +
+      '}' +
+      '#kgt-zone-bottom-nav button svg {' +
+      '  display: block !important;' +
+      '  width: 20px !important;' +
+      '  height: 20px !important;' +
       '}' +
       // PARTNER APP DASHBOARD HEADERS (RESTAURANT, RIDER, ZONE MANAGER)
       'header.sticky, header[class*="sticky"], header.border-b {' +
@@ -624,6 +664,8 @@
     if (riderDiv) riderDiv.remove();
     var rNav = document.getElementById('kgt-rider-bottom-nav');
     if (rNav) rNav.remove();
+    var zNav = document.getElementById('kgt-zone-bottom-nav');
+    if (zNav) zNav.remove();
 
     syncAuthWithNative();
 
@@ -990,6 +1032,7 @@
       enhanceRiderPage();
       enhanceRiderNav();
       enhanceZonePage();
+      enhanceZoneNav();
       ensureFallbackSignout();
     } catch (e) {}
   }
@@ -999,7 +1042,7 @@
       var navs = document.querySelectorAll('nav');
       for (var i = 0; i < navs.length; i++) {
         var n = navs[i];
-        if (n.id === 'kgt-rider-bottom-nav') continue;
+        if (n.id === 'kgt-rider-bottom-nav' || n.id === 'kgt-zone-bottom-nav') continue;
         var hasCart = n.querySelector('a[href*="/cart"], a[href="/orders"], a[href="/home"]');
         var hasAdmin = n.querySelector('a[href*="/admin"]');
         var isCustomerNavClass = n.className && (n.className.indexOf('max-w-[480px]') !== -1 || n.getAttribute('data-testid') === 'customer-bottom-nav');
@@ -1307,6 +1350,104 @@
     }
   }
 
+  function enhanceZoneNav() {
+    var pathname = window.location.pathname || '';
+    if (pathname.indexOf('/zone') === -1) {
+      var existingZoneNav = document.getElementById('kgt-zone-bottom-nav');
+      if (existingZoneNav) existingZoneNav.remove();
+      return;
+    }
+
+    var zoneContainer = document.querySelector('.min-h-screen, main');
+    if (zoneContainer) {
+      zoneContainer.style.paddingBottom = '88px';
+    }
+
+    var zNav = document.getElementById('kgt-zone-bottom-nav');
+    if (!zNav) {
+      zNav = document.createElement('nav');
+      zNav.id = 'kgt-zone-bottom-nav';
+      zNav.innerHTML =
+        '<button id="kgt-ztab-orders" type="button" class="active">' +
+        '  <div style="position:relative;display:inline-flex;align-items:center;justify-content:center;">' +
+        '    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+        '      <rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/>' +
+        '    </svg>' +
+        '  </div>' +
+        '  <span style="font-size:10px;font-weight:700;margin-top:2px;">Orders</span>' +
+        '</button>' +
+        '<button id="kgt-ztab-restaurants" type="button">' +
+        '  <div style="position:relative;display:inline-flex;align-items:center;justify-content:center;">' +
+        '    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+        '      <path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7"/><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4"/><path d="M2 7h20"/><path d="M22 7v3a2 2 0 0 1-2 2v0a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 16 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 12 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 8 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 4 12v0a2 2 0 0 1-2-2V7"/>' +
+        '    </svg>' +
+        '  </div>' +
+        '  <span style="font-size:10px;font-weight:700;margin-top:2px;">Kitchens</span>' +
+        '</button>' +
+        '<button id="kgt-ztab-riders" type="button">' +
+        '  <div style="position:relative;display:inline-flex;align-items:center;justify-content:center;">' +
+        '    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+        '      <circle cx="18.5" cy="17.5" r="3.5"/><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="15" cy="5" r="1"/><path d="M12 17.5V14l-3-3 4-3 2 3h2"/>' +
+        '    </svg>' +
+        '  </div>' +
+        '  <span style="font-size:10px;font-weight:700;margin-top:2px;">Riders</span>' +
+        '</button>' +
+        '<button id="kgt-ztab-customers" type="button">' +
+        '  <div style="position:relative;display:inline-flex;align-items:center;justify-content:center;">' +
+        '    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+        '      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>' +
+        '    </svg>' +
+        '  </div>' +
+        '  <span style="font-size:10px;font-weight:700;margin-top:2px;">Customers</span>' +
+        '</button>' +
+        '<button id="kgt-ztab-map" type="button">' +
+        '  <div style="position:relative;display:inline-flex;align-items:center;justify-content:center;">' +
+        '    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+        '      <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>' +
+        '    </svg>' +
+        '  </div>' +
+        '  <span style="font-size:10px;font-weight:700;margin-top:2px;">Zone Map</span>' +
+        '</button>';
+
+      (document.body || document.documentElement).appendChild(zNav);
+
+      function attachTabClick(id, topBtnId) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        el.onclick = function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          var topBtn = document.getElementById(topBtnId);
+          if (topBtn) {
+            topBtn.click();
+            topBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }
+        };
+      }
+
+      attachTabClick('kgt-ztab-orders', 'kgt-zone-btn-orders');
+      attachTabClick('kgt-ztab-restaurants', 'kgt-zone-btn-restaurants');
+      attachTabClick('kgt-ztab-riders', 'kgt-zone-btn-riders');
+      attachTabClick('kgt-ztab-customers', 'kgt-zone-btn-customers');
+      attachTabClick('kgt-ztab-map', 'kgt-zone-btn-map');
+    }
+
+    // Sync active state from top tab buttons
+    var topTabs = ['orders', 'restaurants', 'riders', 'customers', 'map'];
+    topTabs.forEach(function (key) {
+      var topBtn = document.getElementById('kgt-zone-btn-' + key);
+      var bottomBtn = document.getElementById('kgt-ztab-' + key);
+      if (topBtn && bottomBtn) {
+        var isTopActive = topBtn.classList.contains('bg-primary');
+        if (isTopActive) {
+          bottomBtn.className = 'active';
+        } else {
+          bottomBtn.className = '';
+        }
+      }
+    });
+  }
+
   function ensureFallbackSignout() {
     var hasSession = hasValidPartnerSession();
     if (!hasSession) {
@@ -1403,6 +1544,8 @@
     if (riderDiv) riderDiv.remove();
     var rNav = document.getElementById('kgt-rider-bottom-nav');
     if (rNav) rNav.remove();
+    var zNav = document.getElementById('kgt-zone-bottom-nav');
+    if (zNav) zNav.remove();
 
     // Unauthenticated: always stay on /login
     if (isRoot || isHome) {
