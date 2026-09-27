@@ -10,6 +10,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.media.AudioAttributes;
@@ -166,7 +167,36 @@ public class MainActivity extends BridgeActivity {
             });
         }
 
+        // Request battery optimization exemption so background order detection is never killed
+        requestBatteryOptimizationExemption();
+
+        // Restore active session if present and start background foreground service
+        try {
+            SharedPreferences prefs = getSharedPreferences("kgt_partner_prefs", Context.MODE_PRIVATE);
+            String savedToken = prefs.getString("access_token", null);
+            if (savedToken != null && !savedToken.trim().isEmpty()) {
+                this.activeAccessToken = savedToken;
+                this.activeRole = prefs.getString("role", "restaurant");
+                this.activeUserId = prefs.getString("user_id", null);
+                PartnerForegroundService.startService(this);
+                startOrderPoller();
+            }
+        } catch (Exception ignored) {}
+
         handleIncomingAlertIntent(getIntent());
+    }
+
+    private void requestBatteryOptimizationExemption() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            try {
+                PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+                if (pm != null && !pm.isIgnoringBatteryOptimizations(getPackageName())) {
+                    Intent intent = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
+                    intent.setData(Uri.parse("package:" + getPackageName()));
+                    startActivity(intent);
+                }
+            } catch (Exception ignored) {}
+        }
     }
 
     @Override
@@ -180,6 +210,7 @@ public class MainActivity extends BridgeActivity {
         if (intent != null && intent.getBooleanExtra("from_order_alert", false)) {
             final String role = intent.getStringExtra("role");
             stopContinuousAlarm();
+            PartnerForegroundService.silenceAlarm(this);
             if (this.bridge != null && this.bridge.getWebView() != null) {
                 this.bridge.getWebView().post(new Runnable() {
                     @Override
@@ -322,6 +353,7 @@ public class MainActivity extends BridgeActivity {
     // CONTINUOUS LOUD ALARM SYSTEM
     // ==========================================
     public synchronized void startContinuousAlarm(String orderId, String role, String title, String body) {
+        PartnerForegroundService.triggerAlarm(this, orderId, role, title, body);
         try {
             isAlarmActive = true;
 
@@ -351,31 +383,30 @@ public class MainActivity extends BridgeActivity {
 
             // 2. Looping MediaPlayer on STREAM_ALARM
             if (alarmMediaPlayer == null) {
-                Uri alertUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
-                if (alertUri == null) {
-                    alertUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE);
+                try {
+                    alarmMediaPlayer = MediaPlayer.create(this, R.raw.order_siren);
+                    if (alarmMediaPlayer != null) {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                            AudioAttributes attrs = new AudioAttributes.Builder()
+                                    .setUsage(AudioAttributes.USAGE_ALARM)
+                                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                                    .build();
+                            alarmMediaPlayer.setAudioAttributes(attrs);
+                        } else {
+                            alarmMediaPlayer.setAudioStreamType(AudioManager.STREAM_ALARM);
+                        }
+                        alarmMediaPlayer.setLooping(true);
+                        alarmMediaPlayer.start();
+                    }
+                } catch (Exception e) {
+                    Uri alertUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
+                    if (alertUri == null) alertUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE);
+                    alarmMediaPlayer = new MediaPlayer();
+                    alarmMediaPlayer.setDataSource(getApplicationContext(), alertUri);
+                    alarmMediaPlayer.setLooping(true);
+                    alarmMediaPlayer.prepare();
+                    alarmMediaPlayer.start();
                 }
-                if (alertUri == null) {
-                    alertUri = Settings.System.DEFAULT_ALARM_ALERT_URI;
-                }
-                if (alertUri == null) {
-                    alertUri = Settings.System.DEFAULT_NOTIFICATION_URI;
-                }
-
-                alarmMediaPlayer = new MediaPlayer();
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                    AudioAttributes attrs = new AudioAttributes.Builder()
-                            .setUsage(AudioAttributes.USAGE_ALARM)
-                            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                            .build();
-                    alarmMediaPlayer.setAudioAttributes(attrs);
-                } else {
-                    alarmMediaPlayer.setAudioStreamType(AudioManager.STREAM_ALARM);
-                }
-                alarmMediaPlayer.setDataSource(getApplicationContext(), alertUri);
-                alarmMediaPlayer.setLooping(true);
-                alarmMediaPlayer.prepare();
-                alarmMediaPlayer.start();
             } else if (!alarmMediaPlayer.isPlaying()) {
                 alarmMediaPlayer.start();
             }
@@ -431,6 +462,7 @@ public class MainActivity extends BridgeActivity {
 
     public synchronized void stopContinuousAlarm() {
         isAlarmActive = false;
+        PartnerForegroundService.silenceAlarm(this);
         try {
             if (alarmMediaPlayer != null) {
                 if (alarmMediaPlayer.isPlaying()) {
@@ -456,17 +488,30 @@ public class MainActivity extends BridgeActivity {
     }
 
     public synchronized void updateSession(String accessToken, String role, String userId) {
+        SharedPreferences prefs = getSharedPreferences("kgt_partner_prefs", Context.MODE_PRIVATE);
         if (accessToken == null || accessToken.trim().isEmpty()) {
             stopOrderPoller();
             activeAccessToken = null;
             activeRole = null;
             activeUserId = null;
+            prefs.edit().clear().apply();
+            PartnerForegroundService.stopService(this);
             return;
         }
         boolean changed = !accessToken.equals(activeAccessToken) || (role != null && !role.equalsIgnoreCase(activeRole));
         this.activeAccessToken = accessToken;
         this.activeRole = (role != null && !role.isEmpty()) ? role.toLowerCase() : "restaurant";
         this.activeUserId = userId;
+
+        prefs.edit()
+            .putString("access_token", accessToken)
+            .putString("role", activeRole)
+            .putString("user_id", userId)
+            .apply();
+
+        // Start Foreground Service so order polling and sirens continue even when app is closed and screen is off
+        PartnerForegroundService.startService(this);
+
         if (changed || orderPollerExecutor == null || orderPollerExecutor.isShutdown()) {
             startOrderPoller();
         }
