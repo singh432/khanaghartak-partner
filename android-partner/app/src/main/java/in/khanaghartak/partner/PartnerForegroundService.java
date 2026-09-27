@@ -233,10 +233,21 @@ public class PartnerForegroundService extends Service {
             return;
         }
 
+        String lowerRole = (role != null) ? role.toLowerCase() : "restaurant";
+
+        if ("rider".equals(lowerRole)) {
+            pollRiderOffers(token);
+        } else if (lowerRole.contains("zone") || lowerRole.contains("manager")) {
+            pollZoneOrders(token, prefs);
+        } else {
+            pollRestaurantOrders(token);
+        }
+    }
+
+    private void pollRiderOffers(String token) {
         HttpURLConnection conn = null;
         try {
-            String rpcName = "rider".equalsIgnoreCase(role) ? "rider_list_offers" : "owner_list_orders";
-            URL url = new URL("https://bvacebeorvxwcfkselon.supabase.co/rest/v1/rpc/" + rpcName);
+            URL url = new URL("https://bvacebeorvxwcfkselon.supabase.co/rest/v1/rpc/rider_list_offers");
             conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("POST");
             conn.setRequestProperty("apikey", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2YWNlYmVvcnZ4d2Nma3NlbG9uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3OTA2ODQsImV4cCI6MjA5NTM2NjY4NH0.3PUMlqniJqMnl_yNBc3Lu4JBOcMNK_RT0BLqb1nmohY");
@@ -246,7 +257,168 @@ public class PartnerForegroundService extends Service {
             conn.setReadTimeout(6000);
             conn.setDoOutput(true);
 
-            String jsonInput = "{\"_limit\":10}";
+            // rider_list_offers takes 0 arguments in Postgres - must send empty JSON object {}
+            try (OutputStream os = conn.getOutputStream()) {
+                os.write("{}".getBytes(StandardCharsets.UTF_8));
+            }
+
+            int code = conn.getResponseCode();
+            if (code == 200) {
+                try (BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
+                    StringBuilder response = new StringBuilder();
+                    String line;
+                    while ((line = br.readLine()) != null) {
+                        response.append(line);
+                    }
+                    JSONArray array = new JSONArray(response.toString());
+                    int activeOffers = 0;
+                    for (int i = 0; i < array.length(); i++) {
+                        JSONObject obj = array.getJSONObject(i);
+                        String status = obj.optString("status", "");
+                        if (status.isEmpty() || "active".equalsIgnoreCase(status)) {
+                            activeOffers++;
+                            String orderId = obj.optString("order_id", obj.optString("id", ""));
+                            if (!orderId.isEmpty() && !notifiedOrderIds.contains(orderId)) {
+                                notifiedOrderIds.add(orderId);
+                                String drop = obj.optString("drop_area", "Customer Delivery");
+                                double total = obj.optDouble("total", 0.0);
+                                startContinuousAlarm(
+                                    orderId,
+                                    "rider",
+                                    "🛵 NEW DELIVERY OFFER!",
+                                    "Drop: " + drop + " · ₹" + ((int) Math.round(total)) + " · Tap to Accept!"
+                                );
+                            }
+                        }
+                    }
+                    // Auto-silence when offers are accepted or rejected or gone
+                    if (activeOffers == 0 && isAlarmActive) {
+                        stopContinuousAlarm();
+                    }
+                }
+            }
+        } catch (Exception ignored) {
+        } finally {
+            if (conn != null) conn.disconnect();
+        }
+    }
+
+    private void pollZoneOrders(String token, SharedPreferences prefs) {
+        String zoneId = prefs.getString("zone_id", null);
+        if (zoneId == null || zoneId.trim().isEmpty()) {
+            zoneId = fetchZoneId(token);
+            if (zoneId != null && !zoneId.trim().isEmpty()) {
+                prefs.edit().putString("zone_id", zoneId).apply();
+            }
+        }
+        if (zoneId == null || zoneId.trim().isEmpty()) return;
+
+        HttpURLConnection conn = null;
+        try {
+            URL url = new URL("https://bvacebeorvxwcfkselon.supabase.co/rest/v1/rpc/zone_list_orders");
+            conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("apikey", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2YWNlYmVvcnZ4d2Nma3NlbG9uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3OTA2ODQsImV4cCI6MjA5NTM2NjY4NH0.3PUMlqniJqMnl_yNBc3Lu4JBOcMNK_RT0BLqb1nmohY");
+            conn.setRequestProperty("Authorization", "Bearer " + token);
+            conn.setRequestProperty("Content-Type", "application/json");
+            conn.setConnectTimeout(6000);
+            conn.setReadTimeout(6000);
+            conn.setDoOutput(true);
+
+            String payload = "{\"_zone_id\":\"" + zoneId + "\",\"_limit\":25}";
+            try (OutputStream os = conn.getOutputStream()) {
+                os.write(payload.getBytes(StandardCharsets.UTF_8));
+            }
+
+            int code = conn.getResponseCode();
+            if (code == 200) {
+                try (BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
+                    StringBuilder response = new StringBuilder();
+                    String line;
+                    while ((line = br.readLine()) != null) {
+                        response.append(line);
+                    }
+                    JSONArray array = new JSONArray(response.toString());
+                    int pendingCount = 0;
+                    for (int i = 0; i < array.length(); i++) {
+                        JSONObject obj = array.getJSONObject(i);
+                        String status = obj.optString("status", "");
+                        String riderId = obj.optString("rider_id", "");
+                        if ("placed".equalsIgnoreCase(status) || ("pending".equalsIgnoreCase(status) && (riderId.isEmpty() || "null".equals(riderId)))) {
+                            pendingCount++;
+                            String orderId = obj.optString("id", "");
+                            if (!orderId.isEmpty() && !notifiedOrderIds.contains(orderId)) {
+                                notifiedOrderIds.add(orderId);
+                                double total = obj.optDouble("total", 0.0);
+                                String shortId = orderId.length() >= 8 ? orderId.substring(0, 8).toUpperCase() : orderId;
+                                startContinuousAlarm(
+                                    orderId,
+                                    "zone_manager",
+                                    "📦 NEW ZONE ORDER!",
+                                    "Order #" + shortId + " · ₹" + ((int) Math.round(total)) + " · Tap to dispatch!"
+                                );
+                            }
+                        }
+                    }
+                    // Auto-silence when orders are assigned or accepted
+                    if (pendingCount == 0 && isAlarmActive) {
+                        stopContinuousAlarm();
+                    }
+                }
+            }
+        } catch (Exception ignored) {
+        } finally {
+            if (conn != null) conn.disconnect();
+        }
+    }
+
+    private String fetchZoneId(String token) {
+        HttpURLConnection conn = null;
+        try {
+            URL url = new URL("https://bvacebeorvxwcfkselon.supabase.co/rest/v1/rpc/zone_my_zones");
+            conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("apikey", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2YWNlYmVvcnZ4d2Nma3NlbG9uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3OTA2ODQsImV4cCI6MjA5NTM2NjY4NH0.3PUMlqniJqMnl_yNBc3Lu4JBOcMNK_RT0BLqb1nmohY");
+            conn.setRequestProperty("Authorization", "Bearer " + token);
+            conn.setRequestProperty("Content-Type", "application/json");
+            conn.setConnectTimeout(6000);
+            conn.setReadTimeout(6000);
+            conn.setDoOutput(true);
+            try (OutputStream os = conn.getOutputStream()) {
+                os.write("{}".getBytes(StandardCharsets.UTF_8));
+            }
+            if (conn.getResponseCode() == 200) {
+                try (BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
+                    StringBuilder response = new StringBuilder();
+                    String line;
+                    while ((line = br.readLine()) != null) response.append(line);
+                    JSONArray arr = new JSONArray(response.toString());
+                    if (arr.length() > 0) {
+                        return arr.getJSONObject(0).optString("id", null);
+                    }
+                }
+            }
+        } catch (Exception ignored) {
+        } finally {
+            if (conn != null) conn.disconnect();
+        }
+        return null;
+    }
+
+    private void pollRestaurantOrders(String token) {
+        HttpURLConnection conn = null;
+        try {
+            URL url = new URL("https://bvacebeorvxwcfkselon.supabase.co/rest/v1/rpc/owner_list_orders");
+            conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("apikey", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2YWNlYmVvcnZ4d2Nma3NlbG9uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3OTA2ODQsImV4cCI6MjA5NTM2NjY4NH0.3PUMlqniJqMnl_yNBc3Lu4JBOcMNK_RT0BLqb1nmohY");
+            conn.setRequestProperty("Authorization", "Bearer " + token);
+            conn.setRequestProperty("Content-Type", "application/json");
+            conn.setConnectTimeout(6000);
+            conn.setReadTimeout(6000);
+            conn.setDoOutput(true);
+
+            String jsonInput = "{\"_limit\":20}";
             try (OutputStream os = conn.getOutputStream()) {
                 byte[] input = jsonInput.getBytes(StandardCharsets.UTF_8);
                 os.write(input, 0, input.length);
@@ -260,56 +432,37 @@ public class PartnerForegroundService extends Service {
                     while ((line = br.readLine()) != null) {
                         response.append(line);
                     }
-                    processPollerResponse(response.toString(), role);
+                    JSONArray array = new JSONArray(response.toString());
+                    int placedCount = 0;
+                    for (int i = 0; i < array.length(); i++) {
+                        JSONObject obj = array.getJSONObject(i);
+                        String status = obj.optString("status", "");
+                        if ("placed".equalsIgnoreCase(status) || "pending".equalsIgnoreCase(status)) {
+                            placedCount++;
+                            String orderId = obj.optString("id", "");
+                            if (!orderId.isEmpty() && !notifiedOrderIds.contains(orderId)) {
+                                notifiedOrderIds.add(orderId);
+                                double total = obj.optDouble("total", 0.0);
+                                String shortId = orderId.length() >= 8 ? orderId.substring(0, 8).toUpperCase() : orderId;
+                                startContinuousAlarm(
+                                    orderId,
+                                    "restaurant",
+                                    "🚨 NEW ORDER RECEIVED!",
+                                    "Order #" + shortId + " · ₹" + ((int) Math.round(total)) + " · Tap to view and accept!"
+                                );
+                            }
+                        }
+                    }
+                    // Auto-silence when orders are accepted or rejected
+                    if (placedCount == 0 && isAlarmActive) {
+                        stopContinuousAlarm();
+                    }
                 }
             }
         } catch (Exception ignored) {
         } finally {
             if (conn != null) conn.disconnect();
         }
-    }
-
-    private void processPollerResponse(String jsonString, String role) {
-        try {
-            JSONArray array = new JSONArray(jsonString);
-            for (int i = 0; i < array.length(); i++) {
-                JSONObject obj = array.getJSONObject(i);
-                if ("rider".equalsIgnoreCase(role)) {
-                    String orderId = obj.optString("order_id", obj.optString("id", ""));
-                    String status = obj.optString("status", "");
-                    if (status.isEmpty() || "active".equalsIgnoreCase(status)) {
-                        if (!notifiedOrderIds.contains(orderId)) {
-                            notifiedOrderIds.add(orderId);
-                            String drop = obj.optString("drop_area", "Nearby");
-                            startContinuousAlarm(
-                                orderId,
-                                "rider",
-                                "🛵 NEW DELIVERY OFFER!",
-                                "Drop: " + drop + " · Tap to view and accept!"
-                            );
-                        }
-                        break;
-                    }
-                } else {
-                    String orderId = obj.optString("id", "");
-                    String status = obj.optString("status", "");
-                    if ("placed".equalsIgnoreCase(status) || "pending".equalsIgnoreCase(status)) {
-                        if (!notifiedOrderIds.contains(orderId)) {
-                            notifiedOrderIds.add(orderId);
-                            double total = obj.optDouble("total", 0.0);
-                            String shortId = orderId.length() >= 8 ? orderId.substring(0, 8).toUpperCase() : orderId;
-                            startContinuousAlarm(
-                                orderId,
-                                "restaurant",
-                                "🚨 NEW ORDER RECEIVED!",
-                                "Order #" + shortId + " · ₹" + ((int) Math.round(total)) + " · Tap to view and accept!"
-                            );
-                        }
-                        break;
-                    }
-                }
-            }
-        } catch (Exception ignored) {}
     }
 
     public synchronized void startContinuousAlarm(String orderId, String role, String title, String body) {
@@ -328,15 +481,12 @@ public class PartnerForegroundService extends Service {
                 }
             } catch (Exception ignored) {}
 
-            // 2. Boost volume on STREAM_ALARM
+            // 2. Maximize volume on STREAM_ALARM (loud and clear 100%)
             try {
                 AudioManager am = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
                 if (am != null) {
                     int max = am.getStreamMaxVolume(AudioManager.STREAM_ALARM);
-                    int cur = am.getStreamVolume(AudioManager.STREAM_ALARM);
-                    if (cur < max / 2) {
-                        am.setStreamVolume(AudioManager.STREAM_ALARM, (int) (max * 0.9), 0);
-                    }
+                    am.setStreamVolume(AudioManager.STREAM_ALARM, max, 0);
                 }
             } catch (Exception ignored) {}
 

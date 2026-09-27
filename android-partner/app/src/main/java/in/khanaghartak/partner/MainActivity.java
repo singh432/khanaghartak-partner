@@ -189,11 +189,18 @@ public class MainActivity extends BridgeActivity {
     private void requestBatteryOptimizationExemption() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             try {
+                SharedPreferences prefs = getSharedPreferences("kgt_partner_prefs", Context.MODE_PRIVATE);
+                boolean alreadyPrompted = prefs.getBoolean("battery_opt_prompted", false);
+                if (alreadyPrompted) return;
+
                 PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
                 if (pm != null && !pm.isIgnoringBatteryOptimizations(getPackageName())) {
+                    prefs.edit().putBoolean("battery_opt_prompted", true).apply();
                     Intent intent = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
                     intent.setData(Uri.parse("package:" + getPackageName()));
                     startActivity(intent);
+                } else if (pm != null && pm.isIgnoringBatteryOptimizations(getPackageName())) {
+                    prefs.edit().putBoolean("battery_opt_prompted", true).apply();
                 }
             } catch (Exception ignored) {}
         }
@@ -369,15 +376,12 @@ public class MainActivity extends BridgeActivity {
                 }
             } catch (Exception ignored) {}
 
-            // 1. Boost alarm audio volume
+            // 1. Maximize alarm audio volume (loud and clear 100%)
             try {
                 AudioManager am = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
                 if (am != null) {
                     int max = am.getStreamMaxVolume(AudioManager.STREAM_ALARM);
-                    int cur = am.getStreamVolume(AudioManager.STREAM_ALARM);
-                    if (cur < max / 2) {
-                        am.setStreamVolume(AudioManager.STREAM_ALARM, (int) (max * 0.85), 0);
-                    }
+                    am.setStreamVolume(AudioManager.STREAM_ALARM, max, 0);
                 }
             } catch (Exception ignored) {}
 
@@ -544,10 +548,20 @@ public class MainActivity extends BridgeActivity {
         final String role = activeRole != null ? activeRole : "restaurant";
         if (token == null || token.trim().isEmpty()) return;
 
+        final String lowerRole = role.toLowerCase();
+        if ("rider".equals(lowerRole)) {
+            pollRiderOffers(token);
+        } else if (lowerRole.contains("zone") || lowerRole.contains("manager")) {
+            pollZoneOrders(token);
+        } else {
+            pollRestaurantOrders(token);
+        }
+    }
+
+    private void pollRiderOffers(String token) {
         HttpURLConnection conn = null;
         try {
-            String rpcName = "rider".equals(role) ? "rider_list_offers" : "owner_list_orders";
-            URL url = new URL("https://bvacebeorvxwcfkselon.supabase.co/rest/v1/rpc/" + rpcName);
+            URL url = new URL("https://bvacebeorvxwcfkselon.supabase.co/rest/v1/rpc/rider_list_offers");
             conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("POST");
             conn.setRequestProperty("apikey", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2YWNlYmVvcnZ4d2Nma3NlbG9uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3OTA2ODQsImV4cCI6MjA5NTM2NjY4NH0.3PUMlqniJqMnl_yNBc3Lu4JBOcMNK_RT0BLqb1nmohY");
@@ -557,7 +571,189 @@ public class MainActivity extends BridgeActivity {
             conn.setReadTimeout(6000);
             conn.setDoOutput(true);
 
-            String jsonInput = "{\"_limit\":10}";
+            // rider_list_offers takes 0 arguments in Postgres - must send empty JSON object {}
+            try (OutputStream os = conn.getOutputStream()) {
+                os.write("{}".getBytes(StandardCharsets.UTF_8));
+            }
+
+            int code = conn.getResponseCode();
+            if (code == 200) {
+                try (BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
+                    StringBuilder response = new StringBuilder();
+                    String line;
+                    while ((line = br.readLine()) != null) {
+                        response.append(line);
+                    }
+                    JSONArray array = new JSONArray(response.toString());
+                    int activeOffers = 0;
+                    for (int i = 0; i < array.length(); i++) {
+                        JSONObject obj = array.getJSONObject(i);
+                        String status = obj.optString("status", "");
+                        if (status.isEmpty() || "active".equalsIgnoreCase(status)) {
+                            activeOffers++;
+                            String orderId = obj.optString("order_id", obj.optString("id", ""));
+                            if (!orderId.isEmpty() && !notifiedOrderIds.contains(orderId)) {
+                                notifiedOrderIds.add(orderId);
+                                final String oId = orderId;
+                                final String drop = obj.optString("drop_area", "Customer Delivery");
+                                final double total = obj.optDouble("total", 0.0);
+                                runOnUiThread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        startContinuousAlarm(
+                                            oId,
+                                            "rider",
+                                            "🛵 NEW DELIVERY OFFER!",
+                                            "Drop: " + drop + " · ₹" + ((int) Math.round(total)) + " · Tap to Accept!"
+                                        );
+                                    }
+                                });
+                            }
+                        }
+                    }
+                    if (activeOffers == 0 && isAlarmActive) {
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                stopContinuousAlarm();
+                            }
+                        });
+                    }
+                }
+            }
+        } catch (Exception ignored) {
+        } finally {
+            if (conn != null) conn.disconnect();
+        }
+    }
+
+    private void pollZoneOrders(String token) {
+        SharedPreferences prefs = getSharedPreferences("kgt_partner_prefs", Context.MODE_PRIVATE);
+        String zoneId = prefs.getString("zone_id", null);
+        if (zoneId == null || zoneId.trim().isEmpty()) {
+            zoneId = fetchZoneId(token);
+            if (zoneId != null && !zoneId.trim().isEmpty()) {
+                prefs.edit().putString("zone_id", zoneId).apply();
+            }
+        }
+        if (zoneId == null || zoneId.trim().isEmpty()) return;
+
+        HttpURLConnection conn = null;
+        try {
+            URL url = new URL("https://bvacebeorvxwcfkselon.supabase.co/rest/v1/rpc/zone_list_orders");
+            conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("apikey", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2YWNlYmVvcnZ4d2Nma3NlbG9uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3OTA2ODQsImV4cCI6MjA5NTM2NjY4NH0.3PUMlqniJqMnl_yNBc3Lu4JBOcMNK_RT0BLqb1nmohY");
+            conn.setRequestProperty("Authorization", "Bearer " + token);
+            conn.setRequestProperty("Content-Type", "application/json");
+            conn.setConnectTimeout(6000);
+            conn.setReadTimeout(6000);
+            conn.setDoOutput(true);
+
+            String payload = "{\"_zone_id\":\"" + zoneId + "\",\"_limit\":25}";
+            try (OutputStream os = conn.getOutputStream()) {
+                os.write(payload.getBytes(StandardCharsets.UTF_8));
+            }
+
+            int code = conn.getResponseCode();
+            if (code == 200) {
+                try (BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
+                    StringBuilder response = new StringBuilder();
+                    String line;
+                    while ((line = br.readLine()) != null) {
+                        response.append(line);
+                    }
+                    JSONArray array = new JSONArray(response.toString());
+                    int pendingCount = 0;
+                    for (int i = 0; i < array.length(); i++) {
+                        JSONObject obj = array.getJSONObject(i);
+                        String status = obj.optString("status", "");
+                        String riderId = obj.optString("rider_id", "");
+                        if ("placed".equalsIgnoreCase(status) || ("pending".equalsIgnoreCase(status) && (riderId.isEmpty() || "null".equals(riderId)))) {
+                            pendingCount++;
+                            String orderId = obj.optString("id", "");
+                            if (!orderId.isEmpty() && !notifiedOrderIds.contains(orderId)) {
+                                notifiedOrderIds.add(orderId);
+                                final String oId = orderId;
+                                final double total = obj.optDouble("total", 0.0);
+                                final String shortId = oId.length() >= 8 ? oId.substring(0, 8).toUpperCase() : oId;
+                                runOnUiThread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        startContinuousAlarm(
+                                            oId,
+                                            "zone_manager",
+                                            "📦 NEW ZONE ORDER!",
+                                            "Order #" + shortId + " · ₹" + ((int) Math.round(total)) + " · Tap to dispatch!"
+                                        );
+                                    }
+                                });
+                            }
+                        }
+                    }
+                    if (pendingCount == 0 && isAlarmActive) {
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                stopContinuousAlarm();
+                            }
+                        });
+                    }
+                }
+            }
+        } catch (Exception ignored) {
+        } finally {
+            if (conn != null) conn.disconnect();
+        }
+    }
+
+    private String fetchZoneId(String token) {
+        HttpURLConnection conn = null;
+        try {
+            URL url = new URL("https://bvacebeorvxwcfkselon.supabase.co/rest/v1/rpc/zone_my_zones");
+            conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("apikey", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2YWNlYmVvcnZ4d2Nma3NlbG9uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3OTA2ODQsImV4cCI6MjA5NTM2NjY4NH0.3PUMlqniJqMnl_yNBc3Lu4JBOcMNK_RT0BLqb1nmohY");
+            conn.setRequestProperty("Authorization", "Bearer " + token);
+            conn.setRequestProperty("Content-Type", "application/json");
+            conn.setConnectTimeout(6000);
+            conn.setReadTimeout(6000);
+            conn.setDoOutput(true);
+            try (OutputStream os = conn.getOutputStream()) {
+                os.write("{}".getBytes(StandardCharsets.UTF_8));
+            }
+            if (conn.getResponseCode() == 200) {
+                try (BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
+                    StringBuilder response = new StringBuilder();
+                    String line;
+                    while ((line = br.readLine()) != null) response.append(line);
+                    JSONArray arr = new JSONArray(response.toString());
+                    if (arr.length() > 0) {
+                        return arr.getJSONObject(0).optString("id", null);
+                    }
+                }
+            }
+        } catch (Exception ignored) {
+        } finally {
+            if (conn != null) conn.disconnect();
+        }
+        return null;
+    }
+
+    private void pollRestaurantOrders(String token) {
+        HttpURLConnection conn = null;
+        try {
+            URL url = new URL("https://bvacebeorvxwcfkselon.supabase.co/rest/v1/rpc/owner_list_orders");
+            conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("apikey", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2YWNlYmVvcnZ4d2Nma3NlbG9uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3OTA2ODQsImV4cCI6MjA5NTM2NjY4NH0.3PUMlqniJqMnl_yNBc3Lu4JBOcMNK_RT0BLqb1nmohY");
+            conn.setRequestProperty("Authorization", "Bearer " + token);
+            conn.setRequestProperty("Content-Type", "application/json");
+            conn.setConnectTimeout(6000);
+            conn.setReadTimeout(6000);
+            conn.setDoOutput(true);
+
+            String jsonInput = "{\"_limit\":20}";
             try (OutputStream os = conn.getOutputStream()) {
                 byte[] input = jsonInput.getBytes(StandardCharsets.UTF_8);
                 os.write(input, 0, input.length);
@@ -571,73 +767,57 @@ public class MainActivity extends BridgeActivity {
                     while ((line = br.readLine()) != null) {
                         response.append(line);
                     }
-                    processPollerResponse(response.toString(), role);
+                    JSONArray array = new JSONArray(response.toString());
+                    int placedCount = 0;
+                    for (int i = 0; i < array.length(); i++) {
+                        JSONObject obj = array.getJSONObject(i);
+                        String status = obj.optString("status", "");
+                        if ("placed".equalsIgnoreCase(status) || "pending".equalsIgnoreCase(status)) {
+                            placedCount++;
+                            String orderId = obj.optString("id", "");
+                            if (!orderId.isEmpty() && !notifiedOrderIds.contains(orderId)) {
+                                notifiedOrderIds.add(orderId);
+                                final String oId = orderId;
+                                final double total = obj.optDouble("total", 0.0);
+                                final String shortId = oId.length() >= 8 ? oId.substring(0, 8).toUpperCase() : oId;
+                                runOnUiThread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        startContinuousAlarm(
+                                            oId,
+                                            "restaurant",
+                                            "🚨 NEW ORDER RECEIVED!",
+                                            "Order #" + shortId + " · ₹" + ((int) Math.round(total)) + " · Tap to view and accept!"
+                                        );
+                                    }
+                                });
+                            }
+                        }
+                    }
+                    if (placedCount == 0 && isAlarmActive) {
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                stopContinuousAlarm();
+                            }
+                        });
+                    }
                 }
             }
         } catch (Exception ignored) {
         } finally {
-            if (conn != null) {
-                conn.disconnect();
-            }
+            if (conn != null) conn.disconnect();
         }
     }
 
-    private void processPollerResponse(String jsonString, String role) {
-        try {
-            JSONArray array = new JSONArray(jsonString);
-            for (int i = 0; i < array.length(); i++) {
-                JSONObject obj = array.getJSONObject(i);
-                if ("rider".equals(role)) {
-                    String orderId = obj.optString("order_id", obj.optString("id", ""));
-                    String status = obj.optString("status", "");
-                    if (status.isEmpty() || "active".equals(status)) {
-                        if (!notifiedOrderIds.contains(orderId)) {
-                            notifiedOrderIds.add(orderId);
-                            final String oId = orderId;
-                            final String drop = obj.optString("drop_area", "Nearby");
-                            runOnUiThread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    startContinuousAlarm(
-                                        oId,
-                                        "rider",
-                                        "🛵 NEW DELIVERY OFFER!",
-                                        "Drop: " + drop + " · Tap to accept!"
-                                    );
-                                }
-                            });
-                        }
-                        break;
-                    }
-                } else {
-                    String orderId = obj.optString("id", "");
-                    String status = obj.optString("status", "");
-                    if ("placed".equalsIgnoreCase(status) || "pending".equalsIgnoreCase(status)) {
-                        if (!notifiedOrderIds.contains(orderId)) {
-                            notifiedOrderIds.add(orderId);
-                            final String oId = orderId;
-                            final double total = obj.optDouble("total", 0.0);
-                            final String shortId = oId.length() >= 8 ? oId.substring(0, 8).toUpperCase() : oId;
-                            runOnUiThread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    startContinuousAlarm(
-                                        oId,
-                                        "restaurant",
-                                        "🚨 NEW ORDER RECEIVED!",
-                                        "Order #" + shortId + " · ₹" + ((int) Math.round(total)) + " · Tap to view and accept!"
-                                    );
-                                }
-                            });
-                        }
-                        break;
-                    }
-                }
-            }
-        } catch (Exception ignored) {}
-    }
-
     public class AlertJavascriptInterface {
+        @JavascriptInterface
+        public void syncZoneId(final String zoneId) {
+            if (zoneId != null && !zoneId.trim().isEmpty()) {
+                getSharedPreferences("kgt_partner_prefs", Context.MODE_PRIVATE)
+                    .edit().putString("zone_id", zoneId.trim()).apply();
+            }
+        }
         @JavascriptInterface
         public void startContinuousAlarm(final String orderId, final String role, final String title, final String body) {
             runOnUiThread(new Runnable() {

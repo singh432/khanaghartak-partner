@@ -11,6 +11,7 @@ import { sumPayouts, sumPlatformRevenue, inr } from "@/lib/payouts";
 import type { ZonePoint } from "@/lib/zones";
 import { isRestaurantOpen, hoursLabel } from "@/lib/hours";
 import { useMinuteTick } from "@/hooks/useMinuteTick";
+import { silencePartnerOrderAlert } from "@/components/PartnerNotificationListener";
 
 
 const ZoneMapEditor = lazy(() => import("@/components/ZoneMapEditor.client"));
@@ -81,7 +82,12 @@ function ZoneManagerPage() {
       supabase.rpc("zone_list_restaurants" as any, { _zone_id: id }),
       supabase.rpc("zone_list_customers" as any, { _zone_id: id }),
     ]);
-    setOrders((o ?? []) as unknown as Order[]);
+    const orderList = (o ?? []) as unknown as Order[];
+    setOrders(orderList);
+    const hasPlaced = orderList.some((ord) => ord.status === "placed" && !ord.rider_id);
+    if (!hasPlaced) {
+      silencePartnerOrderAlert();
+    }
     setRiders((rd ?? []) as unknown as Rider[]);
     const rests = (rs ?? []) as unknown as Rest[];
     // Opening/closing hours drive the live Open/Closed badge.
@@ -184,6 +190,7 @@ function ZoneManagerPage() {
 
   const assign = async (orderId: string, riderId: string) => {
     if (!riderId) return;
+    silencePartnerOrderAlert();
     setBusy(orderId);
     const { error } = await supabase.rpc("zone_assign_rider" as any, { _order_id: orderId, _rider_id: riderId });
     setBusy(null);

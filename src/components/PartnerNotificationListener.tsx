@@ -165,20 +165,24 @@ export function PartnerNotificationListener() {
           });
           if (!error && Array.isArray(data)) {
             const placedOrders = data.filter((o: any) => o.status === "placed");
-            for (const order of placedOrders) {
-              if (!seenIdsRef.current.has(order.id)) {
-                seenIdsRef.current.add(order.id);
-                const shortId = order.id.slice(0, 8).toUpperCase();
-                const totalAmt = Math.round(Number(order.total) || 0);
-                const cust = order.customer_first_name || "Customer";
-                firePartnerOrderAlert(
-                  order.id,
-                  "restaurant",
-                  "🚨 NEW ORDER RECEIVED!",
-                  `Order #${shortId} · ₹${totalAmt} from ${cust} · Tap to Accept!`,
-                  "/admin/orders"
-                );
+            if (placedOrders.length > 0) {
+              for (const order of placedOrders) {
+                if (!seenIdsRef.current.has(order.id)) {
+                  seenIdsRef.current.add(order.id);
+                  const shortId = order.id.slice(0, 8).toUpperCase();
+                  const totalAmt = Math.round(Number(order.total) || 0);
+                  const cust = order.customer_first_name || "Customer";
+                  firePartnerOrderAlert(
+                    order.id,
+                    "restaurant",
+                    "🚨 NEW ORDER RECEIVED!",
+                    `Order #${shortId} · ₹${totalAmt} from ${cust} · Tap to Accept!`,
+                    "/admin/orders"
+                  );
+                }
               }
+            } else {
+              silencePartnerOrderAlert();
             }
           }
         }
@@ -186,20 +190,24 @@ export function PartnerNotificationListener() {
         // 2. Rider Check: Polls for available delivery offers
         if (isRiderPartner) {
           const { data, error } = await supabase.rpc("rider_list_offers" as any);
-          if (!error && Array.isArray(data) && data.length > 0) {
-            for (const offer of data) {
-              if (!seenIdsRef.current.has(offer.order_id)) {
-                seenIdsRef.current.add(offer.order_id);
-                const drop = offer.drop_area || "Customer Delivery";
-                const totalAmt = Math.round(Number(offer.total) || 0);
-                firePartnerOrderAlert(
-                  offer.order_id,
-                  "rider",
-                  "🛵 NEW DELIVERY OFFER!",
-                  `Drop: ${drop} · ₹${totalAmt} · Tap to Accept Offer!`,
-                  "/rider"
-                );
+          if (!error && Array.isArray(data)) {
+            if (data.length > 0) {
+              for (const offer of data) {
+                if (!seenIdsRef.current.has(offer.order_id)) {
+                  seenIdsRef.current.add(offer.order_id);
+                  const drop = offer.drop_area || "Customer Delivery";
+                  const totalAmt = Math.round(Number(offer.total) || 0);
+                  firePartnerOrderAlert(
+                    offer.order_id,
+                    "rider",
+                    "🛵 NEW DELIVERY OFFER!",
+                    `Drop: ${drop} · ₹${totalAmt} · Tap to Accept Offer!`,
+                    "/rider"
+                  );
+                }
               }
+            } else {
+              silencePartnerOrderAlert();
             }
           }
         }
@@ -228,18 +236,22 @@ export function PartnerNotificationListener() {
               const pendingOrders = data.filter(
                 (o: any) => o.status === "placed" && !o.rider_id
               );
-              for (const order of pendingOrders) {
-                if (!seenIdsRef.current.has(order.id)) {
-                  seenIdsRef.current.add(order.id);
-                  const shortId = order.id.slice(0, 8).toUpperCase();
-                  firePartnerOrderAlert(
-                    order.id,
-                    "zone_manager",
-                    "📦 UNASSIGNED ORDER IN ZONE!",
-                    `Order #${shortId} needs dispatch in your zone.`,
-                    "/zone"
-                  );
+              if (pendingOrders.length > 0) {
+                for (const order of pendingOrders) {
+                  if (!seenIdsRef.current.has(order.id)) {
+                    seenIdsRef.current.add(order.id);
+                    const shortId = order.id.slice(0, 8).toUpperCase();
+                    firePartnerOrderAlert(
+                      order.id,
+                      "zone_manager",
+                      "📦 UNASSIGNED ORDER IN ZONE!",
+                      `Order #${shortId} needs dispatch in your zone.`,
+                      "/zone"
+                    );
+                  }
                 }
+              } else {
+                silencePartnerOrderAlert();
               }
             }
           }

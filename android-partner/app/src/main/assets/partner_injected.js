@@ -320,52 +320,145 @@
     syncAuthWithNative();
 
     var role = detectRoleFromPath();
-    var rpcName = (role === 'rider') ? 'rider_list_offers' : 'owner_list_orders';
-    var url = SUPABASE_URL + '/rest/v1/rpc/' + rpcName;
-
     isCheckingOrders = true;
-    fetch(url, {
-      method: 'POST',
-      headers: {
-        'apikey': SUPABASE_ANON,
-        'Authorization': 'Bearer ' + auth.token,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ _limit: 10 })
-    })
-    .then(function (res) {
-      if (res.status === 401 || res.status === 403) {
-        return null;
-      }
-      return res.json();
-    })
-    .then(function (data) {
-      isCheckingOrders = false;
-      if (!Array.isArray(data)) return;
 
-      if (role === 'rider') {
-        if (data.length > 0) {
-          var firstOffer = data[0];
+    if (role === 'rider') {
+      // rider_list_offers takes 0 arguments in Postgres - must send empty JSON object {}
+      fetch(SUPABASE_URL + '/rest/v1/rpc/rider_list_offers', {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_ANON,
+          'Authorization': 'Bearer ' + auth.token,
+          'Content-Type': 'application/json'
+        },
+        body: '{}'
+      })
+      .then(function (res) {
+        if (res.status === 401 || res.status === 403) return null;
+        return res.json();
+      })
+      .then(function (data) {
+        isCheckingOrders = false;
+        if (!Array.isArray(data)) return;
+        var activeOffers = data.filter(function (o) {
+          return o && (!o.status || o.status === 'active');
+        });
+        if (activeOffers.length > 0) {
+          var firstOffer = activeOffers[0];
           var offerId = firstOffer.order_id || firstOffer.id;
-          if (!lastCheckedOrderIds[offerId]) {
+          if (offerId && !lastCheckedOrderIds[offerId]) {
             lastCheckedOrderIds[offerId] = true;
+            var drop = firstOffer.drop_area || 'Customer Delivery';
+            var total = Math.round(Number(firstOffer.total) || 0);
             startAlarm(
               offerId,
               'rider',
               '🛵 NEW DELIVERY OFFER!',
-              'Drop: ' + (firstOffer.drop_area || 'Nearby') + ' · Tap to view and accept!'
+              'Drop: ' + drop + ' · ₹' + total + ' · Tap to Accept!'
             );
           }
         } else if (isAlarmActive) {
           stopAlarm();
         }
+      })
+      .catch(function () {
+        isCheckingOrders = false;
+      });
+    } else if (role === 'zone_manager' || role === 'manager') {
+      var fetchZoneOrders = function (zoneId) {
+        fetch(SUPABASE_URL + '/rest/v1/rpc/zone_list_orders', {
+          method: 'POST',
+          headers: {
+            'apikey': SUPABASE_ANON,
+            'Authorization': 'Bearer ' + auth.token,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ _zone_id: zoneId, _limit: 25 })
+        })
+        .then(function (res) {
+          if (res.status === 401 || res.status === 403) return null;
+          return res.json();
+        })
+        .then(function (data) {
+          isCheckingOrders = false;
+          if (!Array.isArray(data)) return;
+          var placed = data.filter(function (o) {
+            return o && (o.status === 'placed' || (o.status === 'pending' && !o.rider_id));
+          });
+          if (placed.length > 0) {
+            var newest = placed[0];
+            if (newest.id && !lastCheckedOrderIds[newest.id]) {
+              lastCheckedOrderIds[newest.id] = true;
+              var shortId = newest.id.slice(0, 8).toUpperCase();
+              var total = Math.round(Number(newest.total) || 0);
+              startAlarm(
+                newest.id,
+                'zone_manager',
+                '📦 NEW ZONE ORDER!',
+                'Order #' + shortId + ' · ₹' + total + ' · Tap to dispatch!'
+              );
+            }
+          } else if (isAlarmActive) {
+            stopAlarm();
+          }
+        })
+        .catch(function () {
+          isCheckingOrders = false;
+        });
+      };
+
+      if (!window.__partner_zone_id) {
+        fetch(SUPABASE_URL + '/rest/v1/rpc/zone_my_zones', {
+          method: 'POST',
+          headers: {
+            'apikey': SUPABASE_ANON,
+            'Authorization': 'Bearer ' + auth.token,
+            'Content-Type': 'application/json'
+          },
+          body: '{}'
+        })
+        .then(function (res) { return res.json(); })
+        .then(function (zones) {
+          if (Array.isArray(zones) && zones.length > 0 && zones[0].id) {
+            window.__partner_zone_id = zones[0].id;
+            if (window.AndroidAlert && typeof window.AndroidAlert.syncZoneId === 'function') {
+              window.AndroidAlert.syncZoneId(zones[0].id);
+            }
+            fetchZoneOrders(zones[0].id);
+          } else {
+            isCheckingOrders = false;
+          }
+        })
+        .catch(function () {
+          isCheckingOrders = false;
+        });
       } else {
+        fetchZoneOrders(window.__partner_zone_id);
+      }
+    } else {
+      // Restaurant
+      fetch(SUPABASE_URL + '/rest/v1/rpc/owner_list_orders', {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_ANON,
+          'Authorization': 'Bearer ' + auth.token,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ _limit: 20 })
+      })
+      .then(function (res) {
+        if (res.status === 401 || res.status === 403) return null;
+        return res.json();
+      })
+      .then(function (data) {
+        isCheckingOrders = false;
+        if (!Array.isArray(data)) return;
         var placed = data.filter(function (o) {
           return o && (o.status === 'placed' || o.status === 'pending');
         });
         if (placed.length > 0) {
           var newest = placed[0];
-          if (!lastCheckedOrderIds[newest.id]) {
+          if (newest.id && !lastCheckedOrderIds[newest.id]) {
             lastCheckedOrderIds[newest.id] = true;
             var shortId = newest.id.slice(0, 8).toUpperCase();
             var total = Math.round(Number(newest.total) || 0);
@@ -379,11 +472,11 @@
         } else if (isAlarmActive) {
           stopAlarm();
         }
-      }
-    })
-    .catch(function () {
-      isCheckingOrders = false;
-    });
+      })
+      .catch(function () {
+        isCheckingOrders = false;
+      });
+    }
   }
 
   setInterval(checkOrdersDirectly, 3500);
@@ -517,6 +610,56 @@
         e.preventDefault();
         e.stopPropagation();
         doPartnerSignOut();
+      }
+    },
+    true
+  );
+
+  // AUTOMATIC AUTO-SILENCE ON ACCEPT, REJECT, DECLINE, OR ASSIGN ACROSS ALL LOGINS
+  document.addEventListener(
+    'click',
+    function (e) {
+      var target = e.target;
+      if (!target) return;
+      var btn = target.closest('button, a, [role="button"], input[type="submit"], input[type="button"]');
+      if (!btn) return;
+      var aria = (btn.getAttribute('aria-label') || '').toLowerCase();
+      var text = (btn.textContent || '').trim().toLowerCase();
+      var id = (btn.id || '').toLowerCase();
+      var cls = (btn.className || '').toLowerCase();
+
+      var isAction =
+        text.indexOf('accept') !== -1 ||
+        text.indexOf('reject') !== -1 ||
+        text.indexOf('decline') !== -1 ||
+        text.indexOf('take order') !== -1 ||
+        text.indexOf('assign') !== -1 ||
+        text.indexOf('mark delivered') !== -1 ||
+        text.indexOf('silence') !== -1 ||
+        aria.indexOf('accept') !== -1 ||
+        aria.indexOf('reject') !== -1 ||
+        aria.indexOf('decline') !== -1 ||
+        id.indexOf('accept') !== -1 ||
+        id.indexOf('reject') !== -1 ||
+        cls.indexOf('accept') !== -1 ||
+        cls.indexOf('reject') !== -1;
+
+      if (isAction) {
+        console.log('[KGT-PARTNER] Action clicked: stopping continuous alarm immediately');
+        stopAlarm();
+      }
+    },
+    true
+  );
+
+  // Stop alarm when a dropdown select is changed (e.g. Zone Manager assigning a rider)
+  document.addEventListener(
+    'change',
+    function (e) {
+      var target = e.target;
+      if (target && target.tagName === 'SELECT') {
+        console.log('[KGT-PARTNER] Select changed: stopping continuous alarm immediately');
+        stopAlarm();
       }
     },
     true
