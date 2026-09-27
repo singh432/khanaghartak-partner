@@ -213,7 +213,7 @@ function RiderDashboard({
     const sum = sumPayouts(list);
     return { deliveries: list.length, earning: sum.rider, cash: sum.cash, deposit: sum.deposit };
   }, [doneOrders, range]);
-  const [tab, setTab] = useState<"available" | "mine">("available");
+  const [tab, setTab] = useState<"available" | "mine" | "earnings">("available");
   const [online, setOnline] = useState(profile.is_online !== false);
   const [togglingOnline, setTogglingOnline] = useState(false);
 
@@ -375,9 +375,9 @@ function RiderDashboard({
       <div className="px-3 pt-3">
         <div className={`mb-3 flex items-center justify-between rounded-2xl border p-3 ${online ? "border-primary/40 bg-primary/5" : "border-destructive/30 bg-destructive/5"}`}>
           <div>
-            <p className="text-sm font-extrabold">{online ? "Active" : "Inactive"}</p>
+            <p className="text-sm font-extrabold">{online ? "Active & Online" : "Inactive / Offline"}</p>
             <p className="text-[11px] text-muted-foreground">
-              {online ? "You'll receive new delivery offers on WhatsApp." : "No new delivery messages will be sent to you."}
+              {online ? "You'll receive instant delivery alerts on WhatsApp & sirens." : "Go active to receive new delivery orders."}
             </p>
           </div>
           <button
@@ -392,72 +392,80 @@ function RiderDashboard({
             <span className={`absolute top-1 h-5 w-5 rounded-full bg-background transition-all ${online ? "left-6" : "left-1"}`} />
           </button>
         </div>
+      </div>
 
-        <div className="mb-3 rounded-2xl border bg-card p-4">
-          <div className="flex items-center gap-2">
-            <Wallet className="h-4 w-4 text-primary" />
-            <p className="text-sm font-extrabold">My Earnings</p>
-          </div>
-          <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-            <div className="rounded-xl bg-secondary p-2">
-              <p className="text-[10px] font-semibold uppercase text-muted-foreground">Today</p>
-              <p className="text-base font-extrabold">{inr(earnings.today)}</p>
-            </div>
-            <div className="rounded-xl bg-primary/10 p-2">
-              <p className="text-[10px] font-semibold uppercase text-muted-foreground">Total</p>
-              <p className="text-base font-extrabold text-primary">{inr(earnings.total)}</p>
-            </div>
-            <div className="rounded-xl bg-secondary p-2">
-              <p className="text-[10px] font-semibold uppercase text-muted-foreground">Deliveries</p>
-              <p className="text-base font-extrabold">{earnings.deliveries}</p>
-            </div>
-          </div>
+      {/* Top Tabs */}
+      <div className="grid grid-cols-3 gap-1 px-3 pb-2">
+        <Tab on={tab === "available"} onClick={() => setTab("available")} label={`Offers (${offers.length})`} />
+        <Tab on={tab === "mine"} onClick={() => setTab("mine")} label={`Deliveries (${mineOrders.length})`} />
+        <Tab on={tab === "earnings"} onClick={() => setTab("earnings")} label="Earnings" />
+      </div>
 
-          <div className="mt-3 rounded-xl border bg-background p-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Cash collection — {rangeLabel(range)}</p>
-              <DateRangeFilter value={range} onChange={setRange} />
+      {/* TAB CONTENT: EARNINGS */}
+      {tab === "earnings" && (
+        <div className="space-y-3 px-3">
+          <div className="rounded-2xl border bg-card p-4">
+            <div className="flex items-center gap-2">
+              <Wallet className="h-4 w-4 text-primary" />
+              <p className="text-sm font-extrabold">My Earnings</p>
             </div>
-            <div className="mt-2 grid grid-cols-3 gap-2 text-center">
-              <div>
-                <p className="text-[10px] uppercase text-muted-foreground">Collected</p>
-                <p className="text-base font-extrabold">{inr(periodStats.cash)}</p>
+            <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+              <div className="rounded-xl bg-secondary p-2">
+                <p className="text-[10px] font-semibold uppercase text-muted-foreground">Today</p>
+                <p className="text-base font-extrabold">{inr(earnings.today)}</p>
               </div>
-              <div>
-                <p className="text-[10px] uppercase text-muted-foreground">Your cut</p>
-                <p className="text-base font-extrabold text-success">{inr(periodStats.earning)}</p>
+              <div className="rounded-xl bg-primary/10 p-2">
+                <p className="text-[10px] font-semibold uppercase text-muted-foreground">Total</p>
+                <p className="text-base font-extrabold text-primary">{inr(earnings.total)}</p>
               </div>
-              <div>
-                <p className="text-[10px] uppercase text-muted-foreground">Deposit due</p>
-                <p className="text-base font-extrabold text-amber-600">{inr(periodStats.deposit)}</p>
+              <div className="rounded-xl bg-secondary p-2">
+                <p className="text-[10px] font-semibold uppercase text-muted-foreground">Deliveries</p>
+                <p className="text-base font-extrabold">{earnings.deliveries}</p>
               </div>
             </div>
+
+            <div className="mt-3 rounded-xl border bg-background p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Cash collection — {rangeLabel(range)}</p>
+                <DateRangeFilter value={range} onChange={setRange} />
+              </div>
+              <div className="mt-2 grid grid-cols-3 gap-2 text-center">
+                <div>
+                  <p className="text-[10px] uppercase text-muted-foreground">Collected</p>
+                  <p className="text-base font-extrabold">{inr(periodStats.cash)}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase text-muted-foreground">Your cut</p>
+                  <p className="text-base font-extrabold text-success">{inr(periodStats.earning)}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase text-muted-foreground">Deposit due</p>
+                  <p className="text-base font-extrabold text-amber-600">{inr(periodStats.deposit)}</p>
+                </div>
+              </div>
+              <p className="mt-2 text-[11px] text-muted-foreground">
+                Cash taken from customers on {periodStats.deliveries} deliveries ({rangeLabel(range).toLowerCase()}). Keep your cut and deposit the rest to KhanaGharTak.
+              </p>
+            </div>
+
             <p className="mt-2 text-[11px] text-muted-foreground">
-              Cash taken from customers on {periodStats.deliveries} deliveries ({rangeLabel(range).toLowerCase()}). Keep your cut and deposit the rest to KhanaGharTak.
+              You earn {Math.round(RIDER_SHARE_RATE * 100)}% of platform revenue after discounts on each delivered order.
             </p>
           </div>
 
-          <p className="mt-2 text-[11px] text-muted-foreground">
-             You earn {Math.round(RIDER_SHARE_RATE * 100)}% of platform revenue after discounts on each delivered order.
-          </p>
+          <BaseLocationCard hasBase={hasBase} onSaved={() => { setHasBase(true); load(); }} />
         </div>
+      )}
 
-
-        <BaseLocationCard hasBase={hasBase} onSaved={() => { setHasBase(true); load(); }} />
-      </div>
-
-      <div className="grid grid-cols-2 gap-1 p-3">
-        <Tab on={tab === "available"} onClick={() => setTab("available")} label={`Offered to you (${offers.length})`} />
-        <Tab on={tab === "mine"} onClick={() => setTab("mine")} label={`My Deliveries (${mineOrders.length})`} />
-      </div>
-
-      <div className="space-y-3 px-3">
-        {tab === "available" && offers.length === 0 && (
-          <EmptyState text="No delivery offers right now. You'll get a WhatsApp message when an order is offered to you." />
-        )}
-        {tab === "mine" && mineOrders.length === 0 && (
-          <EmptyState text="You haven't accepted any deliveries yet." />
-        )}
+      {/* TAB CONTENT: OFFERS & DELIVERIES */}
+      {tab !== "earnings" && (
+        <div className="space-y-3 px-3">
+          {tab === "available" && offers.length === 0 && (
+            <EmptyState text="No delivery offers right now. You'll get an instant alert when a new order is assigned to you." />
+          )}
+          {tab === "mine" && mineOrders.length === 0 && (
+            <EmptyState text="You haven't accepted any deliveries yet." />
+          )}
 
         {tab === "available" && offers.map((o) => (
           <article key={o.order_id} className="rounded-2xl border-2 border-primary/40 bg-card p-4 shadow-sm">
@@ -556,6 +564,78 @@ function RiderDashboard({
           );
         })}
       </div>
+      )}
+
+      {/* Native Mobile Bottom Navigation Bar */}
+      <nav
+        id="kgt-rider-bottom-nav"
+        className="fixed bottom-0 left-0 right-0 z-40 grid grid-cols-3 border-t bg-card/98 backdrop-blur shadow-[0_-2px_10px_rgba(0,0,0,0.06)] md:hidden"
+        style={{ paddingBottom: "max(6px, env(safe-area-inset-bottom, 6px))" }}
+      >
+        <button
+          type="button"
+          id="kgt-tab-offers"
+          onClick={() => {
+            setTab("available");
+            window.scrollTo({ top: 0, behavior: "instant" });
+          }}
+          style={{ touchAction: "manipulation" }}
+          className={`flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-bold transition-colors ${
+            tab === "available" ? "text-primary" : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <div className="relative inline-flex items-center justify-center">
+            <Bike className={`h-5 w-5 ${tab === "available" ? "stroke-[2.5]" : "stroke-2"}`} />
+            {offers.length > 0 && (
+              <span className="absolute -top-1.5 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-black text-destructive-foreground shadow">
+                {offers.length}
+              </span>
+            )}
+          </div>
+          <span>Offers</span>
+        </button>
+
+        <button
+          type="button"
+          id="kgt-tab-deliveries"
+          onClick={() => {
+            setTab("mine");
+            window.scrollTo({ top: 0, behavior: "instant" });
+          }}
+          style={{ touchAction: "manipulation" }}
+          className={`flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-bold transition-colors ${
+            tab === "mine" ? "text-primary" : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <div className="relative inline-flex items-center justify-center">
+            <Package className={`h-5 w-5 ${tab === "mine" ? "stroke-[2.5]" : "stroke-2"}`} />
+            {mineOrders.length > 0 && (
+              <span className="absolute -top-1.5 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-black text-primary-foreground shadow">
+                {mineOrders.length}
+              </span>
+            )}
+          </div>
+          <span>Deliveries</span>
+        </button>
+
+        <button
+          type="button"
+          id="kgt-tab-earnings"
+          onClick={() => {
+            setTab("earnings");
+            window.scrollTo({ top: 0, behavior: "instant" });
+          }}
+          style={{ touchAction: "manipulation" }}
+          className={`flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-bold transition-colors ${
+            tab === "earnings" ? "text-primary" : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <div className="relative inline-flex items-center justify-center">
+            <Wallet className={`h-5 w-5 ${tab === "earnings" ? "stroke-[2.5]" : "stroke-2"}`} />
+          </div>
+          <span>Earnings</span>
+        </button>
+      </nav>
     </div>
   );
 }

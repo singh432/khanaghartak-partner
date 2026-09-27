@@ -85,7 +85,11 @@ function AdminLayout() {
     return <PendingApproval restaurant={restaurant} onSignOut={signOut} />;
   }
 
-  const isActive = (to: string, exact?: boolean) => exact ? pathname === to : pathname === to || pathname.startsWith(to + "/");
+  const isActive = (to: string, exact?: boolean) => {
+    const normPath = pathname.replace(/\/$/, "");
+    const normTo = to.replace(/\/$/, "");
+    return exact ? normPath === normTo : normPath === normTo || normPath.startsWith(normTo + "/");
+  };
 
   return (
     <div className="min-h-screen md:flex md:bg-secondary/30">
@@ -144,13 +148,25 @@ function AdminLayout() {
         </main>
 
         {/* Mobile bottom nav */}
-        <nav className="fixed bottom-0 left-0 right-0 z-30 grid grid-cols-5 border-t bg-background md:hidden">
+        <nav
+          id="kgt-admin-bottom-nav"
+          className="fixed bottom-0 left-0 right-0 z-40 grid grid-cols-5 border-t bg-card/98 backdrop-blur shadow-[0_-2px_10px_rgba(0,0,0,0.06)] md:hidden"
+          style={{ paddingBottom: "max(6px, env(safe-area-inset-bottom, 6px))" }}
+        >
           {NAV.map((n) => {
             const active = isActive(n.to, n.exact);
             return (
-              <Link key={n.to} to={n.to as "/admin"}
-                className={`flex flex-col items-center gap-0.5 py-2 text-[10px] font-semibold ${active ? "text-primary" : "text-muted-foreground"}`}>
-                <n.icon className="h-5 w-5" /> {n.label}
+              <Link
+                key={n.to}
+                to={n.to as "/admin"}
+                preload="intent"
+                style={{ touchAction: "manipulation" }}
+                className={`flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-bold transition-colors ${
+                  active ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <n.icon className={`h-5 w-5 ${active ? "stroke-[2.5]" : "stroke-2"}`} />
+                <span>{n.label}</span>
               </Link>
             );
           })}

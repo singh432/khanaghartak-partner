@@ -670,7 +670,7 @@ function ZoneManagerPage() {
         </div>
 
         {/* Tab Selector */}
-        <nav className="flex gap-2 overflow-x-auto pb-1" id="kgt-zone-top-tabs">
+        <div className="flex gap-2 overflow-x-auto pb-1" id="kgt-zone-top-tabs">
           {([
             ["orders", `Orders (${orders.length})`, ClipboardList],
             ["restaurants", `Restaurants (${restaurants.length})`, Store],
@@ -689,7 +689,7 @@ function ZoneManagerPage() {
               <Icon className="h-3.5 w-3.5" /> {label}
             </button>
           ))}
-        </nav>
+        </div>
 
         {/* ========================================================================= */}
         {/* ORDERS TAB */}
@@ -1732,6 +1732,48 @@ function ZoneManagerPage() {
           </form>
         </Modal>
       )}
+
+      {/* Native Mobile Bottom Navigation Bar */}
+      <nav
+        id="kgt-zone-bottom-nav"
+        className="fixed bottom-0 left-0 right-0 z-40 grid grid-cols-5 border-t bg-card/98 backdrop-blur shadow-[0_-2px_10px_rgba(0,0,0,0.06)] md:hidden"
+        style={{ paddingBottom: "max(6px, env(safe-area-inset-bottom, 6px))" }}
+      >
+        {([
+          ["orders", "Orders", ClipboardList, orders.filter((o) => o.status === "placed" || o.status === "pending").length],
+          ["restaurants", "Kitchens", Store, 0],
+          ["riders", "Riders", Bike, riders.filter((r) => r.is_online).length],
+          ["customers", "Customers", Users, 0],
+          ["map", "Zone Map", MapPin, 0],
+        ] as const).map(([key, label, Icon, badge]) => {
+          const active = tab === key;
+          return (
+            <button
+              key={key}
+              type="button"
+              id={`kgt-ztab-${key}`}
+              onClick={() => {
+                setTab(key as any);
+                window.scrollTo({ top: 0, behavior: "instant" });
+              }}
+              style={{ touchAction: "manipulation" }}
+              className={`flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-bold transition-colors ${
+                active ? "text-primary" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <div className="relative inline-flex items-center justify-center">
+                <Icon className={`h-5 w-5 ${active ? "stroke-[2.5]" : "stroke-2"}`} />
+                {badge > 0 && (
+                  <span className="absolute -top-1.5 -right-2 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-destructive px-0.5 text-[8px] font-black text-destructive-foreground shadow">
+                    {badge}
+                  </span>
+                )}
+              </div>
+              <span>{label}</span>
+            </button>
+          );
+        })}
+      </nav>
     </div>
   );
 }
