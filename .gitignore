@@ -30,3 +30,11 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Android build and intermediate outputs
+**/build/
+**/.gradle/
+**/local.properties
+*.apk
+*.aab
+

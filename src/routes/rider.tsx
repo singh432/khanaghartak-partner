@@ -10,6 +10,7 @@ import { sumPayouts, inr, RIDER_SHARE_RATE } from "@/lib/payouts";
 import { DateRangeFilter } from "@/components/DateRangeFilter";
 import { inRange, rangeLabel, todayInputValue, type DateRange } from "@/lib/date-range";
 import { Bike, MapPin, Phone, Package, LogOut, CheckCircle2, Loader2, Clock, Wallet } from "lucide-react";
+import { firePartnerOrderAlert, silencePartnerOrderAlert } from "@/components/PartnerNotificationListener";
 
 export const Route = createFileRoute("/rider")({
   component: RiderPanel,
@@ -270,7 +271,21 @@ function RiderDashboard({
     // Live offers made to this rider only — no customer PII until accepted
     const { data: offerData, error: offerErr } = await supabase.rpc("rider_list_offers" as any);
     if (offerErr) { toast.error(offerErr.message); return; }
-    setOffers((offerData ?? []) as unknown as Offer[]);
+    const offerList = (offerData ?? []) as unknown as Offer[];
+    setOffers(offerList);
+    if (offerList.length > 0) {
+      for (const o of offerList) {
+        firePartnerOrderAlert(
+          o.order_id,
+          "rider",
+          "🛵 NEW DELIVERY OFFER!",
+          `Drop: ${o.drop_area || "Customer Delivery"} · ₹${Math.round(o.total)}`,
+          "/rider"
+        );
+      }
+    } else {
+      silencePartnerOrderAlert();
+    }
 
 
     const rIds = [...new Set(mineList.map((o) => o.restaurant_id).filter(Boolean))] as string[];
@@ -292,8 +307,13 @@ function RiderDashboard({
 
   useEffect(() => {
     load();
-    const t = setInterval(load, 15000);
-    return () => clearInterval(t);
+    const t = setInterval(load, 8000);
+    const onAlert = () => { load(); };
+    window.addEventListener("kgt:partner-order-alert", onAlert);
+    return () => {
+      clearInterval(t);
+      window.removeEventListener("kgt:partner-order-alert", onAlert);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [riderId]);
 
@@ -322,6 +342,7 @@ function RiderDashboard({
 
 
   const accept = async (id: string) => {
+    silencePartnerOrderAlert();
     const { error } = await supabase.rpc("rider_accept_order" as any, { _order_id: id });
     if (error) { toast.error(error.message); return; }
     toast.success("Order accepted!");

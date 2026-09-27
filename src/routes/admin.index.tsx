@@ -61,12 +61,37 @@ function AdminDashboard() {
 
   useEffect(() => {
     load();
-    const t = setInterval(load, 20000);
-    return () => { clearInterval(t); };
+    const t = setInterval(load, 8000);
+    const onAlert = () => { load(); };
+    window.addEventListener("kgt:partner-order-alert", onAlert);
+    return () => {
+      clearInterval(t);
+      window.removeEventListener("kgt:partner-order-alert", onAlert);
+    };
   }, []);
 
   return (
     <div className="space-y-4 p-4 md:p-6">
+      {(stats?.placed ?? 0) > 0 && (
+        <a
+          href="/admin/orders"
+          className="flex items-center justify-between gap-3 rounded-2xl bg-destructive p-4 text-destructive-foreground shadow-lg animate-pulse"
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">🚨</span>
+            <div>
+              <p className="font-extrabold text-base">
+                {stats?.placed} NEW ORDER{(stats?.placed ?? 0) > 1 ? "S" : ""} PENDING!
+              </p>
+              <p className="text-xs opacity-90">Tap to open orders and accept immediately.</p>
+            </div>
+          </div>
+          <span className="rounded-xl bg-background px-3.5 py-2 text-xs font-black text-destructive shadow-sm">
+            View Orders →
+          </span>
+        </a>
+      )}
+
       <header>
         <h1 className="text-2xl font-extrabold tracking-tight">Today's Dashboard</h1>
         <p className="text-sm text-muted-foreground">Live snapshot of orders since midnight</p>

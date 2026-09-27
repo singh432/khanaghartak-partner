@@ -2,8 +2,11 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { BrandHeader } from "@/components/BrandHeader";
 import { useCart } from "@/hooks/useCart";
 import { usePricingSettings } from "@/hooks/usePricingSettings";
+import { useEffect, useState } from "react";
+import { useLocationGate } from "@/hooks/useLocationGate";
+import { fetchActiveZones, isLocationInServiceZone, type DeliveryZone } from "@/lib/zones";
 import { PageSpinner } from "@/components/PageState";
-import { Plus, Minus, Trash2, ShoppingBag } from "lucide-react";
+import { AlertCircle, MapPin, Plus, Minus, Trash2, ShoppingBag } from "lucide-react";
 
 import { cartHasHandiNonVeg, HANDI_PREP_NOTE, cartHasCake, CAKE_PREP_NOTE } from "@/lib/portions";
 
@@ -26,6 +29,51 @@ function CartPage() {
   const navigate = useNavigate();
   const { items, ready, inc, dec, remove, subtotal, totalQty } = useCart();
   const pricing = usePricingSettings();
+
+  const { coords, status: locationStatus } = useLocationGate();
+  const [activeZones, setActiveZones] = useState<DeliveryZone[]>([]);
+  const [selectedAddress, setSelectedAddress] = useState<string>(() => {
+    if (typeof window !== "undefined") return localStorage.getItem("kgt:delivery-address") || "";
+    return "";
+  });
+  const [selectedCoords, setSelectedCoords] = useState<{ lat: number; lng: number } | null>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem("kgt:user-coords");
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (typeof parsed.lat === "number" && typeof parsed.lng === "number") return { lat: parsed.lat, lng: parsed.lng };
+        }
+      } catch {}
+    }
+    return null;
+  });
+
+  useEffect(() => {
+    fetchActiveZones().then(setActiveZones).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const handleStorage = () => {
+      setSelectedAddress(localStorage.getItem("kgt:delivery-address") || "");
+      try {
+        const raw = localStorage.getItem("kgt:user-coords");
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (typeof parsed.lat === "number" && typeof parsed.lng === "number") setSelectedCoords({ lat: parsed.lat, lng: parsed.lng });
+        }
+      } catch {}
+    };
+    window.addEventListener("storage", handleStorage);
+    window.addEventListener("kgt:address-changed", handleStorage);
+    return () => {
+      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener("kgt:address-changed", handleStorage);
+    };
+  }, []);
+
+  const effectiveCoords = selectedCoords || coords;
+  const isOutsideZone = locationStatus === "outside_zone" || !isLocationInServiceZone(effectiveCoords, selectedAddress, activeZones);
 
   const grand = subtotal + (subtotal > 0 ? pricing.platform_fee : 0);
 
@@ -94,15 +142,39 @@ function CartPage() {
             Cash on Delivery
           </span>
         </div>
+
+        {isOutsideZone && (
+          <div className="mt-4 rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-xs text-destructive">
+            <div className="flex items-center gap-2 font-bold text-sm mb-1">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span>Delivery unavailable in your area</span>
+            </div>
+            <p className="text-muted-foreground leading-relaxed">
+              KhanaGharTak does not deliver to your selected location yet. Please change to an address in Shankargarh to place your order.
+            </p>
+            <button
+              onClick={() => navigate({ to: "/location" })}
+              className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-destructive px-3.5 py-2 font-bold text-destructive-foreground active:scale-95 transition"
+            >
+              <MapPin className="h-3.5 w-3.5" /> Change delivery address
+            </button>
+          </div>
+        )}
       </div>
 
       <div
         className="fixed left-1/2 z-50 w-full max-w-[480px] -translate-x-1/2 border-t bg-background p-4"
         style={{ bottom: "calc(64px + env(safe-area-inset-bottom))" }}
       >
-        <button onClick={() => navigate({ to: "/checkout" })}
-          className="flex h-12 w-full items-center justify-center rounded-2xl bg-primary text-sm font-bold text-primary-foreground shadow-[var(--shadow-soft)] disabled:opacity-60">
-          {`Proceed to Checkout · ₹${grand.toFixed(0)}`}
+        <button
+          onClick={() => {
+            if (isOutsideZone) return;
+            navigate({ to: "/checkout" });
+          }}
+          disabled={isOutsideZone}
+          className="flex h-12 w-full items-center justify-center rounded-2xl bg-primary text-sm font-bold text-primary-foreground shadow-[var(--shadow-soft)] disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {isOutsideZone ? "Cannot Checkout Outside Service Area" : `Proceed to Checkout · ₹${grand.toFixed(0)}`}
         </button>
       </div>
     </div>

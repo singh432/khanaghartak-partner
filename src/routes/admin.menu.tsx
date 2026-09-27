@@ -282,14 +282,18 @@ function AdminMenu() {
       ))}
 
       {editing && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 md:items-center">
-          <div className="w-full max-w-md max-h-[92vh] overflow-y-auto rounded-t-2xl bg-card p-5 shadow-xl md:rounded-2xl" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between">
-              <h3 className="text-base font-bold">{editing.id ? "Edit menu item" : "Add menu item"}</h3>
-              <button onClick={() => setEditing(null)} aria-label="Close"><X className="h-4 w-4" /></button>
+        <div className="fixed inset-0 z-[100000] flex items-end justify-center bg-black/60 p-0 sm:p-4 md:items-center" onClick={() => setEditing(null)}>
+          <div className="flex max-h-[90vh] max-h-[90dvh] w-full max-w-md flex-col rounded-t-3xl bg-card shadow-2xl md:rounded-2xl" onClick={(e) => e.stopPropagation()}>
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b px-5 py-3.5">
+              <h3 className="text-base font-extrabold text-foreground">{editing.id ? "Edit menu item" : "Add menu item"}</h3>
+              <button onClick={() => setEditing(null)} aria-label="Close" className="rounded-full p-1.5 text-muted-foreground hover:bg-secondary">
+                <X className="h-5 w-5" />
+              </button>
             </div>
 
-            <div className="mt-4 space-y-3">
+            {/* Scrollable Form Body */}
+            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3.5" style={{ WebkitOverflowScrolling: "touch", touchAction: "pan-y", overscrollBehavior: "contain" }}>
               <Field label="Product image">
                 <div className="flex items-center gap-3">
                   <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-secondary">
@@ -385,12 +389,17 @@ function AdminMenu() {
                 <span className="text-sm font-semibold">Available for ordering</span>
                 <input type="checkbox" checked={editing.is_available} onChange={(e) => setEditing({ ...editing, is_available: e.target.checked })} className="h-4 w-4" />
               </label>
+            </div>
 
-              <div className="grid grid-cols-2 gap-2 pt-2">
-                <button onClick={() => { clearItemDraft(); setEditing(null); }} className="rounded-xl bg-secondary py-2.5 text-sm font-bold">Cancel</button>
-                <button onClick={save} disabled={saving} className="inline-flex items-center justify-center rounded-xl bg-primary py-2.5 text-sm font-bold text-primary-foreground disabled:opacity-60">
+            {/* Pinned Sticky Save Footer */}
+            <div className="border-t bg-card px-5 py-3 shadow-[0_-4px_12px_rgba(0,0,0,0.06)]" style={{ paddingBottom: "max(12px, env(safe-area-inset-bottom, 12px))" }}>
+              <div className="grid grid-cols-2 gap-2.5">
+                <button type="button" onClick={() => { clearItemDraft(); setEditing(null); }} className="rounded-xl bg-secondary py-3 text-sm font-bold text-foreground hover:bg-secondary/80">
+                  Cancel
+                </button>
+                <button type="button" onClick={save} disabled={saving} className="inline-flex items-center justify-center rounded-xl bg-primary py-3 text-sm font-bold text-primary-foreground shadow-md disabled:opacity-60">
                   {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {editing.id ? "Update Item" : "Add Menu Item"}
+                  {editing.id ? "Update Item" : "Save Item"}
                 </button>
               </div>
             </div>
@@ -399,7 +408,7 @@ function AdminMenu() {
       )}
 
       {deleteId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setDeleteId(null)}>
+        <div className="fixed inset-0 z-[100000] flex items-center justify-center bg-black/60 p-4" onClick={() => setDeleteId(null)}>
           <div className="w-full max-w-sm rounded-2xl bg-card p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-base font-bold">Delete this item?</h3>
             <p className="mt-1 text-sm text-muted-foreground">Are you sure you want to delete this item? This cannot be undone.</p>

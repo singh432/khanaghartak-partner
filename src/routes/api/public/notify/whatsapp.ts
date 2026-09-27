@@ -178,6 +178,38 @@ async function sendWhatsApp(
   }
 }
 
+async function sendFcmPush(
+  token: string,
+  title: string,
+  body: string,
+  data: Record<string, string>,
+) {
+  const fcmServerKey = process.env["FCM_SERVER_KEY"];
+  if (!fcmServerKey) return;
+  try {
+    await fetch("https://fcm.googleapis.com/fcm/send", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `key=${fcmServerKey}`,
+      },
+      body: JSON.stringify({
+        to: token,
+        priority: "high",
+        notification: {
+          title,
+          body,
+          android_channel_id: "orders_channel",
+          sound: "default",
+        },
+        data,
+      }),
+    });
+  } catch (err) {
+    console.error("[fcm] Failed to send push notification:", err);
+  }
+}
+
 export const Route = createFileRoute("/api/public/notify/whatsapp")({
   server: {
     handlers: {
@@ -257,6 +289,36 @@ export const Route = createFileRoute("/api/public/notify/whatsapp")({
               params: [restaurantName, `${orderRef} (${itemLines(order.items)} · ${total})`, restaurantName],
             });
           }
+
+          // Asynchronously dispatch high-priority FCM push to restaurant owner's Android app
+          try {
+            const { data: restWithOwner } = await supabaseAdmin
+              .from("restaurants")
+              .select("owner_id")
+              .eq("id", order.restaurant_id as string)
+              .maybeSingle();
+
+            if (restWithOwner?.owner_id) {
+              const { data: tokens } = await (supabaseAdmin
+                .from("user_fcm_tokens" as any) as any)
+                .select("token")
+                .eq("user_id", restWithOwner.owner_id);
+
+              if (tokens && tokens.length > 0) {
+                const sId = shortId(order.id as string);
+                for (const t of (tokens as { token: string }[])) {
+                  void sendFcmPush(
+                    t.token,
+                    "🚨 NEW ORDER RECEIVED!",
+                    `Order #${sId} · ${total} · Tap to accept immediately!`,
+                    { order_id: order.id as string, role: "restaurant" }
+                  );
+                }
+              }
+            }
+          } catch (e) {
+            console.error("[fcm] Error querying owner FCM tokens:", e);
+          }
         } else if (event === "restaurant_accepted") {
           const phone = toE164(order.customer_phone as string);
           if (phone) {
@@ -295,6 +357,28 @@ export const Route = createFileRoute("/api/public/notify/whatsapp")({
                 template: "kgt_delivery_available",
                 params: [`${orderRef} · ${total}`, pickup, dropArea],
               });
+            }
+
+            // Dispatch high-priority FCM push to rider's device
+            try {
+              const { data: tokens } = await (supabaseAdmin
+                .from("user_fcm_tokens" as any) as any)
+                .select("token")
+                .eq("user_id", offer.rider_id);
+
+              if (tokens && tokens.length > 0) {
+                const sId = shortId(order.id as string);
+                for (const t of (tokens as { token: string }[])) {
+                  void sendFcmPush(
+                    t.token,
+                    "🛵 NEW DELIVERY OFFER!",
+                    `Drop: ${dropArea} · ${total} · Tap to view and accept!`,
+                    { order_id: order.id as string, role: "rider" }
+                  );
+                }
+              }
+            } catch (e) {
+              console.error("[fcm] Error querying rider FCM tokens:", e);
             }
           }
         } else if (event === "no_rider") {

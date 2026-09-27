@@ -1,27 +1,35 @@
 import { Link } from "@tanstack/react-router";
 import { khanaGharTakLogoUrl } from "@/assets/brand";
-import { ShoppingBag } from "lucide-react";
-import { useCart } from "@/hooks/useCart";
+import { ChevronDown, MapPin } from "lucide-react";
 
-export function BrandHeader({ subtitle }: { subtitle?: string }) {
-  const { totalQty } = useCart();
+export function BrandHeader({ subtitle }: { subtitle?: string; hideCart?: boolean }) {
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-between gap-3 bg-background/80 px-4 py-3 backdrop-blur border-b">
-      <Link to="/" className="flex items-center gap-2">
-        <img src={khanaGharTakLogoUrl} alt="KhanaGharTak" width={40} height={40} className="h-10 w-10 rounded-lg object-contain" />
-        <div className="leading-tight">
+    <header className="sticky top-0 z-30 flex items-center justify-between gap-2 bg-background/90 px-4 py-2.5 backdrop-blur border-b">
+      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+        <Link to="/home" className="flex items-center gap-2 shrink-0">
+          <img
+            src={khanaGharTakLogoUrl}
+            alt="KhanaGharTak"
+            width={36}
+            height={36}
+            className="h-9 w-9 rounded-lg object-contain"
+          />
           <div className="text-base font-bold tracking-tight">KhanaGharTak</div>
-          {subtitle && <div className="text-[11px] text-muted-foreground">{subtitle}</div>}
-        </div>
-      </Link>
-      <Link to="/cart" aria-label={`Cart${totalQty > 0 ? `, ${totalQty} item${totalQty > 1 ? "s" : ""}` : ""}`} className="relative inline-flex h-10 w-10 items-center justify-center rounded-full bg-secondary">
-        <ShoppingBag className="h-5 w-5" aria-hidden="true" />
-        {totalQty > 0 && (
-          <span className="absolute -top-1 -right-1 grid h-5 min-w-5 place-items-center rounded-full bg-primary px-1 text-[11px] font-bold text-primary-foreground">
-            {totalQty}
-          </span>
+        </Link>
+
+        {subtitle && (
+          <Link
+            to="/location"
+            className="flex items-center gap-1.5 rounded-full bg-primary/10 border border-primary/25 px-2.5 py-1 text-[11.5px] font-bold text-primary hover:bg-primary/15 transition active:scale-95 max-w-[210px] sm:max-w-[300px] shadow-sm"
+            title="Change delivery location"
+          >
+            <MapPin className="h-3.5 w-3.5 text-primary shrink-0" />
+            <span className="truncate text-foreground font-semibold">{subtitle}</span>
+            <ChevronDown className="h-3 w-3 text-primary/70 shrink-0" />
+          </Link>
         )}
-      </Link>
+      </div>
     </header>
   );
 }
+

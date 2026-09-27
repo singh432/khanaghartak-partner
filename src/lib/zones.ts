@@ -60,3 +60,86 @@ export async function fetchAllZones(): Promise<DeliveryZone[]> {
     .order("name");
   return normalise(data ?? []);
 }
+
+const SHANKARGARH_IN_KEYWORDS = [
+  "shankargarh",
+  "shankergarh",
+  "212108",
+  "raja market",
+  "station road",
+  "bara road",
+  "lalita nagar",
+  "main bazaar",
+];
+
+const OUTSIDE_KEYWORDS = [
+  "rewa",
+  "civil lines",
+  "katra",
+  "naini",
+  "lucknow",
+  "kanpur",
+  "delhi",
+  "noida",
+  "gurugram",
+  "gurgaon",
+  "varanasi",
+  "satna",
+  "jabalpur",
+  "banda",
+  "chitrakoot",
+  "mirzapur",
+  "jaunpur",
+  "fatehpur",
+];
+
+/**
+ * Authoritative check to determine if a delivery location is within KhanaGharTak service zone.
+ * If neither coordinates nor a recognized in-zone address is available, returns false.
+ */
+export function isLocationInServiceZone(
+  coords: { lat: number; lng: number } | null | undefined,
+  address: string | null | undefined,
+  activeZones: DeliveryZone[] = []
+): boolean {
+  // 1. If explicit coordinates are available:
+  if (coords && typeof coords.lat === "number" && typeof coords.lng === "number" && !isNaN(coords.lat) && !isNaN(coords.lng)) {
+    // Haversine check to Shankargarh center (25.1842, 81.6212) <= 10km
+    const R = 6371.0;
+    const dLat = ((coords.lat - 25.1842) * Math.PI) / 180;
+    const dLng = ((coords.lng - 81.6212) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos((25.1842 * Math.PI) / 180) *
+        Math.cos((coords.lat * Math.PI) / 180) *
+        Math.sin(dLng / 2) ** 2;
+    const dist = 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
+    if (dist <= 10.0) return true;
+
+    // Active polygon delivery zones check
+    if (activeZones.length > 0 && zoneForPoint(coords, activeZones) != null) {
+      return true;
+    }
+    // Coordinates are outside all supported zones
+    return false;
+  }
+
+  // 2. If address text is provided without coordinates:
+  if (address && address.trim().length > 0) {
+    const s = address.toLowerCase().trim();
+    const matchesOutside = OUTSIDE_KEYWORDS.some((kw) => s.includes(kw));
+    const matchesInside = SHANKARGARH_IN_KEYWORDS.some((kw) => s.includes(kw));
+
+    if (matchesInside && !s.includes("rewa") && !s.includes("civil lines")) {
+      return true;
+    }
+    if (matchesOutside) {
+      return false;
+    }
+    // Unrecognized address with no coordinates: do NOT assume inside zone
+    return false;
+  }
+
+  // 3. No address and no coordinates
+  return false;
+}

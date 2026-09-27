@@ -8,10 +8,13 @@ import { useCart, cartKey, type Portion } from "@/hooks/useCart";
 import { track } from "@/lib/analytics";
 import { useAuth } from "@/hooks/useAuth";
 
+import { useLocationGate } from "@/hooks/useLocationGate";
+import { fetchActiveZones, isLocationInServiceZone, type DeliveryZone } from "@/lib/zones";
 import { isCakeCategory, isPieceCategory, isSinglePriceCategory, isSweetCategory, isHandiCategory, HANDI_PREP_NOTE, CAKE_PREP_NOTE, PORTION_LABELS } from "@/lib/portions";
 import { PageError, PageSpinner } from "@/components/PageState";
 import { withTimeout } from "@/lib/supabase-query";
-import { Plus, Minus, Search, Star, Clock } from "lucide-react";
+import { getCategoryImage } from "@/lib/categoryImages";
+import { Plus, Minus, Search, Star, Clock, MapPin, Sparkles } from "lucide-react";
 
 export const Route = createFileRoute("/menu")({
   component: MenuPage,
@@ -86,6 +89,54 @@ function MenuPage() {
   const [menu, setMenu] = useState<MenuItem[]>([]);
   const [q, setQ] = useState("");
   const [dietFilter, setDietFilter] = useState<"all" | "veg" | "nonveg">("all");
+
+  const { coords, status: locationStatus } = useLocationGate();
+  const [activeZones, setActiveZones] = useState<DeliveryZone[]>([]);
+  const [selectedAddress, setSelectedAddress] = useState<string>(() => {
+    if (typeof window !== "undefined") return localStorage.getItem("kgt:delivery-address") || "";
+    return "";
+  });
+  const [selectedCoords, setSelectedCoords] = useState<{ lat: number; lng: number } | null>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem("kgt:user-coords");
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (typeof parsed.lat === "number" && typeof parsed.lng === "number") return { lat: parsed.lat, lng: parsed.lng };
+        }
+      } catch {}
+    }
+    return null;
+  });
+
+  useEffect(() => {
+    fetchActiveZones().then(setActiveZones).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const handleStorage = () => {
+      setSelectedAddress(localStorage.getItem("kgt:delivery-address") || "");
+      try {
+        const raw = localStorage.getItem("kgt:user-coords");
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (typeof parsed.lat === "number" && typeof parsed.lng === "number") setSelectedCoords({ lat: parsed.lat, lng: parsed.lng });
+        }
+      } catch {}
+    };
+    window.addEventListener("storage", handleStorage);
+    window.addEventListener("kgt:address-changed", handleStorage);
+    return () => {
+      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener("kgt:address-changed", handleStorage);
+    };
+  }, []);
+
+  const effectiveCoords = selectedCoords || coords;
+  const isOutsideZone = useMemo(() => {
+    if (locationStatus === "outside_zone") return true;
+    return !isLocationInServiceZone(effectiveCoords, selectedAddress, activeZones);
+  }, [effectiveCoords, selectedAddress, activeZones, locationStatus]);
 
   const [activeCat, setActiveCat] = useState<string | null>(null);
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
@@ -179,6 +230,67 @@ function MenuPage() {
     Object.values(sectionRefs.current).forEach((el) => el && observer.observe(el));
     return () => observer.disconnect();
   }, [grouped]);
+
+  if (isOutsideZone) {
+    const chipAddr = selectedAddress
+      ? (selectedAddress.length > 25 ? selectedAddress.slice(0, 25) + "…" : selectedAddress)
+      : "Select location";
+    return (
+      <div className="pb-10">
+        <BrandHeader subtitle={`Deliver to: ${chipAddr}`} />
+        <div className="mx-auto flex min-h-[70dvh] max-w-md flex-col items-center justify-center px-6 py-10 text-center">
+          <div className="relative mb-6 flex items-center justify-center">
+            <div className="absolute h-28 w-28 animate-ping rounded-full bg-primary/15 opacity-75 duration-1000" />
+            <div className="absolute h-20 w-20 animate-pulse rounded-full bg-primary/20" />
+            <div className="relative grid h-16 w-16 place-items-center rounded-3xl bg-gradient-to-tr from-primary to-amber-500 shadow-[0_8px_24px_-6px_rgba(244,93,44,0.45)] text-white">
+              <MapPin className="h-8 w-8 text-white drop-shadow" />
+            </div>
+          </div>
+
+          <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-1 text-xs font-bold text-amber-700 dark:text-amber-400 mb-3 border border-amber-500/20">
+            <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+            Outside Delivery Zone
+          </div>
+
+          <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
+            We are not serving in this area yet.
+          </h1>
+
+          <p className="mt-2.5 text-sm text-muted-foreground leading-relaxed max-w-xs">
+            {selectedAddress ? (
+              <>Delivery is currently unavailable at <strong className="text-foreground font-semibold">"{selectedAddress.length > 35 ? selectedAddress.slice(0, 35) + "…" : selectedAddress}"</strong>.</>
+            ) : (
+              "KhanaGharTak is currently delivering only in our active service zone (Shankargarh & nearby areas)."
+            )}
+            {" "}Change your delivery address to order to another location!
+          </p>
+
+          <div className="mt-7 flex flex-col gap-3 w-full max-w-xs">
+            <button
+              onClick={() => navigate({ to: "/location" })}
+              className="inline-flex h-12 w-full items-center justify-center rounded-2xl bg-primary text-[15px] font-bold text-primary-foreground shadow-[var(--shadow-soft)] transition active:scale-95"
+            >
+              Change delivery address
+            </button>
+            <button
+              onClick={() => {
+                const shankargarhAddr = "Main Bazaar, Shankargarh, Prayagraj - 212108";
+                const shankargarhCoords = { lat: 25.1842, lng: 81.6212 };
+                localStorage.setItem("kgt:delivery-address", shankargarhAddr);
+                localStorage.setItem("kgt:user-coords", JSON.stringify({ ...shankargarhCoords, ts: Date.now() }));
+                window.dispatchEvent(new Event("kgt:address-changed"));
+                navigate({ to: "/home" });
+              }}
+              className="inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-2xl border border-primary/30 bg-primary/5 text-xs font-bold text-primary transition hover:bg-primary/10 active:scale-95"
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              Switch to Shankargarh Zone
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="pb-32">
@@ -330,11 +442,14 @@ function MenuPage() {
                         </div>
                       </div>
                       <div className="w-24 shrink-0">
-                        {item.image_url && (
-                          <img src={item.image_url} alt={item.name} loading="lazy"
-                            width={96} height={96}
-                            className="h-24 w-24 rounded-xl object-cover" />
-                        )}
+                        <img
+                          src={item.image_url || getCategoryImage(item.name || cat.name)}
+                          alt={item.name}
+                          loading="lazy"
+                          width={96}
+                          height={96}
+                          className="h-24 w-24 rounded-xl object-cover border border-border/40"
+                        />
                       </div>
                     </article>
 

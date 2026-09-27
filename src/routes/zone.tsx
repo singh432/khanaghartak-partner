@@ -101,8 +101,13 @@ function ZoneManagerPage() {
   useEffect(() => {
     if (!zoneId) return;
     load(zoneId);
-    const t = setInterval(() => load(zoneId), 20000);
-    return () => clearInterval(t);
+    const t = setInterval(() => load(zoneId), 8000);
+    const onAlert = () => load(zoneId);
+    window.addEventListener("kgt:partner-order-alert", onAlert);
+    return () => {
+      clearInterval(t);
+      window.removeEventListener("kgt:partner-order-alert", onAlert);
+    };
   }, [zoneId]);
 
   const currentZone = zones.find((z) => z.id === zoneId) ?? null;

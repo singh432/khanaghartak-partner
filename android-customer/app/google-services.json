@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1053593236555",
+    "project_id": "khanaghartak-cf859",
+    "storage_bucket": "khanaghartak-cf859.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1053593236555:android:1c0a85f0349071b85209ce",
+        "android_client_info": {
+          "package_name": "in.khanaghartak.customer"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB4VjsPbk1mGbZ5lKecehOqg9CezIqrBk8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

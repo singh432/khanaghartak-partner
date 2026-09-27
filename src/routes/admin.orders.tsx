@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Search, Bell, X } from "lucide-react";
+import { firePartnerOrderAlert, silencePartnerOrderAlert } from "@/components/PartnerNotificationListener";
 
 export const Route = createFileRoute("/admin/orders")({ component: AdminOrders });
 
@@ -54,21 +55,33 @@ function AdminOrders() {
       const fresh = rows.filter((o) => !seen.has(o.id) && o.status === "placed");
       rows.forEach((o) => seen.add(o.id));
       setOrders(rows);
-      if (!first) {
+      if (fresh.length > 0) {
         for (const o of fresh) {
-          toast.success(`🔔 New order from ${o.customer_name}`, { duration: 6000 });
-          try { audioRef.current?.play().catch(() => {}); } catch {}
-          if ("Notification" in window && Notification.permission === "granted") {
-            new Notification("New Order Received", { body: `from ${o.customer_name} · ₹${o.total}` });
-          }
+          firePartnerOrderAlert(
+            o.id,
+            "restaurant",
+            "🚨 NEW ORDER RECEIVED!",
+            `Order #${o.id.slice(0, 8).toUpperCase()} from ${o.customer_name} · ₹${o.total}`,
+            "/admin/orders"
+          );
+        }
+      } else {
+        const remainingPlaced = rows.filter((o) => o.status === "placed");
+        if (remainingPlaced.length === 0) {
+          silencePartnerOrderAlert();
         }
       }
       first = false;
     };
 
     load();
-    const t = setInterval(load, 10000);
-    return () => { active = false; clearInterval(t); };
+    const t = setInterval(load, 8000);
+    window.addEventListener("kgt:partner-order-alert", load);
+    return () => {
+      active = false;
+      clearInterval(t);
+      window.removeEventListener("kgt:partner-order-alert", load);
+    };
   }, []);
 
   useEffect(() => {
@@ -85,6 +98,7 @@ function AdminOrders() {
   }), [orders, filter, q]);
 
   const updateStatus = async (id: string, status: Status, rejectionReason?: string | null) => {
+    silencePartnerOrderAlert();
     const { error } = await supabase.rpc("owner_update_order_status", {
       _order_id: id, _status: status, _reason: rejectionReason ?? null,
     } as any);

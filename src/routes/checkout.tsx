@@ -22,7 +22,7 @@ import { PhoneVerification } from "@/components/PhoneVerification";
 import { withTimeout } from "@/lib/supabase-query";
 import { MapPin, Navigation, Loader2, Wallet, AlertTriangle } from "lucide-react";
 import { cartHasHandiNonVeg, HANDI_PREP_NOTE, cartHasCake, CAKE_PREP_NOTE } from "@/lib/portions";
-import { fetchActiveZones, zoneForPoint, OUTSIDE_ZONE_MESSAGE, type DeliveryZone } from "@/lib/zones";
+import { fetchActiveZones, zoneForPoint, isLocationInServiceZone, OUTSIDE_ZONE_MESSAGE, type DeliveryZone } from "@/lib/zones";
 
 const LocationPicker = lazy(() => import("@/components/LocationPicker.client"));
 
@@ -181,10 +181,9 @@ function CheckoutPage() {
       : 0;
   
   const deliveryFee = baseDeliveryFee;
-  // Delivery eligibility comes from the map zones only — never from the
-  // distance between the restaurant and the customer.
+  // Delivery eligibility comes from the service zone check (both polygon and Shankargarh radius)
   const zone = coords && zones ? zoneForPoint(coords, zones) : null;
-  const outOfRange = !!coords && !!zones && !zone;
+  const outOfRange = !isLocationInServiceZone(coords, form.address, zones || []);
   const firstOrderDiscount = firstOrder ? Math.min(Math.round(subtotal * 0.05), 25) : 0;
   const grand = Math.max(
     0,
@@ -239,6 +238,7 @@ function CheckoutPage() {
       return toast.error(error?.message ?? "Could not place order");
     }
     const orderId = data as unknown as string;
+    import("@/lib/capacitor").then(({ nativeHaptics }) => nativeHaptics.success());
     track("payment_success", { order_id: orderId, value: subtotal, meta: { method: "cod" } });
     track("order_placed", { order_id: orderId, value: subtotal });
     setPlaced(true);

@@ -1,5 +1,15 @@
 {
   "dependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/app": "^8.1.1",
+    "@capacitor/cli": "^8.5.2",
+    "@capacitor/core": "^8.5.2",
+    "@capacitor/geolocation": "^8.2.2",
+    "@capacitor/haptics": "^8.0.2",
+    "@capacitor/network": "^8.0.1",
+    "@capacitor/push-notifications": "^8.1.2",
+    "@capacitor/splash-screen": "^8.0.2",
+    "@capacitor/status-bar": "^8.0.3",
     "@cloudflare/vite-plugin": "^1.25.5",
     "@hookform/resolvers": "^5.2.2",
     "@lovable.dev/cloud-auth-js": "^1.1.2",
@@ -87,6 +97,10 @@
   "scripts": {
     "build": "vite build",
     "build:dev": "vite build --mode development",
+    "cap:sync:customer": "CAPACITOR_APP=customer npx cap sync android",
+    "cap:sync:partner": "CAPACITOR_APP=partner npx cap sync android",
+    "cap:open:customer": "CAPACITOR_APP=customer npx cap open android",
+    "cap:open:partner": "CAPACITOR_APP=partner npx cap open android",
     "dev": "vite dev",
     "format": "prettier --write .",
     "lint": "eslint .",

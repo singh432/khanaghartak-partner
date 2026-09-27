@@ -1,6 +1,8 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { khanaGharTakLogoUrl } from "@/assets/brand";
+import { useAuth } from "@/hooks/useAuth";
+import { isCustomerApp, isPartnerApp } from "@/lib/capacitor";
 import {
   UtensilsCrossed,
   ChefHat,
@@ -46,7 +48,77 @@ function loginHref(as: CtaTarget) {
 }
 
 function Landing() {
+  const navigate = useNavigate();
+  const {
+    user,
+    loading: authLoading,
+    rolesLoaded,
+    isZoneManager,
+    isAdmin,
+    isRider,
+    primaryPartnerRole,
+  } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+
+  const isCustomer = isCustomerApp();
+  const isPartner = isPartnerApp();
+
+  useEffect(() => {
+    if (isCustomer) {
+      if (!authLoading) {
+        if (user) {
+          navigate({ to: "/home", replace: true });
+        } else {
+          navigate({ to: "/login", search: { as: "customer" }, replace: true });
+        }
+      }
+    } else if (isPartner) {
+      if (!authLoading) {
+        if (user) {
+          if (rolesLoaded) {
+            if (isZoneManager || primaryPartnerRole === "zone_manager") {
+              navigate({ to: "/zone", replace: true });
+            } else if (isAdmin || primaryPartnerRole === "restaurant") {
+              navigate({ to: "/admin", replace: true });
+            } else if (isRider || primaryPartnerRole === "rider") {
+              navigate({ to: "/rider", replace: true });
+            } else {
+              navigate({ to: "/login", replace: true });
+            }
+          }
+        } else {
+          navigate({ to: "/login", replace: true });
+        }
+      }
+    }
+  }, [
+    isCustomer,
+    isPartner,
+    user,
+    authLoading,
+    rolesLoaded,
+    isZoneManager,
+    isAdmin,
+    isRider,
+    primaryPartnerRole,
+    navigate,
+  ]);
+
+  // When running inside the Customer App or Partner App, never render the web landing page
+  if (isCustomer || isPartner) {
+    return (
+      <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-white px-6 text-center">
+        <img
+          src={khanaGharTakLogoUrl}
+          alt="KhanaGharTak"
+          width={96}
+          height={96}
+          className="h-20 w-20 rounded-2xl object-contain animate-pulse"
+        />
+        <div className="mt-4 h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      </div>
+    );
+  }
 
   const navLinks: Array<{ label: string; href: string; primary?: boolean }> = [
     { label: "Order Food", href: loginHref("user"), primary: true },

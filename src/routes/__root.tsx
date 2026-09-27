@@ -9,14 +9,17 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { Toaster } from "sonner";
-import { AuthProvider } from "@/hooks/useAuth";
+import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 import { CartProvider } from "@/hooks/useCart";
 import { LocationGateProvider } from "@/hooks/useLocationGate";
 
 import { BottomNav } from "@/components/BottomNav";
 import { CartBar } from "@/components/CartBar";
 import { AnalyticsTracker } from "@/components/AnalyticsTracker";
+import { PartnerNotificationListener } from "@/components/PartnerNotificationListener";
 
 import appCss from "../styles.css?url";
 import { khanaGharTakLogoUrl } from "@/assets/brand";
@@ -138,13 +141,46 @@ function RootShell({ children }: { children: React.ReactNode }) {
   );
 }
 
+function NativeShellBridge() {
+  const { user, isZoneManager, isAdmin, isRider, primaryPartnerRole } = useAuth();
+
+  useEffect(() => {
+    import("@/lib/capacitor").then(({ initNativeAppShell, getAppType }) => {
+      void initNativeAppShell();
+      if (user) {
+        import("@/lib/fcm").then(({ setupPushNotifications }) => {
+          const appType = getAppType();
+          const role =
+            isZoneManager || primaryPartnerRole === "zone_manager"
+              ? "zone_manager"
+              : isRider || primaryPartnerRole === "rider"
+              ? "rider"
+              : isAdmin || primaryPartnerRole === "restaurant"
+              ? "restaurant"
+              : "customer";
+          void setupPushNotifications(user.id, appType === "partner" ? "partner" : "customer", role);
+        });
+      }
+    });
+  }, [user, isZoneManager, isAdmin, isRider, primaryPartnerRole]);
+
+  return null;
+}
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const router = useRouter();
+  if (typeof window !== "undefined") {
+    (window as any).__router = router;
+    (window as any).supabase = supabase;
+  }
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const fullWidth = pathname === "/";
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
+        <NativeShellBridge />
+        <PartnerNotificationListener />
         <CartProvider>
           <LocationGateProvider>
             {fullWidth ? (

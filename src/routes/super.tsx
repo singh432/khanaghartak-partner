@@ -36,6 +36,23 @@ function SuperLayout() {
   if (loading) return <div className="p-8 text-center text-sm">Loading…</div>;
   if (!user) return null;
 
+  // Super Admin is strictly web-only. Never accessible from Android apps.
+  if (typeof window !== "undefined") {
+    const isCapacitor = !!(window as any).Capacitor?.isNativePlatform?.();
+    if (isCapacitor) {
+      return (
+        <div className="p-8 text-center">
+          <ShieldAlert className="mx-auto h-12 w-12 text-destructive" />
+          <h1 className="mt-4 text-lg font-bold">Web Only Portal</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Super Admin functionality is strictly accessible from the web browser at khanaghartak.in.
+          </p>
+          <button onClick={signOut} className="mt-6 rounded-full bg-secondary px-4 py-2 text-sm">Sign out</button>
+        </div>
+      );
+    }
+  }
+
   const emailAllowed = (user.email ?? "").toLowerCase() === SUPER_ADMIN_EMAIL;
 
   if (!isSuperAdmin || !emailAllowed) {
