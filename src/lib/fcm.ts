@@ -39,6 +39,7 @@ export async function setupPushNotifications(
             app_type: appType,
             role: role,
             platform: "android",
+            is_active: true,
             updated_at: new Date().toISOString(),
           },
           { onConflict: "token" }
@@ -61,12 +62,24 @@ export async function setupPushNotifications(
     // Handle user tapping the notification in system tray
     await PushNotifications.addListener("pushNotificationActionPerformed", (action: ActionPerformed) => {
       const data = action.notification.data as Record<string, unknown> | undefined;
-      if (data?.order_id && typeof data.order_id === "string") {
-        window.location.href = `/order/${data.order_id}`;
-      } else if (appType === "partner") {
-        if (role === "restaurant") window.location.href = "/admin/orders";
-        else if (role === "rider") window.location.href = "/rider";
-        else if (role === "zone_manager") window.location.href = "/zone";
+      const orderId = data?.order_id as string | undefined;
+
+      if (appType === "partner") {
+        if (role === "restaurant") {
+          window.location.href = orderId ? `/admin/orders?order_id=${encodeURIComponent(orderId)}` : "/admin/orders";
+        } else if (role === "rider") {
+          window.location.href = "/rider";
+        } else if (role === "zone_manager") {
+          window.location.href = orderId ? `/zone?order_id=${encodeURIComponent(orderId)}` : "/zone";
+        } else {
+          window.location.href = "/admin/orders";
+        }
+      } else {
+        if (orderId) {
+          window.location.href = `/order/${orderId}`;
+        } else {
+          window.location.href = "/orders";
+        }
       }
     });
   } catch (err) {
@@ -74,12 +87,22 @@ export async function setupPushNotifications(
   }
 }
 
-/** Clears push notification listeners on user sign out */
+/** Clears push notification listeners and deactivates token on user sign out */
 export async function clearPushNotifications() {
-  if (!Capacitor.isNativePlatform() || !isRegistered) return;
+  if (!Capacitor.isNativePlatform()) return;
   try {
-    await PushNotifications.removeAllListeners();
-    isRegistered = false;
+    const savedToken = localStorage.getItem("kgt:fcm-token");
+    if (savedToken) {
+      try {
+        await (supabase.from("user_fcm_tokens" as any) as any)
+          .update({ is_active: false })
+          .eq("token", savedToken);
+      } catch (e) {}
+    }
+    if (isRegistered) {
+      await PushNotifications.removeAllListeners();
+      isRegistered = false;
+    }
   } catch (err) {
     console.warn("Error removing push notification listeners:", err);
   }

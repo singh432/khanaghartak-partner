@@ -40,6 +40,19 @@
             android:name="com.google.firebase.messaging.default_notification_channel_id"
             android:value="orders_channel" />
 
+        <service
+            android:name=".PartnerFirebaseMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
+        <!-- Replace Capacitor's default MessagingService with PartnerFirebaseMessagingService -->
+        <service
+            android:name="com.capacitorjs.plugins.pushnotifications.MessagingService"
+            tools:node="remove" />
+
         <activity
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density"
             android:name=".MainActivity"

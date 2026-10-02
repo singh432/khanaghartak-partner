@@ -200,9 +200,14 @@ async function sendFcmPush(
           title,
           body,
           android_channel_id: "orders_channel",
-          sound: "default",
+          sound: "order_siren",
         },
-        data,
+        data: {
+          ...data,
+          title,
+          body,
+          notification_type: data.notification_type || "NEW_ORDER",
+        },
       }),
     });
   } catch (err) {
@@ -247,8 +252,6 @@ export const Route = createFileRoute("/api/public/notify/whatsapp")({
           whatsapp_enabled: boolean;
           support_phone: string | null;
         } | null;
-
-        if (cfg && cfg.whatsapp_enabled === false) return Response.json({ skipped: "disabled" });
 
         // Duplicate guard: the same event for the same order is only sent once
         // per 60s, so retries / concurrent triggers cannot double-message people.
@@ -302,7 +305,8 @@ export const Route = createFileRoute("/api/public/notify/whatsapp")({
               const { data: tokens } = await (supabaseAdmin
                 .from("user_fcm_tokens" as any) as any)
                 .select("token")
-                .eq("user_id", restWithOwner.owner_id);
+                .eq("user_id", restWithOwner.owner_id)
+                .eq("is_active", true);
 
               if (tokens && tokens.length > 0) {
                 const sId = shortId(order.id as string);
@@ -311,13 +315,32 @@ export const Route = createFileRoute("/api/public/notify/whatsapp")({
                     t.token,
                     "🚨 NEW ORDER RECEIVED!",
                     `Order #${sId} · ${total} · Tap to accept immediately!`,
-                    { order_id: order.id as string, role: "restaurant" }
+                    { order_id: order.id as string, role: "restaurant", notification_type: "NEW_ORDER" }
                   );
                 }
               }
             }
+
+            // Also notify Zone Managers
+            const { data: zmTokens } = await (supabaseAdmin
+              .from("user_fcm_tokens" as any) as any)
+              .select("token")
+              .eq("role", "zone_manager")
+              .eq("is_active", true);
+
+            if (zmTokens && zmTokens.length > 0) {
+              const sId = shortId(order.id as string);
+              for (const t of (zmTokens as { token: string }[])) {
+                void sendFcmPush(
+                  t.token,
+                  "📋 NEW ORDER PLACED",
+                  `Order #${sId} at ${restaurantName} · ${total}`,
+                  { order_id: order.id as string, role: "zone_manager", notification_type: "NEW_ORDER" }
+                );
+              }
+            }
           } catch (e) {
-            console.error("[fcm] Error querying owner FCM tokens:", e);
+            console.error("[fcm] Error querying FCM tokens on order_placed:", e);
           }
         } else if (event === "restaurant_accepted") {
           const phone = toE164(order.customer_phone as string);
@@ -364,7 +387,8 @@ export const Route = createFileRoute("/api/public/notify/whatsapp")({
               const { data: tokens } = await (supabaseAdmin
                 .from("user_fcm_tokens" as any) as any)
                 .select("token")
-                .eq("user_id", offer.rider_id);
+                .eq("user_id", offer.rider_id)
+                .eq("is_active", true);
 
               if (tokens && tokens.length > 0) {
                 const sId = shortId(order.id as string);
@@ -373,7 +397,7 @@ export const Route = createFileRoute("/api/public/notify/whatsapp")({
                     t.token,
                     "🛵 NEW DELIVERY OFFER!",
                     `Drop: ${dropArea} · ${total} · Tap to view and accept!`,
-                    { order_id: order.id as string, role: "rider" }
+                    { order_id: order.id as string, role: "rider", notification_type: "DELIVERY_AVAILABLE" }
                   );
                 }
               }
@@ -382,6 +406,29 @@ export const Route = createFileRoute("/api/public/notify/whatsapp")({
             }
           }
         } else if (event === "no_rider") {
+          // Notify Zone Managers via FCM
+          try {
+            const { data: zmTokens } = await (supabaseAdmin
+              .from("user_fcm_tokens" as any) as any)
+              .select("token")
+              .eq("role", "zone_manager")
+              .eq("is_active", true);
+
+            if (zmTokens && zmTokens.length > 0) {
+              const sId = shortId(order.id as string);
+              for (const t of (zmTokens as { token: string }[])) {
+                void sendFcmPush(
+                  t.token,
+                  "⚠️ NO RIDER FOUND",
+                  `No delivery partner accepted Order #${sId} from ${restaurantName}.`,
+                  { order_id: order.id as string, role: "zone_manager", notification_type: "NO_RIDER" }
+                );
+              }
+            }
+          } catch (e) {
+            console.error("[fcm] Error notifying zone managers of no_rider:", e);
+          }
+
           const phone = toE164(cfg?.support_phone ?? null);
           if (phone) {
             // kgt_no_rider: "No delivery partner accepted Order {{1}} from {{2}}. Delivery Area: {{3}}"
@@ -413,6 +460,11 @@ export const Route = createFileRoute("/api/public/notify/whatsapp")({
               params: [orderRef],
             });
           }
+        }
+
+        // Check if WhatsApp is disabled after FCM has already fired
+        if (cfg && cfg.whatsapp_enabled === false) {
+          return Response.json({ event, fcm_dispatched: true, whatsapp: "disabled" });
         }
 
         const results: {

@@ -42,6 +42,10 @@ import com.google.android.gms.auth.api.phone.SmsRetriever;
 import com.google.android.gms.auth.api.phone.SmsRetrieverClient;
 import com.google.android.gms.common.api.CommonStatusCodes;
 import com.google.android.gms.common.api.Status;
+import android.content.ContentResolver;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
+import com.google.firebase.messaging.FirebaseMessaging;
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -67,6 +71,17 @@ public class MainActivity extends BridgeActivity {
     private static final int SMS_CONSENT_REQUEST = 2003;
     private static final int ALARM_NOTIFICATION_ID = 9991;
 
+    private static MainActivity instance = null;
+    private static boolean isForeground = false;
+
+    public static MainActivity getInstance() {
+        return instance;
+    }
+
+    public static boolean isAppInForeground() {
+        return isForeground;
+    }
+
     private BroadcastReceiver smsVerificationReceiver;
     private boolean isSmsConsentRegistered = false;
 
@@ -85,6 +100,7 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        instance = this;
 
         createNotificationChannels();
 
@@ -170,7 +186,7 @@ public class MainActivity extends BridgeActivity {
         // Request battery optimization exemption so background order detection is never killed
         requestBatteryOptimizationExemption();
 
-        // Restore active session if present and start background foreground service
+        // Restore active session if present
         try {
             SharedPreferences prefs = getSharedPreferences("kgt_partner_prefs", Context.MODE_PRIVATE);
             String savedToken = prefs.getString("access_token", null);
@@ -178,7 +194,6 @@ public class MainActivity extends BridgeActivity {
                 this.activeAccessToken = savedToken;
                 this.activeRole = prefs.getString("role", "restaurant");
                 this.activeUserId = prefs.getString("user_id", null);
-                startOrderPoller();
             }
         } catch (Exception ignored) {}
 
@@ -241,9 +256,18 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onResume() {
         super.onResume();
+        instance = this;
+        isForeground = true;
+        stopContinuousAlarm();
         if (this.bridge != null && this.bridge.getWebView() != null) {
             applyPartnerScripts(this.bridge.getWebView());
         }
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        isForeground = false;
     }
 
     @Override
@@ -294,6 +318,19 @@ public class MainActivity extends BridgeActivity {
             NotificationManager notificationManager = getSystemService(NotificationManager.class);
             if (notificationManager == null) return;
 
+            Uri soundUri = Uri.parse(ContentResolver.SCHEME_ANDROID_RESOURCE + "://" + getPackageName() + "/" + R.raw.order_siren);
+
+            // If existing orders_channel does not have the custom siren sound, delete and recreate it
+            NotificationChannel existingOrdersChannel = notificationManager.getNotificationChannel("orders_channel");
+            if (existingOrdersChannel != null) {
+                Uri currSound = existingOrdersChannel.getSound();
+                if (currSound == null || !currSound.toString().contains("order_siren")) {
+                    try {
+                        notificationManager.deleteNotificationChannel("orders_channel");
+                    } catch (Exception ignored) {}
+                }
+            }
+
             // 1. Primary channel for high-priority order and delivery alerts
             CharSequence ordersName = "Orders & Partner Alerts";
             String ordersDesc = "Instant notifications and continuous sirens for new orders and delivery dispatches";
@@ -301,18 +338,15 @@ public class MainActivity extends BridgeActivity {
             NotificationChannel ordersChannel = new NotificationChannel("orders_channel", ordersName, ordersImportance);
             ordersChannel.setDescription(ordersDesc);
             ordersChannel.enableVibration(true);
+            ordersChannel.setVibrationPattern(new long[]{0, 800, 400, 800, 400});
             ordersChannel.enableLights(true);
             ordersChannel.setLightColor(Color.parseColor("#F45D2C"));
 
-            // Set alarm audio attributes on Android O+
+            // Set alarm audio attributes with bundled order_siren
             AudioAttributes audioAttributes = new AudioAttributes.Builder()
                     .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                     .setUsage(AudioAttributes.USAGE_ALARM)
                     .build();
-            Uri soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
-            if (soundUri == null) {
-                soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE);
-            }
             ordersChannel.setSound(soundUri, audioAttributes);
 
             // 2. Default fallback channel
@@ -487,17 +521,45 @@ public class MainActivity extends BridgeActivity {
         } catch (Exception ignored) {}
     }
 
-    public synchronized void updateSession(String accessToken, String role, String userId) {
-        SharedPreferences prefs = getSharedPreferences("kgt_partner_prefs", Context.MODE_PRIVATE);
+    public void onForegroundFcmAlert(final String orderId, final String role, final String title, final String body, final String notificationType) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                if ("NEW_ORDER".equals(notificationType) || "DELIVERY_AVAILABLE".equals(notificationType)) {
+                    startContinuousAlarm(orderId, role, title, body);
+                }
+                if (bridge != null && bridge.getWebView() != null) {
+                    bridge.getWebView().evaluateJavascript(
+                        "(function() { " +
+                        "  try { " +
+                        "    window.dispatchEvent(new CustomEvent('kgt:fcm_order_alert', { " +
+                        "      detail: { orderId: '" + (orderId != null ? orderId : "") + "', role: '" + (role != null ? role : "") + "', type: '" + (notificationType != null ? notificationType : "") + "' } " +
+                        "    })); " +
+                        "    if (typeof window.__kgt_refresh_orders === 'function') window.__kgt_refresh_orders(); " +
+                        "  } catch(e) {} " +
+                        "})();",
+                        null
+                    );
+                }
+            }
+        });
+    }
+
+    public synchronized void updateSession(final String accessToken, final String role, final String userId) {
+        final SharedPreferences prefs = getSharedPreferences("kgt_partner_prefs", Context.MODE_PRIVATE);
         if (accessToken == null || accessToken.trim().isEmpty()) {
             stopOrderPoller();
+            final String savedFcmToken = prefs.getString("fcm_token", null);
+            if (savedFcmToken != null && !savedFcmToken.trim().isEmpty()) {
+                deactivateTokenInSupabase(savedFcmToken);
+            }
             activeAccessToken = null;
             activeRole = null;
             activeUserId = null;
             prefs.edit().clear().apply();
             return;
         }
-        boolean changed = !accessToken.equals(activeAccessToken) || (role != null && !role.equalsIgnoreCase(activeRole));
+
         this.activeAccessToken = accessToken;
         this.activeRole = (role != null && !role.isEmpty()) ? role.toLowerCase() : "restaurant";
         this.activeUserId = userId;
@@ -508,9 +570,51 @@ public class MainActivity extends BridgeActivity {
             .putString("user_id", userId)
             .apply();
 
-        if (changed || orderPollerExecutor == null || orderPollerExecutor.isShutdown()) {
-            startOrderPoller();
-        }
+        // Retrieve FCM token and sync to Supabase
+        try {
+            FirebaseMessaging.getInstance().getToken().addOnCompleteListener(new OnCompleteListener<String>() {
+                @Override
+                public void onComplete(@NonNull Task<String> task) {
+                    if (task.isSuccessful() && task.getResult() != null) {
+                        String token = task.getResult();
+                        prefs.edit().putString("fcm_token", token).apply();
+                        PartnerFirebaseMessagingService.syncTokenToSupabase(accessToken, userId, activeRole, token);
+                    }
+                }
+            });
+        } catch (Exception ignored) {}
+    }
+
+    private void deactivateTokenInSupabase(final String fcmToken) {
+        if (fcmToken == null || fcmToken.trim().isEmpty()) return;
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                HttpURLConnection conn = null;
+                try {
+                    URL url = new URL("https://bvacebeorvxwcfkselon.supabase.co/rest/v1/user_fcm_tokens?token=eq." + fcmToken);
+                    conn = (HttpURLConnection) url.openConnection();
+                    conn.setRequestMethod("PATCH");
+                    conn.setRequestProperty("apikey", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2YWNlYmVvcnZ4d2Nma3NlbG9uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3OTA2ODQsImV4cCI6MjA5NTM2NjY4NH0.3PUMlqniJqMnl_yNBc3Lu4JBOcMNK_RT0BLqb1nmohY");
+                    conn.setRequestProperty("Authorization", "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2YWNlYmVvcnZ4d2Nma3NlbG9uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3OTA2ODQsImV4cCI6MjA5NTM2NjY4NH0.3PUMlqniJqMnl_yNBc3Lu4JBOcMNK_RT0BLqb1nmohY");
+                    conn.setRequestProperty("Content-Type", "application/json");
+                    conn.setConnectTimeout(5000);
+                    conn.setReadTimeout(5000);
+                    conn.setDoOutput(true);
+
+                    JSONObject body = new JSONObject();
+                    body.put("is_active", false);
+
+                    try (OutputStream os = conn.getOutputStream()) {
+                        os.write(body.toString().getBytes(StandardCharsets.UTF_8));
+                    }
+                    conn.getResponseCode();
+                } catch (Exception ignored) {
+                } finally {
+                    if (conn != null) conn.disconnect();
+                }
+            }
+        }).start();
     }
 
     private synchronized void startOrderPoller() {
@@ -960,6 +1064,10 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     public void onDestroy() {
+        isForeground = false;
+        if (instance == this) {
+            instance = null;
+        }
         stopContinuousAlarm();
         stopOrderPoller();
         unregisterSmsReceiver();

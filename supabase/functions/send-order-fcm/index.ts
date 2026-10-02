@@ -50,10 +50,11 @@ serve(async (req: Request) => {
       .from("user_fcm_tokens")
       .select("token")
       .eq("user_id", ownerId)
-      .eq("app_type", "partner");
+      .eq("app_type", "partner")
+      .eq("is_active", true);
 
     if (!tokens || tokens.length === 0) {
-      return new Response(JSON.stringify({ status: "skipped", message: "No partner tokens registered for owner" }), { status: 200 });
+      return new Response(JSON.stringify({ status: "skipped", message: "No active partner tokens registered for owner" }), { status: 200 });
     }
 
     const shortId = String(order.id).slice(0, 8).toUpperCase();
@@ -63,7 +64,6 @@ serve(async (req: Request) => {
     // 3. Send high-priority FCM message to all owner devices
     const results = [];
     for (const t of tokens) {
-      // Legacy FCM endpoint or HTTP v1
       const fcmRes = await fetch("https://fcm.googleapis.com/fcm/send", {
         method: "POST",
         headers: {
@@ -77,12 +77,14 @@ serve(async (req: Request) => {
             title: title,
             body: body,
             android_channel_id: "orders_channel",
-            sound: "default",
+            sound: "order_siren",
           },
           data: {
-            order_id: order.id,
+            order_id: String(order.id),
             role: "restaurant",
-            click_action: "FLUTTER_NOTIFICATION_CLICK",
+            notification_type: "NEW_ORDER",
+            title: title,
+            body: body,
           },
         }),
       });

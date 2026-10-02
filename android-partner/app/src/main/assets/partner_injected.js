@@ -496,6 +496,18 @@
   setInterval(checkOrdersDirectly, 3500);
   setTimeout(checkOrdersDirectly, 1000);
 
+  window.__kgt_refresh_orders = function () {
+    try {
+      checkOrdersDirectly();
+    } catch (e) {}
+  };
+
+  window.addEventListener('kgt:fcm_order_alert', function (e) {
+    try {
+      checkOrdersDirectly();
+    } catch (err) {}
+  });
+
   window.__kgt_test_alarm = function () {
     startAlarm(
       'TEST-1234',
