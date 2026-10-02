@@ -178,7 +178,6 @@ public class MainActivity extends BridgeActivity {
                 this.activeAccessToken = savedToken;
                 this.activeRole = prefs.getString("role", "restaurant");
                 this.activeUserId = prefs.getString("user_id", null);
-                PartnerForegroundService.startService(this);
                 startOrderPoller();
             }
         } catch (Exception ignored) {}
@@ -217,7 +216,6 @@ public class MainActivity extends BridgeActivity {
         if (intent != null && intent.getBooleanExtra("from_order_alert", false)) {
             final String role = intent.getStringExtra("role");
             stopContinuousAlarm();
-            PartnerForegroundService.silenceAlarm(this);
             if (this.bridge != null && this.bridge.getWebView() != null) {
                 this.bridge.getWebView().post(new Runnable() {
                     @Override
@@ -360,7 +358,6 @@ public class MainActivity extends BridgeActivity {
     // CONTINUOUS LOUD ALARM SYSTEM
     // ==========================================
     public synchronized void startContinuousAlarm(String orderId, String role, String title, String body) {
-        PartnerForegroundService.triggerAlarm(this, orderId, role, title, body);
         try {
             isAlarmActive = true;
 
@@ -466,7 +463,6 @@ public class MainActivity extends BridgeActivity {
 
     public synchronized void stopContinuousAlarm() {
         isAlarmActive = false;
-        PartnerForegroundService.silenceAlarm(this);
         try {
             if (alarmMediaPlayer != null) {
                 if (alarmMediaPlayer.isPlaying()) {
@@ -499,7 +495,6 @@ public class MainActivity extends BridgeActivity {
             activeRole = null;
             activeUserId = null;
             prefs.edit().clear().apply();
-            PartnerForegroundService.stopService(this);
             return;
         }
         boolean changed = !accessToken.equals(activeAccessToken) || (role != null && !role.equalsIgnoreCase(activeRole));
@@ -512,9 +507,6 @@ public class MainActivity extends BridgeActivity {
             .putString("role", activeRole)
             .putString("user_id", userId)
             .apply();
-
-        // Start Foreground Service so order polling and sirens continue even when app is closed and screen is off
-        PartnerForegroundService.startService(this);
 
         if (changed || orderPollerExecutor == null || orderPollerExecutor.isShutdown()) {
             startOrderPoller();
