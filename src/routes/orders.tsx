@@ -79,6 +79,8 @@ function OrdersPage() {
         )}
         {!fetching && !error && orders.map((o) => (
           <Link key={o.id} to="/order/$id" params={{ id: o.id }}
+            data-order-id={o.id}
+            data-order-items={JSON.stringify(o.items || [])}
             className="block rounded-2xl border bg-card p-4 shadow-[var(--shadow-card)]">
             <div className="flex items-center justify-between">
               <p className="font-mono text-xs font-bold">{o.id.slice(0, 8).toUpperCase()}</p>
@@ -87,7 +89,20 @@ function OrdersPage() {
               </span>
             </div>
             <p className="mt-1 truncate text-sm text-muted-foreground">
-              {o.items.map((i) => `${i.qty}× ${i.name}`).join(", ")}
+              {(() => {
+                let items = o.items;
+                if (typeof items === "string") {
+                  try {
+                    items = JSON.parse(items);
+                  } catch {
+                    items = [];
+                  }
+                }
+                const list = Array.isArray(items) ? (items as any[]) : [];
+                return list.length > 0
+                  ? list.map((i) => `${i.qty}× ${i.name}`).join(", ")
+                  : "View order items & details";
+              })()}
             </p>
             <div className="mt-2 flex items-center justify-between text-sm">
               <span className="text-xs text-muted-foreground">{new Date(o.created_at).toLocaleString()}</span>

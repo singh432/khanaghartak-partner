@@ -752,6 +752,8 @@ function ZoneManagerPage() {
               return (
                 <article
                   key={o.id}
+                  data-order-id={o.id}
+                  data-order-items={JSON.stringify(o.items || [])}
                   onClick={() => setSelectedOrder(o)}
                   className="group relative cursor-pointer rounded-2xl border bg-card p-4 shadow-sm space-y-3 transition-all hover:border-primary/50 hover:shadow-md active:scale-[0.995]"
                 >
@@ -2117,8 +2119,8 @@ function Empty({ children }: { children: React.ReactNode }) {
 function Modal({ title, children, onClose }: { title: string; children: React.ReactNode; onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in duration-150">
-      <div className="relative w-full max-w-md rounded-2xl border bg-card p-5 shadow-2xl space-y-4">
-        <div className="flex items-center justify-between border-b pb-3">
+      <div className="relative w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl border bg-card p-5 shadow-2xl space-y-4">
+        <div className="flex items-center justify-between border-b pb-3 sticky top-0 bg-card z-10">
           <h3 className="text-base font-extrabold text-foreground">{title}</h3>
           <button
             onClick={onClose}

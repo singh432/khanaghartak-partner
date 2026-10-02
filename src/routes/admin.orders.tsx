@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { Search, Bell, X } from "lucide-react";
+import { Search, Bell, X, Eye } from "lucide-react";
 import { firePartnerOrderAlert, silencePartnerOrderAlert } from "@/components/PartnerNotificationListener";
 
 export const Route = createFileRoute("/admin/orders")({ component: AdminOrders });
@@ -24,6 +24,15 @@ function pick(row: Record<string, unknown>): Order {
   const o: Record<string, unknown> = {};
   for (const k of ORDER_COLUMNS.split(",")) o[k] = row[k];
   o.customer_name = (row["customer_first_name"] as string) || "Customer";
+  let items = row["items"];
+  if (typeof items === "string") {
+    try {
+      items = JSON.parse(items);
+    } catch {
+      items = [];
+    }
+  }
+  o.items = Array.isArray(items) ? (items as any[]) : [];
   return o as unknown as Order;
 }
 
@@ -37,6 +46,7 @@ const STATUS_LABEL: Record<Status, string> = {
 
 function AdminOrders() {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [filter, setFilter] = useState<Status | "all">("all");
   const [q, setQ] = useState("");
   const [rejecting, setRejecting] = useState<string | null>(null);
@@ -146,20 +156,37 @@ function AdminOrders() {
             <p className="py-16 text-center text-sm text-muted-foreground">No orders match.</p>
           )}
           {filtered.map((o) => (
-            <article key={o.id} className="rounded-2xl border bg-card p-4 shadow-sm">
+            <article
+              key={o.id}
+              data-order-id={o.id}
+              data-order-items={JSON.stringify(o.items || [])}
+              onClick={() => setSelectedOrder(o)}
+              className="group relative cursor-pointer rounded-2xl border bg-card p-4 shadow-sm transition-all hover:border-primary/50 hover:shadow-md active:scale-[0.995]"
+            >
               <div className="flex items-start justify-between gap-2">
                 <div>
                   <p className="font-mono text-xs font-bold">#{o.id.slice(0, 8).toUpperCase()}</p>
                   <p className="text-base font-semibold leading-tight">{o.customer_name}</p>
                   <p className="text-xs text-muted-foreground">Contact &amp; address shared with the rider</p>
                 </div>
-                <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold capitalize ${o.status === "placed" ? "bg-primary text-primary-foreground" : "bg-secondary"}`}>
-                  {STATUS_LABEL[o.status as Status]}
-                </span>
+                <div className="flex flex-col items-end gap-1.5">
+                  <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold capitalize ${o.status === "placed" ? "bg-primary text-primary-foreground" : "bg-secondary"}`}>
+                    {STATUS_LABEL[o.status as Status]}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedOrder(o);
+                    }}
+                    className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-bold text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
+                  >
+                    <Eye className="h-3 w-3" /> View Details
+                  </button>
+                </div>
               </div>
 
               <p className="mt-2 text-xs text-muted-foreground">{new Date(o.created_at).toLocaleString()}</p>
-
 
               {o.notes && <p className="mt-2 rounded-lg bg-accent px-2 py-1 text-xs">Note: {o.notes}</p>}
               {o.rejection_reason && <p className="mt-2 rounded-lg bg-destructive/10 px-2 py-1 text-xs text-destructive">Rejected: {o.rejection_reason}</p>}
@@ -173,10 +200,9 @@ function AdminOrders() {
                 ))}
                 <div className="my-2 h-px bg-border" />
                 <div className="flex justify-between text-sm font-bold"><span>Items total</span><span>₹{Number(o.subtotal).toFixed(0)}</span></div>
-
               </div>
 
-              <div className="mt-3 grid grid-cols-2 gap-2">
+              <div className="mt-3 grid grid-cols-2 gap-2" onClick={(e) => e.stopPropagation()}>
                 {o.status === "placed" && (<>
                   <Action onClick={() => updateStatus(o.id, "accepted")} primary>Accept</Action>
                   <Action onClick={() => { setRejecting(o.id); setReason(""); }} danger>Reject</Action>
@@ -193,6 +219,100 @@ function AdminOrders() {
           ))}
         </div>
       </div>
+
+      {selectedOrder && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in"
+          onClick={() => setSelectedOrder(null)}
+        >
+          <div
+            className="w-full max-w-md max-h-[85vh] overflow-y-auto rounded-2xl border bg-card p-5 shadow-2xl space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b pb-3">
+              <div>
+                <p className="font-mono text-xs font-bold text-muted-foreground">Order #{selectedOrder.id.slice(0, 8).toUpperCase()}</p>
+                <h3 className="text-base font-extrabold text-foreground">{selectedOrder.customer_name}</h3>
+              </div>
+              <button
+                onClick={() => setSelectedOrder(null)}
+                className="rounded-full bg-secondary p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="rounded-xl bg-secondary/60 p-3 flex justify-between items-center text-xs">
+              <div>
+                <p className="text-[10px] font-bold uppercase text-muted-foreground">Status</p>
+                <span className="font-extrabold capitalize text-primary text-sm">{STATUS_LABEL[selectedOrder.status as Status] ?? selectedOrder.status}</span>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] font-bold uppercase text-muted-foreground">Ordered at</p>
+                <p className="font-semibold text-foreground">{new Date(selectedOrder.created_at).toLocaleString()}</p>
+              </div>
+            </div>
+
+            {selectedOrder.notes && (
+              <div className="rounded-xl bg-amber-500/10 border border-amber-500/20 p-2.5 text-xs text-amber-800">
+                <p className="font-bold">Customer Note:</p>
+                <p>{selectedOrder.notes}</p>
+              </div>
+            )}
+
+            <div className="rounded-xl border bg-background p-3 space-y-2">
+              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Customer Ordered Items</p>
+              <div className="divide-y divide-border/60">
+                {selectedOrder.items && selectedOrder.items.length > 0 ? (
+                  selectedOrder.items.map((it, idx) => (
+                    <div key={idx} className="flex justify-between items-center py-2 text-xs">
+                      <div>
+                        <span className="font-black text-primary text-sm mr-2">{it.qty}×</span>
+                        <span className="font-bold text-foreground">{it.name}</span>
+                      </div>
+                      <span className="font-extrabold text-foreground">₹{(it.price * it.qty).toFixed(0)}</span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="py-2 text-center text-xs text-muted-foreground italic">No items listed</p>
+                )}
+              </div>
+              <div className="border-t pt-2 mt-2 flex justify-between font-black text-sm">
+                <span>Items Subtotal</span>
+                <span>₹{Number(selectedOrder.subtotal).toFixed(0)}</span>
+              </div>
+              <div className="flex justify-between font-extrabold text-base text-primary border-t pt-1">
+                <span>Grand Total</span>
+                <span>₹{Number(selectedOrder.total).toFixed(0)}</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 pt-2">
+              {selectedOrder.status === "placed" && (
+                <>
+                  <Action onClick={() => { updateStatus(selectedOrder.id, "accepted"); setSelectedOrder(null); }} primary>Accept Order</Action>
+                  <Action onClick={() => { setRejecting(selectedOrder.id); setReason(""); setSelectedOrder(null); }} danger>Reject</Action>
+                </>
+              )}
+              {selectedOrder.status === "accepted" && (
+                <div className="col-span-2">
+                  <Action onClick={() => { updateStatus(selectedOrder.id, "preparing"); setSelectedOrder(null); }} primary>Mark Preparing</Action>
+                </div>
+              )}
+              {selectedOrder.status === "preparing" && (
+                <div className="col-span-2">
+                  <Action onClick={() => { updateStatus(selectedOrder.id, "out_for_delivery"); setSelectedOrder(null); }} primary>Ready for Delivery</Action>
+                </div>
+              )}
+              {selectedOrder.status === "out_for_delivery" && (
+                <p className="col-span-2 rounded-xl bg-secondary py-2.5 text-center text-xs font-semibold text-muted-foreground">
+                  Waiting for rider to deliver
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {rejecting && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4 md:items-center" onClick={() => setRejecting(null)}>

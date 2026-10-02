@@ -239,8 +239,20 @@ function RiderDashboard({
       .neq("status", "delivered")
       .order("created_at", { ascending: false })
       .limit(100);
-    if (mineErr) { toast.error(mineErr.message); return; }
-    const mineList = (mine ?? []) as unknown as Order[];
+    const mineList = ((mine ?? []) as any[]).map((ord) => {
+      let items = ord.items;
+      if (typeof items === "string") {
+        try {
+          items = JSON.parse(items);
+        } catch {
+          items = [];
+        }
+      }
+      return {
+        ...ord,
+        items: Array.isArray(items) ? items : [],
+      };
+    }) as Order[];
     setMineOrders(mineList);
 
     // Earnings from completed deliveries
@@ -468,7 +480,7 @@ function RiderDashboard({
           )}
 
         {tab === "available" && offers.map((o) => (
-          <article key={o.order_id} className="rounded-2xl border-2 border-primary/40 bg-card p-4 shadow-sm">
+          <article key={o.order_id} data-order-id={o.order_id} className="rounded-2xl border-2 border-primary/40 bg-card p-4 shadow-sm">
             <div className="flex items-start justify-between gap-2">
               <div>
                 <p className="font-mono text-[11px] font-bold text-muted-foreground">#{o.order_id.slice(0, 8).toUpperCase()}</p>
@@ -510,7 +522,12 @@ function RiderDashboard({
         {tab === "mine" && mineOrders.map((o) => {
           const r = o.restaurant_id ? restaurants[o.restaurant_id] : undefined;
           return (
-            <article key={o.id} className="rounded-2xl border bg-card p-4 shadow-sm">
+            <article
+              key={o.id}
+              data-order-id={o.id}
+              data-order-items={JSON.stringify(o.items || [])}
+              className="rounded-2xl border bg-card p-4 shadow-sm"
+            >
               <div className="flex items-start justify-between gap-2">
                 <div>
                   <p className="font-mono text-[11px] font-bold text-muted-foreground">#{o.id.slice(0, 8).toUpperCase()}</p>

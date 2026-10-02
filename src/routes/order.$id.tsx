@@ -113,6 +113,27 @@ function OrderSuccess() {
               <div className="my-1 h-px bg-border" />
               <Row label="Grand total (COD)" value={`₹${Number(order.total).toFixed(2)}`} bold />
             </div>
+
+            {/* Ordered Items List */}
+            {(() => {
+              let items = order.items;
+              if (typeof items === "string") {
+                try { items = JSON.parse(items); } catch { items = []; }
+              }
+              const list = Array.isArray(items) ? items : [];
+              if (list.length === 0) return null;
+              return (
+                <div className="mt-3 rounded-xl bg-secondary/60 p-3 space-y-1.5 text-xs">
+                  <p className="font-bold text-[11px] uppercase tracking-wide text-muted-foreground">Items Ordered:</p>
+                  {list.map((it: any, idx: number) => (
+                    <div key={idx} className="flex justify-between py-0.5">
+                      <span><span className="font-bold text-foreground">{it.qty}×</span> {it.name}{it.variant ? ` (${it.variant})` : ""}</span>
+                      <span className="font-semibold text-foreground">₹{Number((it.price || 0) * (it.qty || 1)).toFixed(0)}</span>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
             <p className="mt-3 inline-flex items-center gap-2 rounded-full bg-accent px-3 py-1 text-xs font-semibold">
               <span className="capitalize">{order.status.replace(/_/g, " ")}</span>
               <span className="pulse-dot" />

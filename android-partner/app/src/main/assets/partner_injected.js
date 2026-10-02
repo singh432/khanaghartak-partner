@@ -965,6 +965,7 @@
       enhanceRiderNav();
       enhanceZonePage();
       enhanceZoneNav();
+      enhanceOrderCardsAndDetails();
       ensureFallbackSignout();
     } catch (e) {}
   }
@@ -1250,6 +1251,390 @@
       };
       (document.body || document.documentElement).appendChild(pill);
     }
+  }
+
+  // ==========================================
+  // UNIVERSAL ORDER CARDS & DETAILS MODAL
+  // ==========================================
+  function enhanceOrderCardsAndDetails() {
+    var pathname = window.location.pathname || '';
+    var isOrdersView =
+      pathname.indexOf('/admin') !== -1 ||
+      pathname.indexOf('/zone') !== -1 ||
+      pathname.indexOf('/rider') !== -1 ||
+      pathname.indexOf('/orders') !== -1 ||
+      pathname.indexOf('/super') !== -1;
+
+    // Look for cards
+    var cards = document.querySelectorAll('article, a[href*="/order/"], div[data-order-card]');
+    if (!cards || cards.length === 0) {
+      var allDivs = document.querySelectorAll('div.rounded-2xl, div.rounded-xl, div.bg-card');
+      var matched = [];
+      for (var d = 0; d < allDivs.length; d++) {
+        var el = allDivs[d];
+        if (el.closest('#kgt-partner-order-details-modal') || el.closest('#kgt-partner-portal')) continue;
+        if ((el.innerText || '').match(/#[0-9a-fA-F-]{6,36}/)) {
+          matched.push(el);
+        }
+      }
+      cards = matched;
+    }
+    if (!cards || cards.length === 0) return;
+
+    for (var i = 0; i < cards.length; i++) {
+      (function (card) {
+        if (card.closest('#kgt-partner-order-details-modal') || card.closest('#kgt-partner-portal')) return;
+
+        // Visual cue that the card is interactive
+        card.style.cursor = 'pointer';
+
+        // Check if button already injected
+        if (card.querySelector('.kgt-order-view-details-btn')) {
+          return;
+        }
+
+        var text = card.innerText || '';
+        // Look for order id e.g. #1234ABCD or #abc-123
+        var idMatch = text.match(/#([0-9a-fA-F-]{6,36})/);
+        var orderShortId = idMatch ? idMatch[1].toUpperCase() : '';
+
+        // Check for full UUID
+        var href = card.getAttribute('href') || (card.querySelector('a[href*="/order/"]') ? card.querySelector('a[href*="/order/"]').getAttribute('href') : '');
+        var fullIdFromHref = '';
+        if (href) {
+          var mHref = href.match(/\/order\/([0-9a-fA-F-]+)/);
+          if (mHref) fullIdFromHref = mHref[1];
+        }
+        var dataId = card.getAttribute('data-order-id') || fullIdFromHref || '';
+
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'kgt-order-view-details-btn';
+        btn.style.cssText =
+          'display:flex;align-items:center;justify-content:center;gap:6px;' +
+          'background:#F45D2C;color:#FFFFFF;border:none;border-radius:12px;' +
+          'padding:9px 14px;font-size:12px;font-weight:800;cursor:pointer;' +
+          'box-shadow:0 3px 10px rgba(244,93,44,0.32);margin:8px 0 4px 0;' +
+          'width:100%;touch-action:manipulation;-webkit-tap-highlight-color:transparent;';
+        btn.innerHTML =
+          '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">' +
+          '  <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>' +
+          '</svg>' +
+          '<span>View Ordered Items &amp; Details</span>';
+
+        btn.onclick = function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          openOrderDetailsModalFromCard(card, orderShortId, dataId);
+        };
+
+        // Insert before action buttons or at bottom of card
+        var actionArea = card.querySelector('.border-t, .pt-1, .grid-cols-2') || card;
+        if (actionArea && actionArea !== card && actionArea.parentNode) {
+          actionArea.parentNode.insertBefore(btn, actionArea);
+        } else {
+          card.appendChild(btn);
+        }
+
+        if (!card.__kgt_card_click_attached) {
+          card.__kgt_card_click_attached = true;
+          card.addEventListener('click', function (e) {
+            var target = e.target;
+            if (target.closest('button, a, select, input, textarea')) return;
+            openOrderDetailsModalFromCard(card, orderShortId, dataId);
+          });
+        }
+      })(cards[i]);
+    }
+  }
+
+  function openOrderDetailsModalFromCard(card, orderShortId, dataId) {
+    var existing = document.getElementById('kgt-partner-order-details-modal');
+    if (existing) existing.remove();
+
+    var cardText = card.innerText || '';
+
+    // Extract basic fields from card
+    var idMatch = cardText.match(/#([0-9a-fA-F-]{6,36})/);
+    var displayId = (dataId ? dataId.slice(0, 8).toUpperCase() : '') || orderShortId || (idMatch ? idMatch[1].toUpperCase() : 'DETAILS');
+
+    var priceMatch = cardText.match(/₹\s*([0-9,]+)/);
+    var totalPrice = priceMatch ? priceMatch[1] : '';
+
+    var phoneLink = card.querySelector('a[href^="tel:"]');
+    var rawPhone = phoneLink ? phoneLink.getAttribute('href').replace('tel:', '').trim() : '';
+
+    // Extract items using 3-tier parsing
+    var itemsList = [];
+
+    // 1. Check data-order-items attribute
+    var rawDataItems = card.getAttribute('data-order-items');
+    if (rawDataItems) {
+      try {
+        var parsed = JSON.parse(rawDataItems);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          parsed.forEach(function (it) {
+            var n = (it.name || it.item_name || 'Item') + (it.variant ? ' (' + it.variant + ')' : '');
+            var q = String(it.qty || it.quantity || 1);
+            var pr = it.price ? String(Math.round(Number(it.price) * Number(it.qty || 1))) : '';
+            itemsList.push({ qty: q, name: n, price: pr });
+          });
+        }
+      } catch (e) {}
+    }
+
+    // 2. Child elements with [x×]
+    if (itemsList.length === 0) {
+      var allDivs = card.querySelectorAll('div, li, p');
+      for (var d = 0; d < allDivs.length; d++) {
+        var rowEl = allDivs[d];
+        if (rowEl.children.length > 4) continue;
+        var rText = (rowEl.innerText || rowEl.textContent || '').trim();
+        var mRow = rText.match(/^(\d+)\s*[x×]\s*([^₹\n\r]+?)(?:\s*₹\s*([0-9,.]+))?$/i);
+        if (mRow) {
+          var qRow = mRow[1].trim();
+          var nRow = mRow[2].trim();
+          var prRow = mRow[3] ? mRow[3].trim() : '';
+          if (nRow && !itemsList.some(function (it) { return it.name === nRow; })) {
+            itemsList.push({ qty: qRow, name: nRow, price: prRow });
+          }
+        }
+      }
+    }
+
+    // 3. Fallback: split cardText by line
+    if (itemsList.length === 0) {
+      var lines = cardText.split(/\r?\n/);
+      for (var l = 0; l < lines.length; l++) {
+        var line = lines[l].trim();
+        var lm = line.match(/^(\d+)\s*[x×]\s*(.+)$/i);
+        if (lm) {
+          var lq = lm[1].trim();
+          var rest = lm[2].trim();
+          var pr = '';
+          var prMatch = rest.match(/^(.*?)(?:\s*₹\s*([0-9,.]+))?$/);
+          if (prMatch && prMatch[2]) {
+            rest = prMatch[1].trim();
+            pr = prMatch[2].trim();
+          } else if (l + 1 < lines.length && lines[l + 1].trim().match(/^₹\s*([0-9,.]+)$/)) {
+            pr = lines[l + 1].trim().replace(/^₹\s*/, '');
+          }
+          if (rest && !itemsList.some(function (it) { return it.name === rest; })) {
+            itemsList.push({ qty: lq, name: rest, price: pr });
+          }
+        }
+      }
+    }
+
+    var modal = document.createElement('div');
+    modal.id = 'kgt-partner-order-details-modal';
+    modal.style.cssText =
+      'position:fixed;inset:0;z-index:99999999;background:rgba(0,0,0,0.65);' +
+      'display:flex;align-items:center;justify-content:center;padding:16px;' +
+      'backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);font-family:system-ui,-apple-system,sans-serif;';
+
+    var cardBox = document.createElement('div');
+    cardBox.style.cssText =
+      'background:#FFFFFF;border-radius:22px;width:100%;max-width:440px;' +
+      'max-height:85vh;max-height:85dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;' +
+      'box-shadow:0 24px 48px rgba(0,0,0,0.3);border:1px solid #E2E8F0;padding:18px;' +
+      'display:flex;flex-direction:column;gap:12px;color:#0F172A;';
+
+    // Header
+    var headerHtml =
+      '<div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #E2E8F0;padding-bottom:12px;">' +
+      '  <div>' +
+      '    <div style="font-size:11px;font-weight:800;color:#64748B;font-family:monospace;letter-spacing:0.5px;">ORDER DETAILS</div>' +
+      '    <div style="font-size:18px;font-weight:900;color:#0F172A;font-family:monospace;">#' + displayId + '</div>' +
+      '  </div>' +
+      '  <button id="kgt-modal-close-btn" type="button" style="background:#F1F5F9;border:none;border-radius:9999px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:#64748B;cursor:pointer;">✕</button>' +
+      '</div>';
+
+    // Items Section container
+    var itemsBoxHtml =
+      '<div id="kgt-modal-items-box" style="background:#F8FAFC;border:1.5px solid #E2E8F0;border-radius:16px;padding:14px;">' +
+      '  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">' +
+      '    <div style="font-size:12px;font-weight:900;text-transform:uppercase;color:#475569;letter-spacing:0.5px;">📦 Items Customer Ordered</div>' +
+      '    <div id="kgt-modal-items-count" style="font-size:11px;font-weight:800;background:#E2E8F0;padding:2px 8px;border-radius:9999px;color:#334155;">' + (itemsList.length ? itemsList.length + ' items' : 'Loading...') + '</div>' +
+      '  </div>' +
+      '  <div id="kgt-modal-items-list" style="display:flex;flex-direction:column;gap:8px;">';
+
+    if (itemsList.length > 0) {
+      itemsList.forEach(function (it) {
+        itemsBoxHtml +=
+          '    <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px dashed #CBD5E1;">' +
+          '      <div style="display:flex;align-items:center;gap:8px;min-width:0;flex:1;">' +
+          '        <span style="background:#F45D2C;color:#FFFFFF;font-weight:900;font-size:12px;padding:2px 7px;border-radius:6px;flex-shrink:0;">' + it.qty + '×</span>' +
+          '        <span style="font-size:13px;font-weight:800;color:#0F172A;line-height:1.3;">' + it.name + '</span>' +
+          '      </div>' +
+          (it.price ? '      <span style="font-size:13px;font-weight:900;color:#0F172A;flex-shrink:0;">₹' + it.price + '</span>' : '') +
+          '    </div>';
+      });
+    } else {
+      itemsBoxHtml += '<div id="kgt-modal-items-loading" style="text-align:center;padding:12px;font-size:12px;color:#64748B;">Fetching order items…</div>';
+    }
+
+    itemsBoxHtml +=
+      '  </div>' +
+      '  <div id="kgt-modal-total-row" style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding-top:10px;border-top:1.5px solid #CBD5E1;">' +
+      '    <span style="font-size:13px;font-weight:800;color:#334155;">Grand Total:</span>' +
+      '    <span id="kgt-modal-total-amt" style="font-size:17px;font-weight:900;color:#F45D2C;">₹' + totalPrice + '</span>' +
+      '  </div>' +
+      '</div>';
+
+    // Customer & Contact Info
+    var custBoxHtml =
+      '<div id="kgt-modal-cust-box" style="background:#FFFFFF;border:1px solid #E2E8F0;border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:8px;">' +
+      '  <div style="font-size:12px;font-weight:900;text-transform:uppercase;color:#475569;letter-spacing:0.5px;">👤 Customer &amp; Delivery Details</div>' +
+      '  <div id="kgt-modal-cust-name" style="font-size:14px;font-weight:800;color:#0F172A;">Customer</div>' +
+      '  <div id="kgt-modal-cust-address" style="font-size:12px;color:#64748B;line-height:1.4;">Delivery address</div>';
+
+    if (rawPhone) {
+      custBoxHtml +=
+        '  <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">' +
+        '    <a href="tel:' + rawPhone + '" style="display:inline-flex;align-items:center;gap:5px;background:#F1F5F9;color:#0F172A;text-decoration:none;padding:6px 12px;border-radius:9999px;font-size:11px;font-weight:800;">📞 Call Customer</a>' +
+        '    <a href="https://wa.me/91' + rawPhone.replace(/\D/g, '') + '" target="_blank" style="display:inline-flex;align-items:center;gap:5px;background:#ECFDF5;color:#059669;text-decoration:none;padding:6px 12px;border-radius:9999px;font-size:11px;font-weight:800;">💬 WhatsApp</a>' +
+        '  </div>';
+    }
+
+    custBoxHtml += '</div>';
+
+    // Action button area (Close)
+    var footerHtml =
+      '<div style="display:flex;flex-direction:column;gap:8px;margin-top:4px;">' +
+      '  <button id="kgt-modal-bottom-close" type="button" style="background:#0F172A;color:#FFFFFF;border:none;border-radius:14px;padding:11px;font-size:13px;font-weight:800;cursor:pointer;width:100%;">' +
+      '    ✕ Close Details' +
+      '  </button>' +
+      '</div>';
+
+    cardBox.innerHTML = headerHtml + itemsBoxHtml + custBoxHtml + footerHtml;
+    modal.appendChild(cardBox);
+    (document.body || document.documentElement).appendChild(modal);
+
+    // Close handlers
+    function closeModal() {
+      modal.remove();
+    }
+    var closeBtn = cardBox.querySelector('#kgt-modal-close-btn');
+    if (closeBtn) closeBtn.onclick = closeModal;
+    var bottomClose = cardBox.querySelector('#kgt-modal-bottom-close');
+    if (bottomClose) bottomClose.onclick = closeModal;
+
+    modal.onclick = function (e) {
+      if (e.target === modal) closeModal();
+    };
+
+    // Live Database Fetch to ensure 100% complete items list
+    try {
+      var auth = getPartnerAuth();
+      var token = auth ? auth.token : null;
+      var targetUuid = dataId && dataId.length >= 32 ? dataId : '';
+      if (targetUuid) {
+        var queryUrl =
+          SUPABASE_URL +
+          '/rest/v1/orders?select=id,status,customer_name,customer_phone,address,landmark,subtotal,delivery_fee,platform_fee,discount,total,items,created_at&id=eq.' +
+          encodeURIComponent(targetUuid) +
+          '&limit=1';
+
+        var hdrs = { apikey: SUPABASE_ANON };
+        if (token) hdrs['Authorization'] = 'Bearer ' + token;
+
+        fetch(queryUrl, { headers: hdrs })
+          .then(function (r) {
+            return r.json();
+          })
+          .then(function (res) {
+            if (!res || !res.length) return;
+            var ord = res[0];
+
+            // Parse items
+            var dbItems = ord.items;
+            if (typeof dbItems === 'string') {
+              try {
+                dbItems = JSON.parse(dbItems);
+              } catch (e) {
+                dbItems = [];
+              }
+            }
+            if (!Array.isArray(dbItems)) dbItems = [];
+
+            var listContainer = document.getElementById('kgt-modal-items-list');
+            var countEl = document.getElementById('kgt-modal-items-count');
+            var totalAmtEl = document.getElementById('kgt-modal-total-amt');
+            var custNameEl = document.getElementById('kgt-modal-cust-name');
+            var custAddrEl = document.getElementById('kgt-modal-cust-address');
+
+            if (countEl) countEl.innerText = dbItems.length + ' items';
+            if (totalAmtEl && ord.total != null) totalAmtEl.innerText = '₹' + Math.round(ord.total);
+            if (custNameEl && ord.customer_name) custNameEl.innerText = ord.customer_name;
+            if (custAddrEl && ord.address) {
+              custAddrEl.innerText = ord.address + (ord.landmark ? ' (Landmark: ' + ord.landmark + ')' : '');
+            }
+
+            if (listContainer && dbItems.length > 0) {
+              var out = '';
+              dbItems.forEach(function (it) {
+                var itName = it.name || it.item_name || 'Item';
+                var itQty = it.qty || it.quantity || 1;
+                var itPrice = it.price || 0;
+                var itSub = Math.round(Number(itPrice) * Number(itQty));
+                var itVar = it.variant ? ' <span style="font-size:11px;color:#64748B;">(' + it.variant + ')</span>' : '';
+
+                out +=
+                  '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px dashed #CBD5E1;">' +
+                  '  <div style="display:flex;align-items:center;gap:8px;min-width:0;flex:1;">' +
+                  '    <span style="background:#F45D2C;color:#FFFFFF;font-weight:900;font-size:12px;padding:3px 8px;border-radius:6px;flex-shrink:0;">' +
+                  itQty +
+                  '×</span>' +
+                  '    <div style="min-width:0;">' +
+                  '      <div style="font-size:13px;font-weight:800;color:#0F172A;line-height:1.3;">' +
+                  itName +
+                  itVar +
+                  '</div>' +
+                  '      <div style="font-size:11px;color:#64748B;">₹' +
+                  itPrice +
+                  ' each</div>' +
+                  '    </div>' +
+                  '  </div>' +
+                  '  <span style="font-size:14px;font-weight:900;color:#0F172A;flex-shrink:0;">₹' +
+                  itSub +
+                  '</span>' +
+                  '</div>';
+              });
+
+              // Add breakdown rows
+              out +=
+                '<div style="display:flex;justify-content:space-between;font-size:12px;color:#64748B;padding-top:8px;">' +
+                '  <span>Items Subtotal:</span><span>₹' +
+                Math.round(ord.subtotal || 0) +
+                '</span>' +
+                '</div>' +
+                '<div style="display:flex;justify-content:space-between;font-size:12px;color:#64748B;">' +
+                '  <span>Delivery Fee:</span><span>₹' +
+                Math.round(ord.delivery_fee || 0) +
+                '</span>' +
+                '</div>' +
+                '<div style="display:flex;justify-content:space-between;font-size:12px;color:#64748B;">' +
+                '  <span>Platform Fee:</span><span>₹' +
+                Math.round(ord.platform_fee || 0) +
+                '</span>' +
+                '</div>';
+
+              if (Number(ord.discount || 0) > 0) {
+                out +=
+                  '<div style="display:flex;justify-content:space-between;font-size:12px;color:#059669;font-weight:700;">' +
+                  '  <span>Discount:</span><span>-₹' +
+                  Math.round(ord.discount) +
+                  '</span>' +
+                  '</div>';
+              }
+
+              listContainer.innerHTML = out;
+            }
+          })
+          .catch(function (e) {});
+      }
+    } catch (e) {}
   }
 
   // ==========================================
@@ -1852,6 +2237,12 @@
   // ==========================================
   function handlePartnerHardwareBack() {
     stopAlarm();
+
+    var orderModal = document.getElementById('kgt-partner-order-details-modal');
+    if (orderModal) {
+      orderModal.remove();
+      return;
+    }
 
     var hasSession = hasValidPartnerSession();
     if (!hasSession) {
