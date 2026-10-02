@@ -169,6 +169,7 @@ function ZoneManagerPage() {
   const [viewingKycRider, setViewingKycRider] = useState<Rider | null>(null);
   const [cancellingOrder, setCancellingOrder] = useState<Order | null>(null);
   const [reassigningOrder, setReassigningOrder] = useState<string | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) navigate({ to: "/login", search: { as: "manager" } });
@@ -202,6 +203,7 @@ function ZoneManagerPage() {
         : null,
     })) as Order[];
     setOrders(orderList);
+    setSelectedOrder((prev) => (prev ? orderList.find((x) => x.id === prev.id) ?? prev : null));
 
     const hasPlaced = orderList.some((ord) => ord.status === "placed" && !ord.rider_id);
     if (!hasPlaced) {
@@ -469,6 +471,13 @@ function ZoneManagerPage() {
     if (error) return toast.error(error.message);
     toast.success("Rider assigned to order");
     setReassigningOrder(null);
+    setSelectedOrder((prev) => {
+      if (prev && prev.id === orderId) {
+        const rd = riders.find((r) => r.user_id === riderId);
+        return { ...prev, rider_id: riderId, rider_name: rd?.full_name ?? riderId.slice(0, 8) };
+      }
+      return prev;
+    });
     load(zoneId);
   };
 
@@ -491,6 +500,7 @@ function ZoneManagerPage() {
     }
     toast.success(`Order status updated to ${status}`);
     setCancellingOrder(null);
+    setSelectedOrder((prev) => (prev && prev.id === orderId ? { ...prev, status } : prev));
     load(zoneId);
   };
 
@@ -740,7 +750,11 @@ function ZoneManagerPage() {
               const isReassigning = reassigningOrder === o.id;
 
               return (
-                <article key={o.id} className="rounded-2xl border bg-card p-4 shadow-sm space-y-3">
+                <article
+                  key={o.id}
+                  onClick={() => setSelectedOrder(o)}
+                  className="group relative cursor-pointer rounded-2xl border bg-card p-4 shadow-sm space-y-3 transition-all hover:border-primary/50 hover:shadow-md active:scale-[0.995]"
+                >
                   {/* Top Bar */}
                   <div className="flex flex-wrap items-start justify-between gap-2 border-b pb-2.5">
                     <div>
@@ -762,11 +776,18 @@ function ZoneManagerPage() {
                       </div>
                       <p className="mt-1 text-base font-extrabold text-foreground">{o.restaurant_name ?? "Kitchen"}</p>
                     </div>
-                    <div className="text-right">
+                    <div className="flex flex-col items-end gap-1">
                       <p className="text-base font-black text-primary">₹{Number(o.total).toFixed(0)}</p>
-                      <p className="text-[10px] text-muted-foreground">
-                        {new Date(o.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                      </p>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedOrder(o);
+                        }}
+                        className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-bold text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
+                      >
+                        <Eye className="h-3 w-3" /> View Details
+                      </button>
                     </div>
                   </div>
 
@@ -778,11 +799,12 @@ function ZoneManagerPage() {
                       </p>
                       <p className="text-muted-foreground">{o.landmark || o.address}</p>
                     </div>
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                       {cleanCustPhone && (
                         <>
                           <a
                             href={`tel:${cleanCustPhone}`}
+                            onClick={(e) => e.stopPropagation()}
                             className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-[11px] font-bold text-foreground hover:bg-primary/10 hover:text-primary transition-colors"
                           >
                             <Phone className="h-3 w-3" /> Call
@@ -791,6 +813,7 @@ function ZoneManagerPage() {
                             href={`https://wa.me/91${cleanCustPhone}`}
                             target="_blank"
                             rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
                             className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-bold text-emerald-600 hover:bg-emerald-500/20 transition-colors"
                           >
                             <MessageSquare className="h-3 w-3" /> WA
@@ -817,7 +840,7 @@ function ZoneManagerPage() {
                   )}
 
                   {/* Rider Assignment / Reassignment */}
-                  <div className="rounded-xl border p-2.5 bg-background">
+                  <div className="rounded-xl border p-2.5 bg-background" onClick={(e) => e.stopPropagation()}>
                     {isAssigned && !isReassigning ? (
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-1.5 text-xs font-bold text-success">
@@ -870,7 +893,7 @@ function ZoneManagerPage() {
                   </div>
 
                   {/* Status Progression Buttons */}
-                  <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t">
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t" onClick={(e) => e.stopPropagation()}>
                     <div className="flex flex-wrap gap-1.5">
                       {o.status === "placed" && (
                         <button
@@ -1730,6 +1753,306 @@ function ZoneManagerPage() {
               </button>
             </div>
           </form>
+        </Modal>
+      )}
+
+      {/* 7. ORDER DETAILS MODAL */}
+      {selectedOrder && (
+        <Modal
+          title={`Order #${selectedOrder.id.slice(0, 8).toUpperCase()}`}
+          onClose={() => setSelectedOrder(null)}
+        >
+          <div className="max-h-[75vh] overflow-y-auto pr-1 space-y-3.5 text-xs">
+            {/* Status & Timing Banner */}
+            <div className="flex items-center justify-between rounded-xl bg-secondary/60 p-3">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Order Status</p>
+                <span
+                  className={`mt-0.5 inline-block rounded-full px-2.5 py-0.5 text-xs font-black capitalize ${
+                    selectedOrder.status === "delivered"
+                      ? "bg-success/20 text-success"
+                      : selectedOrder.status === "cancelled" || selectedOrder.status === "rejected"
+                      ? "bg-destructive/20 text-destructive"
+                      : "bg-amber-500/20 text-amber-700"
+                  }`}
+                >
+                  {selectedOrder.status.replace(/_/g, " ")}
+                </span>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Order Time</p>
+                <p className="font-semibold text-foreground">
+                  {new Date(selectedOrder.created_at).toLocaleString([], {
+                    dateStyle: "medium",
+                    timeStyle: "short",
+                  })}
+                </p>
+              </div>
+            </div>
+
+            {/* Restaurant Info */}
+            <div className="rounded-xl border bg-background p-3 space-y-2">
+              <div className="flex flex-wrap items-center justify-between gap-1">
+                <div className="flex items-center gap-1.5 font-bold text-sm text-foreground">
+                  <Store className="h-4 w-4 text-primary" />
+                  <span>{selectedOrder.restaurant_name ?? "Kitchen"}</span>
+                </div>
+                {(() => {
+                  const restObj = restaurants.find(
+                    (r) => r.id === selectedOrder.restaurant_id || r.name === selectedOrder.restaurant_name
+                  );
+                  const restPhone = cleanPhoneDigits(restObj?.phone);
+                  if (!restPhone) return null;
+                  return (
+                    <div className="flex items-center gap-1">
+                      <a
+                        href={`tel:${restPhone}`}
+                        className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-[11px] font-bold text-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+                      >
+                        <Phone className="h-3 w-3" /> Call Kitchen
+                      </a>
+                      <a
+                        href={`https://wa.me/91${restPhone}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-bold text-emerald-600 hover:bg-emerald-500/20 transition-colors"
+                      >
+                        <MessageSquare className="h-3 w-3" /> WA
+                      </a>
+                    </div>
+                  );
+                })()}
+              </div>
+              {(() => {
+                const restObj = restaurants.find(
+                  (r) => r.id === selectedOrder.restaurant_id || r.name === selectedOrder.restaurant_name
+                );
+                return restObj?.address ? (
+                  <p className="text-[11px] text-muted-foreground">📍 {restObj.address}</p>
+                ) : null;
+              })()}
+            </div>
+
+            {/* Customer & Delivery Address */}
+            <div className="rounded-xl border bg-background p-3 space-y-2">
+              <div className="flex flex-wrap items-center justify-between gap-1">
+                <div className="flex items-center gap-1.5 font-bold text-sm text-foreground">
+                  <Users className="h-4 w-4 text-primary" />
+                  <span>{selectedOrder.customer_name || "Customer"}</span>
+                </div>
+                {(() => {
+                  const custPhone = cleanPhoneDigits(selectedOrder.customer_phone);
+                  if (!custPhone) return null;
+                  return (
+                    <div className="flex items-center gap-1">
+                      <a
+                        href={`tel:${custPhone}`}
+                        className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-[11px] font-bold text-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+                      >
+                        <Phone className="h-3 w-3" /> Call
+                      </a>
+                      <a
+                        href={`https://wa.me/91${custPhone}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-bold text-emerald-600 hover:bg-emerald-500/20 transition-colors"
+                      >
+                        <MessageSquare className="h-3 w-3" /> WhatsApp
+                      </a>
+                    </div>
+                  );
+                })()}
+              </div>
+              <div className="space-y-0.5 text-[11px] text-muted-foreground">
+                <p>📞 {selectedOrder.customer_phone || "No phone provided"}</p>
+                <p>📍 {selectedOrder.address}</p>
+                {selectedOrder.landmark && (
+                  <p className="font-semibold text-foreground">Landmark: {selectedOrder.landmark}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Items List */}
+            <div className="rounded-xl border bg-background p-3 space-y-2">
+              <div className="flex items-center gap-1.5 font-bold text-sm text-foreground">
+                <Utensils className="h-4 w-4 text-primary" />
+                <span>Order Items</span>
+              </div>
+              {selectedOrder.items && selectedOrder.items.length > 0 ? (
+                <div className="divide-y divide-border/60">
+                  {selectedOrder.items.map((it, idx) => (
+                    <div key={idx} className="flex items-center justify-between py-1.5">
+                      <div>
+                        <p className="font-bold text-foreground">
+                          {it.qty} × {it.name}
+                        </p>
+                        {it.variant && (
+                          <p className="text-[10px] text-muted-foreground">{it.variant}</p>
+                        )}
+                      </div>
+                      <p className="font-extrabold text-foreground">₹{Number(it.price * it.qty).toFixed(0)}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="py-2 text-center text-muted-foreground italic">No item details recorded</p>
+              )}
+            </div>
+
+            {/* Price Breakdown */}
+            <div className="rounded-xl border bg-background p-3 space-y-1.5">
+              <p className="mb-1 font-bold text-sm text-foreground">Bill Summary</p>
+              <div className="flex justify-between text-muted-foreground">
+                <span>Items Subtotal</span>
+                <span>₹{Number(selectedOrder.subtotal || 0).toFixed(0)}</span>
+              </div>
+              <div className="flex justify-between text-muted-foreground">
+                <span>Delivery Fee</span>
+                <span>₹{Number(selectedOrder.delivery_fee || 0).toFixed(0)}</span>
+              </div>
+              <div className="flex justify-between text-muted-foreground">
+                <span>Platform Fee</span>
+                <span>₹{Number(selectedOrder.platform_fee || 0).toFixed(0)}</span>
+              </div>
+              {Number(selectedOrder.discount || 0) > 0 && (
+                <div className="flex justify-between font-semibold text-emerald-600">
+                  <span>Discount</span>
+                  <span>-₹{Number(selectedOrder.discount).toFixed(0)}</span>
+                </div>
+              )}
+              <div className="mt-1 flex justify-between border-t pt-1.5 font-black text-sm text-foreground">
+                <span>Grand Total</span>
+                <span className="text-base text-primary">₹{Number(selectedOrder.total || 0).toFixed(0)}</span>
+              </div>
+            </div>
+
+            {/* Rider Management */}
+            <div className="rounded-xl border bg-background p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 font-bold text-sm text-foreground">
+                  <Bike className="h-4 w-4 text-primary" />
+                  <span>Delivery Rider</span>
+                </div>
+                {selectedOrder.rider_id && (() => {
+                  const riderObj = riders.find((r) => r.user_id === selectedOrder.rider_id);
+                  const riderPhone = cleanPhoneDigits(riderObj?.phone);
+                  if (!riderPhone) return null;
+                  return (
+                    <a
+                      href={`tel:${riderPhone}`}
+                      className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-[11px] font-bold text-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+                    >
+                      <Phone className="h-3 w-3" /> Call Rider
+                    </a>
+                  );
+                })()}
+              </div>
+
+              {selectedOrder.rider_id ? (
+                <div className="flex items-center justify-between rounded-lg bg-secondary/50 p-2.5">
+                  <div>
+                    <p className="font-bold text-foreground">{selectedOrder.rider_name ?? "Assigned Rider"}</p>
+                    {(() => {
+                      const riderObj = riders.find((r) => r.user_id === selectedOrder.rider_id);
+                      return riderObj?.phone ? <p className="text-[11px] text-muted-foreground">{riderObj.phone}</p> : null;
+                    })()}
+                  </div>
+                  <span className="rounded-full bg-success/15 px-2 py-0.5 text-[10px] font-bold text-success">
+                    Assigned
+                  </span>
+                </div>
+              ) : (
+                <p className="rounded-lg bg-amber-500/10 p-2 text-[11px] font-medium text-amber-700">
+                  ⚠️ No rider assigned yet. Choose an active rider below:
+                </p>
+              )}
+
+              {/* Rider Selector */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold uppercase text-muted-foreground">
+                  {selectedOrder.rider_id ? "Reassign Rider" : "Assign Rider"}
+                </label>
+                <div className="flex items-center gap-2">
+                  <select
+                    defaultValue=""
+                    disabled={busy === selectedOrder.id}
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        assign(selectedOrder.id, e.target.value);
+                      }
+                    }}
+                    className="h-9 flex-1 rounded-xl border bg-card px-2.5 text-xs font-semibold"
+                  >
+                    <option value="">Choose a rider…</option>
+                    {activeRiders.map((r) => (
+                      <option key={r.user_id} value={r.user_id}>
+                        {r.full_name ?? r.user_id.slice(0, 8)}
+                        {r.phone ? ` · ${r.phone}` : ""}
+                        {r.is_online ? " [Online]" : " [Offline]"}
+                      </option>
+                    ))}
+                  </select>
+                  {busy === selectedOrder.id && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
+                </div>
+              </div>
+            </div>
+
+            {/* Order Status Action Buttons */}
+            <div className="space-y-2 border-t pt-3">
+              <p className="font-bold text-[10px] uppercase text-muted-foreground">Update Order Lifecycle</p>
+              <div className="grid grid-cols-2 gap-2">
+                {selectedOrder.status === "placed" && (
+                  <button
+                    disabled={busy === selectedOrder.id}
+                    onClick={() => updateOrderStatus(selectedOrder.id, "preparing")}
+                    className="col-span-2 inline-flex h-10 items-center justify-center gap-1.5 rounded-xl bg-primary text-xs font-bold text-primary-foreground shadow-sm hover:opacity-90 disabled:opacity-50"
+                  >
+                    <Check className="h-4 w-4" /> Accept & Prepare
+                  </button>
+                )}
+                {(selectedOrder.status === "preparing" || selectedOrder.status === "confirmed") && (
+                  <button
+                    disabled={busy === selectedOrder.id}
+                    onClick={() => updateOrderStatus(selectedOrder.id, "ready")}
+                    className="col-span-2 inline-flex h-10 items-center justify-center gap-1.5 rounded-xl bg-emerald-600 text-xs font-bold text-white shadow-sm hover:opacity-90 disabled:opacity-50"
+                  >
+                    <CheckCircle2 className="h-4 w-4" /> Mark Order Ready
+                  </button>
+                )}
+                {selectedOrder.status === "ready" && (
+                  <button
+                    disabled={busy === selectedOrder.id}
+                    onClick={() => updateOrderStatus(selectedOrder.id, "out_for_delivery")}
+                    className="col-span-2 inline-flex h-10 items-center justify-center gap-1.5 rounded-xl bg-blue-600 text-xs font-bold text-white shadow-sm hover:opacity-90 disabled:opacity-50"
+                  >
+                    <Bike className="h-4 w-4" /> Dispatch / Out for Delivery
+                  </button>
+                )}
+                {selectedOrder.status === "out_for_delivery" && (
+                  <button
+                    disabled={busy === selectedOrder.id}
+                    onClick={() => updateOrderStatus(selectedOrder.id, "delivered")}
+                    className="col-span-2 inline-flex h-10 items-center justify-center gap-1.5 rounded-xl bg-success text-xs font-bold text-white shadow-sm hover:opacity-90 disabled:opacity-50"
+                  >
+                    <Check className="h-4 w-4" /> Mark Delivered
+                  </button>
+                )}
+                {selectedOrder.status !== "delivered" && selectedOrder.status !== "cancelled" && selectedOrder.status !== "rejected" && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const ord = selectedOrder;
+                      setSelectedOrder(null);
+                      setCancellingOrder(ord);
+                    }}
+                    className="col-span-2 h-9 rounded-xl bg-destructive/10 text-xs font-bold text-destructive hover:bg-destructive/20 transition-colors"
+                  >
+                    Cancel Order
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
         </Modal>
       )}
 
