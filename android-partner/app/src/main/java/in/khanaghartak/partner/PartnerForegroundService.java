@@ -8,7 +8,6 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.content.pm.ServiceInfo;
 import android.graphics.Color;
 import android.media.AudioAttributes;
 import android.media.AudioManager;
@@ -59,11 +58,7 @@ public class PartnerForegroundService extends Service {
         try {
             Intent intent = new Intent(context, PartnerForegroundService.class);
             intent.setAction(ACTION_START);
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(intent);
-            } else {
-                context.startService(intent);
-            }
+            context.startService(intent);
         } catch (Exception ignored) {}
     }
 
@@ -91,11 +86,7 @@ public class PartnerForegroundService extends Service {
             intent.putExtra("role", role);
             intent.putExtra("title", title);
             intent.putExtra("body", body);
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(intent);
-            } else {
-                context.startService(intent);
-            }
+            context.startService(intent);
         } catch (Exception ignored) {}
     }
 
@@ -112,11 +103,6 @@ public class PartnerForegroundService extends Service {
         if (ACTION_STOP.equals(action)) {
             stopContinuousAlarm();
             stopPoller();
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                stopForeground(STOP_FOREGROUND_REMOVE);
-            } else {
-                stopForeground(true);
-            }
             stopSelf();
             return START_NOT_STICKY;
         } else if (ACTION_SILENCE.equals(action)) {
@@ -131,15 +117,8 @@ public class PartnerForegroundService extends Service {
             return START_STICKY;
         }
 
-        // Default or ACTION_START: build ongoing notification and start polling
+        // Default or ACTION_START: ensure notification channels and start polling
         createNotificationChannels();
-        Notification foregroundNotification = buildForegroundNotification();
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(SERVICE_NOTIFICATION_ID, foregroundNotification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
-        } else {
-            startForeground(SERVICE_NOTIFICATION_ID, foregroundNotification);
-        }
-
         startPoller();
         return START_STICKY;
     }
