@@ -16,6 +16,8 @@ const config: CapacitorConfig = {
       '*.tile.openstreetmap.org',
       'nominatim.openstreetmap.org',
       'maps.googleapis.com',
+      '*.cashfree.com',
+      'cashfree.com',
     ],
   },
   android: {

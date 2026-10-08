@@ -19,3 +19,11 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+-keep class in.khanaghartak.customer.CashfreePaymentPlugin { *; }
+-keep class in.khanaghartak.customer.MainActivity$* { *; }
+-keepclassmembers class * {
+    @android.webkit.JavascriptInterface <methods>;
+}
+-keep class com.cashfree.pg.** { *; }
+-dontwarn com.cashfree.pg.**

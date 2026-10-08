@@ -1093,6 +1093,9 @@
         }
       }
     }
+    if (typeof enhanceCheckoutPaymentUi === 'function') {
+      enhanceCheckoutPaymentUi();
+    }
   }
 
   function exitCustomerApp() {
@@ -1277,6 +1280,411 @@
     } catch (e) {}
   }, 1000);
 
+  // --- CASHFREE NATIVE IN-APP CHECKOUT BRIDGE & PAYMENT OPTIONS ---
+  window.__kgt_customer_navigate = function (path) {
+    if (typeof doCustomerNavigate === 'function') {
+      doCustomerNavigate(path);
+    } else {
+      window.location.href = path;
+    }
+  };
+
+  // Recursive extractor for Cashfree session & order info from any JSON structure
+  function extractCashfreeInfo(obj, depth) {
+    if (!obj || typeof obj !== 'object' || (depth || 0) > 8) return null;
+
+    var sessionId = obj.paymentSessionId || obj.payment_session_id || obj.paymentSessionID || obj.sessionId || obj.session_id;
+    var orderId = obj.cashfreeOrderId || obj.cashfree_order_id || obj.cfOrderId || obj.cf_order_id || obj.orderId || obj.order_id || obj.orderID;
+    var mode = obj.cashfreeMode || obj.cashfree_mode || obj.mode;
+
+    // Check nested order object
+    if (!orderId && obj.order && typeof obj.order === 'object') {
+      orderId = obj.order.id || obj.order.order_id || obj.order.orderId || obj.order.cashfreeOrderId;
+    }
+
+    if (sessionId) {
+      return {
+        paymentSessionId: String(sessionId),
+        cashfreeOrderId: orderId ? String(orderId) : '',
+        cashfreeMode: (mode ? String(mode) : 'PRODUCTION').toUpperCase()
+      };
+    }
+
+    var keys = Object.keys(obj);
+    for (var i = 0; i < keys.length; i++) {
+      var val = obj[keys[i]];
+      if (val && typeof val === 'object') {
+        var found = extractCashfreeInfo(val, (depth || 0) + 1);
+        if (found) {
+          if (!found.cashfreeOrderId && orderId) {
+            found.cashfreeOrderId = String(orderId);
+          }
+          return found;
+        }
+      }
+    }
+    return null;
+  }
+
+  function saveLatestCashfreeOrder(info) {
+    if (!info || !info.paymentSessionId) return;
+    window.__latest_cashfree_order = Object.assign({}, window.__latest_cashfree_order || {}, info);
+    try {
+      sessionStorage.setItem('__kgt_latest_cashfree_order', JSON.stringify(window.__latest_cashfree_order));
+    } catch (e) {}
+    console.log('[KGT-CASHFREE] Updated active order session:', window.__latest_cashfree_order);
+  }
+
+  // Intercept JSON.parse to capture server function responses (e.g., TanStack Start createServerFn)
+  if (!window.__kgt_json_parse_hooked) {
+    window.__kgt_json_parse_hooked = true;
+    var originalJsonParse = JSON.parse;
+    JSON.parse = function () {
+      var res = originalJsonParse.apply(this, arguments);
+      try {
+        if (res && typeof res === 'object') {
+          var info = extractCashfreeInfo(res);
+          if (info && info.paymentSessionId) {
+            saveLatestCashfreeOrder(info);
+          }
+        }
+      } catch (e) {}
+      return res;
+    };
+  }
+
+  // Intercept fetch responses to capture { paymentSessionId, cashfreeOrderId, cashfreeMode }
+  if (!window.__kgt_fetch_hooked) {
+    window.__kgt_fetch_hooked = true;
+    var originalFetch = window.fetch;
+    window.fetch = function () {
+      var fetchPromise = originalFetch.apply(this, arguments);
+      return fetchPromise.then(function (response) {
+        try {
+          var clone = response.clone();
+          clone.text().then(function (text) {
+            if (!text) return;
+            if (text.indexOf('session_') !== -1 || text.indexOf('paymentSessionId') !== -1 || text.indexOf('cashfreeOrderId') !== -1) {
+              try {
+                var data = JSON.parse(text);
+                var info = extractCashfreeInfo(data);
+                if (info && info.paymentSessionId) {
+                  saveLatestCashfreeOrder(info);
+                }
+              } catch (e) {
+                var sMatch = text.match(/"(?:paymentSessionId|payment_session_id|sessionId|session_id)":\s*"([^"]+)"/);
+                var oMatch = text.match(/"(?:cashfreeOrderId|cashfree_order_id|orderId|order_id|cf_order_id)":\s*"([^"]+)"/);
+                if (sMatch) {
+                  saveLatestCashfreeOrder({
+                    paymentSessionId: sMatch[1],
+                    cashfreeOrderId: oMatch ? oMatch[1] : (window.__latest_cashfree_order && window.__latest_cashfree_order.cashfreeOrderId) || '',
+                    cashfreeMode: text.indexOf('SANDBOX') !== -1 ? 'SANDBOX' : 'PRODUCTION'
+                  });
+                }
+              }
+            }
+          }).catch(function () {});
+        } catch (e) {}
+        return response;
+      });
+    };
+  }
+
+  // Intercept XMLHttpRequest as fallback
+  if (!window.__kgt_xhr_hooked && window.XMLHttpRequest) {
+    window.__kgt_xhr_hooked = true;
+    var origXhrSend = XMLHttpRequest.prototype.send;
+    XMLHttpRequest.prototype.send = function () {
+      this.addEventListener('load', function () {
+        try {
+          var text = this.responseText;
+          if (text && (text.indexOf('session_') !== -1 || text.indexOf('paymentSessionId') !== -1 || text.indexOf('cashfreeOrderId') !== -1)) {
+            var data = JSON.parse(text);
+            var info = extractCashfreeInfo(data);
+            if (info && info.paymentSessionId) {
+              saveLatestCashfreeOrder(info);
+            }
+          }
+        } catch (e) {}
+      });
+      return origXhrSend.apply(this, arguments);
+    };
+  }
+
+  // Reset checkout CTA button & spinner on /checkout
+  window.__kgt_reset_checkout_cta = function () {
+    console.log('[KGT-CASHFREE] Resetting checkout CTA and clearing loading state');
+    try {
+      if (typeof window.__kgt_pending_cashfree_reject === 'function') {
+        var rejectFn = window.__kgt_pending_cashfree_reject;
+        window.__kgt_pending_cashfree_reject = null;
+        try { rejectFn(new Error('Payment was cancelled')); } catch (e) {}
+      }
+    } catch (e) {}
+
+    window.__kgt_cashfree_active = false;
+
+    // Force DOM button restoration on /checkout
+    try {
+      var btns = document.querySelectorAll('button');
+      for (var i = 0; i < btns.length; i++) {
+        var btn = btns[i];
+        var txt = (btn.textContent || '').trim();
+        if (txt.indexOf('Pay Online') !== -1 || txt.indexOf('Place Order') !== -1) {
+          btn.disabled = false;
+          btn.removeAttribute('disabled');
+          btn.style.opacity = '1';
+          btn.style.pointerEvents = 'auto';
+          var spinners = btn.querySelectorAll('.animate-spin, svg');
+          for (var s = 0; s < spinners.length; s++) {
+            var sp = spinners[s];
+            if (sp.classList.contains('animate-spin') || (sp.innerHTML && sp.innerHTML.indexOf('circle') !== -1)) {
+              sp.remove();
+            }
+          }
+        }
+      }
+    } catch (e) {}
+  };
+
+  window.__kgt_on_cashfree_error = function (msg) {
+    console.warn('[KGT-CASHFREE] Payment error/cancellation received:', msg);
+    window.__kgt_reset_checkout_cta();
+    if (msg && msg.toLowerCase().indexOf('cancel') === -1) {
+      try {
+        alert(msg);
+      } catch (e) {}
+    }
+  };
+
+  // Watchdog: Auto-recover checkout CTA if spinner gets stuck without active checkout
+  setInterval(function () {
+    if (window.location.pathname === '/checkout') {
+      var btns = document.querySelectorAll('button');
+      for (var i = 0; i < btns.length; i++) {
+        var btn = btns[i];
+        var txt = (btn.textContent || '').trim();
+        if (txt.indexOf('Pay Online') !== -1) {
+          var spinner = btn.querySelector('.animate-spin');
+          if (spinner && !window.__kgt_cashfree_active) {
+            if (!window.__kgt_spinner_timer) {
+              window.__kgt_spinner_timer = Date.now();
+            } else if (Date.now() - window.__kgt_spinner_timer > 3500) {
+              console.warn('[KGT-CASHFREE] Watchdog auto-clearing stuck spinner on checkout');
+              window.__kgt_reset_checkout_cta();
+              window.__kgt_spinner_timer = null;
+            }
+          } else {
+            window.__kgt_spinner_timer = null;
+          }
+        }
+      }
+    }
+  }, 800);
+
+  // Enhance Payment Section with clean category badges (UPI, Cards, NetBanking)
+  function enhanceCheckoutPaymentUi() {
+    if (window.location.pathname !== '/checkout') return;
+    try {
+      var els = document.querySelectorAll('p, span, div, label, h3, h4');
+      for (var i = 0; i < els.length; i++) {
+        var el = els[i];
+        var text = (el.textContent || '').trim();
+        var isOnlineMatch = text === 'Online Payment' ||
+                            text === 'Pay Online' ||
+                            (text.indexOf('Online Payment') === 0 && text.length < 35) ||
+                            (text.indexOf('Pay Online') === 0 && text.length < 25);
+        if (isOnlineMatch) {
+          var parent = el.parentElement;
+          if (parent && !parent.querySelector('.kgt-upi-badges')) {
+            var badgeDiv = document.createElement('div');
+            badgeDiv.className = 'kgt-upi-badges';
+            badgeDiv.style.cssText = 'display:flex; flex-wrap:wrap; gap:5px; margin-top:6px; align-items:center;';
+            badgeDiv.innerHTML =
+              '<span style="font-size:10px; font-weight:700; color:#059669; background:#ECFDF5; border-radius:4px; padding:2px 7px;">UPI</span>' +
+              '<span style="font-size:10px; font-weight:700; color:#1E40AF; background:#DBEAFE; border-radius:4px; padding:2px 7px;">Cards</span>' +
+              '<span style="font-size:10px; font-weight:700; color:#374151; background:#F3F4F6; border-radius:4px; padding:2px 7px;">NetBanking</span>';
+            parent.appendChild(badgeDiv);
+          }
+        }
+      }
+    } catch (e) {}
+  }
+
+  // Native Cashfree Bridge Implementation (Multi-channel fallback: Direct JSI -> Capacitor Plugin -> toNative -> URL scheme)
+  var cashfreeBridge = {
+    startPayment: function (sessionId, orderId, mode) {
+      sessionId = sessionId || '';
+      orderId = orderId || '';
+      mode = mode || 'PRODUCTION';
+
+      console.log('[KGT-CASHFREE] Invoking native payment checkout:', { sessionId: sessionId, orderId: orderId, mode: mode });
+
+      // Channel 1: Direct Android JavascriptInterface
+      if (window._rawAndroidCashfree && typeof window._rawAndroidCashfree.startPayment === 'function') {
+        try {
+          console.log('[KGT-CASHFREE] Calling _rawAndroidCashfree.startPayment');
+          window._rawAndroidCashfree.startPayment(sessionId, orderId, mode);
+          return Promise.resolve({ status: 'PROCESSED_NATIVELY' });
+        } catch (e) {
+          console.warn('[KGT-CASHFREE] _rawAndroidCashfree call failed:', e);
+        }
+      }
+
+      // Channel 2: Capacitor Plugin
+      if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.CashfreePayment) {
+        try {
+          console.log('[KGT-CASHFREE] Calling Capacitor.Plugins.CashfreePayment.startPayment');
+          return window.Capacitor.Plugins.CashfreePayment.startPayment({
+            paymentSessionId: sessionId,
+            orderId: orderId,
+            mode: mode
+          });
+        } catch (e) {
+          console.warn('[KGT-CASHFREE] Capacitor Plugin call failed:', e);
+        }
+      }
+
+      // Channel 3: Capacitor toNative / nativePromise
+      if (window.Capacitor && typeof window.Capacitor.nativePromise === 'function') {
+        try {
+          console.log('[KGT-CASHFREE] Calling Capacitor.nativePromise');
+          return window.Capacitor.nativePromise('CashfreePayment', 'startPayment', {
+            paymentSessionId: sessionId,
+            orderId: orderId,
+            mode: mode
+          });
+        } catch (e) {
+          console.warn('[KGT-CASHFREE] Capacitor.nativePromise call failed:', e);
+        }
+      }
+
+      if (window.Capacitor && typeof window.Capacitor.toNative === 'function') {
+        try {
+          console.log('[KGT-CASHFREE] Calling Capacitor.toNative');
+          window.Capacitor.toNative('CashfreePayment', 'startPayment', {
+            paymentSessionId: sessionId,
+            orderId: orderId,
+            mode: mode
+          });
+          return Promise.resolve({ status: 'PROCESSED_NATIVELY' });
+        } catch (e) {
+          console.warn('[KGT-CASHFREE] Capacitor.toNative call failed:', e);
+        }
+      }
+
+      // Channel 4: kgt-cashfree:// scheme iframe trigger (intercepted by CashfreePaymentPlugin.shouldOverrideLoad)
+      try {
+        console.log('[KGT-CASHFREE] Triggering kgt-cashfree:// scheme');
+        var intentUrl = 'kgt-cashfree://start?paymentSessionId=' + encodeURIComponent(sessionId) +
+                        '&orderId=' + encodeURIComponent(orderId) +
+                        '&mode=' + encodeURIComponent(mode);
+        var iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        iframe.src = intentUrl;
+        document.body.appendChild(iframe);
+        setTimeout(function () {
+          try { document.body.removeChild(iframe); } catch (e) {}
+        }, 2000);
+        return Promise.resolve({ status: 'PROCESSED_NATIVELY' });
+      } catch (e) {
+        console.error('[KGT-CASHFREE] Scheme trigger failed:', e);
+      }
+
+      return Promise.reject(new Error('Unable to launch native Cashfree checkout'));
+    }
+  };
+
+  // Expose on window.AndroidCashfree so it is ALWAYS available
+  window.AndroidCashfree = cashfreeBridge;
+
+  // Hook window.Cashfree to prevent external browser redirection and trigger native checkout
+  function installCashfreeNativeHook() {
+    function createCashfreeNativeInstance(mode) {
+      return {
+        checkout: function (options) {
+          return new Promise(function (resolve, reject) {
+            var sessionId = (options && options.paymentSessionId) || '';
+            var orderId = (options && (options.orderId || options.cashfreeOrderId || options.order_id)) || '';
+            var activeMode = mode || 'PRODUCTION';
+
+            if (window.__latest_cashfree_order) {
+              if (!orderId) orderId = window.__latest_cashfree_order.cashfreeOrderId || '';
+              if (!sessionId) sessionId = window.__latest_cashfree_order.paymentSessionId || '';
+              activeMode = window.__latest_cashfree_order.cashfreeMode || activeMode;
+            }
+
+            if (!orderId || !sessionId) {
+              try {
+                var stored = sessionStorage.getItem('__kgt_latest_cashfree_order');
+                if (stored) {
+                  var p = JSON.parse(stored);
+                  if (!orderId && p.cashfreeOrderId) orderId = p.cashfreeOrderId;
+                  if (!sessionId && p.paymentSessionId) sessionId = p.paymentSessionId;
+                  if (p.cashfreeMode) activeMode = p.cashfreeMode;
+                }
+              } catch (e) {}
+            }
+
+            console.log('[KGT-CASHFREE] checkout starting: session=' + sessionId + ', orderId=' + orderId + ', mode=' + activeMode);
+
+            if (!sessionId) {
+              window.__kgt_reset_checkout_cta();
+              reject(new Error('Payment session missing. Please try again.'));
+              return;
+            }
+
+            // Save pending reject so user cancellation or failure resets React state
+            window.__kgt_cashfree_active = true;
+            window.__kgt_pending_cashfree_reject = function (err) {
+              window.__kgt_cashfree_active = false;
+              reject(err);
+            };
+            window.__kgt_pending_cashfree_resolve = function (res) {
+              window.__kgt_cashfree_active = false;
+              resolve(res);
+            };
+
+            cashfreeBridge.startPayment(sessionId, orderId, activeMode)
+              .then(function () {
+                console.log('[KGT-CASHFREE] Native Drop Checkout presented.');
+              })
+              .catch(function (err) {
+                console.error('[KGT-CASHFREE] Failed to start native payment:', err);
+                window.__kgt_cashfree_active = false;
+                window.__kgt_reset_checkout_cta();
+                reject(err || new Error('Could not open payment checkout'));
+              });
+          });
+        }
+      };
+    }
+
+    var nativeCashfreeFactory = function (config) {
+      var m = (config && config.mode) || 'PRODUCTION';
+      return createCashfreeNativeInstance(m);
+    };
+    nativeCashfreeFactory.version = 'v3';
+    nativeCashfreeFactory.__is_kgt_native = true;
+
+    try {
+      Object.defineProperty(window, 'Cashfree', {
+        get: function () {
+          return nativeCashfreeFactory;
+        },
+        set: function (val) {
+          console.log('[KGT-CASHFREE] Script attempted to overwrite window.Cashfree; preserving native bridge');
+        },
+        configurable: true
+      });
+    } catch (e) {
+      window.Cashfree = nativeCashfreeFactory;
+    }
+  }
+
+  installCashfreeNativeHook();
+
   recordCustomerNav(window.location.pathname);
   updateAppUi();
+  enhanceCheckoutPaymentUi();
 })();
