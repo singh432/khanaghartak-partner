@@ -2,9 +2,57 @@
   'use strict';
 
   window.__is_partner_app = true;
+  window.__native_device_outside = false;
   try {
     localStorage.setItem('kgt:app-flavor', 'partner');
+    localStorage.removeItem('kgt:device-outside');
+    localStorage.setItem('kgt:device-outside', 'false');
   } catch (e) {}
+
+  // Intercept window.fetch to automatically cache orders and zone ID in memory with zero delay
+  (function installFetchCache() {
+    if (window.__kgt_fetch_cache_installed) return;
+    window.__kgt_fetch_cache_installed = true;
+    var origFetch = window.fetch;
+    if (typeof origFetch !== 'function') return;
+    window.fetch = function () {
+      var args = arguments;
+      var url = '';
+      try {
+        url = (args[0] && typeof args[0] === 'string') ? args[0] : ((args[0] && args[0].url) || '');
+      } catch (e) {}
+
+      var isZoneOrders = url.indexOf('zone_list_orders') !== -1;
+      var isOwnerOrders = url.indexOf('owner_list_orders') !== -1;
+      var isRiderOffers = url.indexOf('rider_list_offers') !== -1;
+      var isZoneZones = url.indexOf('zone_my_zones') !== -1;
+
+      return origFetch.apply(this, args).then(function (res) {
+        if ((isZoneOrders || isOwnerOrders || isRiderOffers || isZoneZones) && res && res.ok) {
+          try {
+            var clone = res.clone();
+            clone.json().then(function (data) {
+              if (isZoneZones && Array.isArray(data) && data[0] && data[0].id) {
+                window.__partner_zone_id = data[0].id;
+              }
+              if (Array.isArray(data)) {
+                window.__kgt_all_orders_cache = window.__kgt_all_orders_cache || {};
+                data.forEach(function (o) {
+                  if (o && o.id) {
+                    window.__kgt_all_orders_cache[o.id] = o;
+                    if (o.id.length >= 8) {
+                      window.__kgt_all_orders_cache[o.id.slice(0, 8).toUpperCase()] = o;
+                    }
+                  }
+                });
+              }
+            }).catch(function () {});
+          } catch (e) {}
+        }
+        return res;
+      });
+    };
+  })();
 
   var metaTheme = document.querySelector('meta[name="theme-color"]');
   if (metaTheme) metaTheme.setAttribute('content', '#FFFFFF');
@@ -22,6 +70,8 @@
       'a[href*="/cart"], header a[aria-label*="Cart"], header a[aria-label*="cart"], .customer-cart-btn, #kgt-customer-bottom-bar, [data-testid="customer-bottom-nav"], [data-testid="back-to-home"], a[href="/"]:not(#partner-portal-logo-link) { display: none !important; visibility: hidden !important; pointer-events: none !important; }' +
       'nav[data-testid="customer-bottom-nav"], nav[class*="max-w-[480px]"]:not(#kgt-rider-bottom-nav):not(#kgt-zone-bottom-nav):not(#kgt-admin-bottom-nav), ul:has(a[href*="/cart"]), a[href="/orders"]:not(#admin-orders-link):not([href*="/admin"]), a[href="/home"] { display: none !important; visibility: hidden !important; pointer-events: none !important; height: 0 !important; max-height: 0 !important; overflow: hidden !important; position: absolute !important; bottom: -9999px !important; }' +
       'footer.site-footer, footer:not(.partner-footer) { display: none !important; }' +
+      // Never show outside delivery zone screens in partner app
+      '#khana-outside-home-screen, .khana-outside-service-zone, [data-outside-zone="true"] { display: none !important; visibility: hidden !important; pointer-events: none !important; }' +
       // Hide desktop aside on mobile partner app
       'aside.h-screen, aside[class*="w-64"] { display: none !important; }' +
       // MODAL / POPUP DIALOG FIXES (MENU ITEM ADD/EDIT, DELETE, ORDER REJECT)
@@ -127,6 +177,27 @@
       '@keyframes kgtPulseAlarm { 0% { background-color: #DC2626; transform: scale(1); } 50% { background-color: #B91C1C; transform: scale(1.02); } 100% { background-color: #DC2626; transform: scale(1); } }';
     (document.head || document.documentElement).appendChild(style);
   }
+
+  // Actively remove any outside zone screens that might be rendered in partner app
+  setInterval(function () {
+    try {
+      var outsideEl = document.getElementById('khana-outside-home-screen');
+      if (outsideEl) outsideEl.remove();
+      if (document.body && document.body.classList.contains('khana-outside-service-zone')) {
+        document.body.classList.remove('khana-outside-service-zone');
+      }
+      var outsideHeaders = document.querySelectorAll('h2, h1');
+      for (var i = 0; i < outsideHeaders.length; i++) {
+        var h = outsideHeaders[i];
+        if ((h.textContent || '').trim().toLowerCase() === 'outside delivery zone') {
+          var container = h.closest('.min-h-screen, div');
+          if (container && container !== document.body && container !== document.documentElement) {
+            container.style.display = 'none';
+          }
+        }
+      }
+    } catch (e) {}
+  }, 400);
 
   // ==========================================
   // LOUD CONTINUOUS ALARM LOOP (Zomato/Swiggy Order Siren)
@@ -254,12 +325,23 @@
       btnView.onclick = function (e) {
         e.stopPropagation();
         stopAlarm();
-        if (role === 'zone_manager' || role === 'manager') {
-          window.location.href = '/zone';
-        } else if (role === 'rider') {
-          window.location.href = '/rider';
-        } else {
-          window.location.href = '/admin/orders';
+        if (typeof window.__kgt_navigate_to_order === 'function') {
+          window.__kgt_navigate_to_order(role, orderId);
+          return;
+        }
+        var targetBase = (role === 'zone_manager' || role === 'manager') ? '/zone' : (role === 'rider' ? '/rider' : '/admin/orders');
+        if (window.__kgt_router && typeof window.__kgt_router.navigate === 'function') {
+          window.__kgt_router.navigate({ to: targetBase, search: orderId ? { orderId: orderId } : {} });
+          return;
+        }
+        var target = targetBase + (orderId ? '?orderId=' + encodeURIComponent(orderId) : '');
+        if (window.history && window.history.pushState) {
+          window.history.pushState(null, '', target);
+          window.dispatchEvent(new PopStateEvent('popstate'));
+          return;
+        }
+        if (window.location.pathname !== targetBase) {
+          window.location.href = target;
         }
       };
     }
@@ -274,6 +356,110 @@
     var detail = (e && e.detail) || {};
     startAlarm(detail.orderId, detail.role, detail.title || '🚨 NEW ORDER RECEIVED!', detail.body || 'New order received. Please accept immediately.');
   });
+
+  window.__kgt_navigate_to_order = function (role, orderId) {
+    var cleanId = (orderId || '').trim();
+    var cleanRole = (role || '').trim().toLowerCase();
+
+    try {
+      if (typeof stopAlarm === 'function') stopAlarm();
+      if (typeof window.__kgt_stop_order_alarm === 'function') window.__kgt_stop_order_alarm();
+    } catch (e) {}
+
+    var targetBase = '/admin/orders';
+    if (cleanRole === 'rider') targetBase = '/rider';
+    else if (cleanRole === 'zone_manager' || cleanRole === 'manager') targetBase = '/zone';
+
+    function tryOpenOrderModal() {
+      if (!cleanId) return false;
+      try {
+        if (targetBase === '/zone') {
+          if (typeof window.__kgt_open_zone_order === 'function' && window.__kgt_open_zone_order(cleanId)) return true;
+        } else if (targetBase === '/admin/orders') {
+          if (typeof window.__kgt_open_partner_order === 'function' && window.__kgt_open_partner_order(cleanId)) return true;
+        } else if (targetBase === '/rider') {
+          if (typeof window.__kgt_open_rider_order === 'function' && window.__kgt_open_rider_order(cleanId)) return true;
+        }
+
+        var shortId = cleanId.length >= 8 ? cleanId.slice(0, 8).toUpperCase() : cleanId.toUpperCase();
+        var cards = document.querySelectorAll('[data-order-id], .rounded-2xl, .rounded-xl, .border');
+        for (var i = 0; i < cards.length; i++) {
+          var c = cards[i];
+          var cid = c.getAttribute('data-order-id') || '';
+          var ctxt = (c.innerText || '').toUpperCase();
+          if ((cid && cid.toLowerCase().indexOf(cleanId.toLowerCase()) !== -1) || ctxt.indexOf(shortId) !== -1) {
+            if (typeof openOrderDetailsModalFromCard === 'function') {
+              openOrderDetailsModalFromCard(c, shortId, cleanId);
+              return true;
+            }
+          }
+        }
+      } catch (err) {}
+      return false;
+    }
+
+    var curPath = window.location.pathname;
+
+    if (curPath === targetBase) {
+      try {
+        window.history.replaceState(null, '', targetBase + (cleanId ? '?orderId=' + encodeURIComponent(cleanId) : ''));
+      } catch (e) {}
+      if (tryOpenOrderModal()) return;
+      var attempts = 0;
+      var poll = setInterval(function () {
+        attempts++;
+        if (tryOpenOrderModal() || attempts > 20) {
+          clearInterval(poll);
+        }
+      }, 250);
+      return;
+    }
+
+    var navigated = false;
+    if (window.__kgt_router && typeof window.__kgt_router.navigate === 'function') {
+      try {
+        window.__kgt_router.navigate({
+          to: targetBase,
+          search: cleanId ? { orderId: cleanId } : {},
+          replace: false
+        });
+        navigated = true;
+      } catch (e) {}
+    }
+
+    if (!navigated) {
+      var navLink = document.querySelector('a[href*="' + targetBase + '"], button[data-route*="' + targetBase + '"]');
+      if (navLink) {
+        navLink.click();
+        navigated = true;
+      }
+    }
+
+    if (!navigated) {
+      var targetWithSearch = targetBase + (cleanId ? '?orderId=' + encodeURIComponent(cleanId) : '');
+      try {
+        window.history.pushState(null, '', targetWithSearch);
+        window.dispatchEvent(new PopStateEvent('popstate'));
+        navigated = true;
+      } catch (e) {}
+    }
+
+    if (cleanId) {
+      var navAttempts = 0;
+      var navPoll = setInterval(function () {
+        navAttempts++;
+        if (tryOpenOrderModal() || navAttempts > 25) {
+          clearInterval(navPoll);
+        }
+      }, 250);
+    }
+
+    setTimeout(function () {
+      if (window.location.pathname !== targetBase) {
+        window.location.href = targetBase + (cleanId ? '?orderId=' + encodeURIComponent(cleanId) : '');
+      }
+    }, 600);
+  };
 
   // ==========================================
   // INDEPENDENT SELF-CONTAINED ORDER WATCHDOG & NATIVE SYNC
@@ -354,6 +540,14 @@
       .then(function (data) {
         isCheckingOrders = false;
         if (!Array.isArray(data)) return;
+        window.__kgt_all_orders_cache = window.__kgt_all_orders_cache || {};
+        data.forEach(function (o) {
+          var oid = o ? (o.order_id || o.id) : null;
+          if (oid) {
+            window.__kgt_all_orders_cache[oid] = o;
+            if (oid.length >= 8) window.__kgt_all_orders_cache[oid.slice(0, 8).toUpperCase()] = o;
+          }
+        });
         var activeOffers = data.filter(function (o) {
           return o && (!o.status || o.status === 'active');
         });
@@ -396,6 +590,13 @@
         .then(function (data) {
           isCheckingOrders = false;
           if (!Array.isArray(data)) return;
+          window.__kgt_all_orders_cache = window.__kgt_all_orders_cache || {};
+          data.forEach(function (o) {
+            if (o && o.id) {
+              window.__kgt_all_orders_cache[o.id] = o;
+              if (o.id.length >= 8) window.__kgt_all_orders_cache[o.id.slice(0, 8).toUpperCase()] = o;
+            }
+          });
           var placed = data.filter(function (o) {
             return o && (o.status === 'placed' || (o.status === 'pending' && !o.rider_id));
           });
@@ -467,6 +668,13 @@
       .then(function (data) {
         isCheckingOrders = false;
         if (!Array.isArray(data)) return;
+        window.__kgt_all_orders_cache = window.__kgt_all_orders_cache || {};
+        data.forEach(function (o) {
+          if (o && o.id) {
+            window.__kgt_all_orders_cache[o.id] = o;
+            if (o.id.length >= 8) window.__kgt_all_orders_cache[o.id.slice(0, 8).toUpperCase()] = o;
+          }
+        });
         var placed = data.filter(function (o) {
           return o && (o.status === 'placed' || o.status === 'pending');
         });
@@ -1270,12 +1478,29 @@
   // ==========================================
   function enhanceOrderCardsAndDetails() {
     var pathname = window.location.pathname || '';
+
+    // NEVER enhance or inject order buttons on Menu, Settings, or Analytics pages
+    if (pathname.indexOf('/menu') !== -1 ||
+        pathname.indexOf('/admin/menu') !== -1 ||
+        pathname.indexOf('/settings') !== -1 ||
+        pathname.indexOf('/analytics') !== -1) {
+      // Clean up any accidentally injected buttons on non-order pages
+      var strayBtns = document.querySelectorAll('.kgt-order-view-details-btn');
+      for (var s = 0; s < strayBtns.length; s++) {
+        if (strayBtns[s].parentNode) strayBtns[s].parentNode.removeChild(strayBtns[s]);
+      }
+      return;
+    }
+
     var isOrdersView =
-      pathname.indexOf('/admin') !== -1 ||
+      pathname.indexOf('/admin/orders') !== -1 ||
+      pathname === '/admin' || pathname === '/admin/' ||
       pathname.indexOf('/zone') !== -1 ||
       pathname.indexOf('/rider') !== -1 ||
       pathname.indexOf('/orders') !== -1 ||
       pathname.indexOf('/super') !== -1;
+
+    if (!isOrdersView) return;
 
     // Look for cards
     var cards = document.querySelectorAll('article, a[href*="/order/"], div[data-order-card]');
@@ -1297,8 +1522,16 @@
       (function (card) {
         if (card.closest('#kgt-partner-order-details-modal') || card.closest('#kgt-partner-portal')) return;
 
-        // Visual cue that the card is interactive
-        card.style.cursor = 'pointer';
+        // Skip menu items, category cards, and non-order elements
+        if (card.hasAttribute('data-menu-item') ||
+            card.classList.contains('kgt-menu-item-card') ||
+            card.closest('[data-menu-section], [data-menu-container]') ||
+            card.querySelector('input[type="checkbox"], input[type="file"]') ||
+            card.querySelector('button[aria-label="Edit"], button[aria-label="Delete"]')) {
+          var stray = card.querySelector('.kgt-order-view-details-btn');
+          if (stray && stray.parentNode) stray.parentNode.removeChild(stray);
+          return;
+        }
 
         // Check if button already injected
         if (card.querySelector('.kgt-order-view-details-btn')) {
@@ -1319,6 +1552,14 @@
         }
         var dataId = card.getAttribute('data-order-id') || fullIdFromHref || '';
 
+        // STRICT CHECK: An order card MUST have an order ID or order link! Never inject on non-orders.
+        if (!orderShortId && !dataId && !fullIdFromHref) {
+          return;
+        }
+
+        // Visual cue that the order card is interactive
+        card.style.cursor = 'pointer';
+
         var btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'kgt-order-view-details-btn';
@@ -1337,6 +1578,15 @@
         btn.onclick = function (e) {
           e.preventDefault();
           e.stopPropagation();
+          var reactBtn = findReactViewDetailsBtn(card);
+          if (reactBtn) {
+            reactBtn.click();
+            return;
+          }
+          if (typeof window.__kgt_open_zone_order === 'function') {
+            var fid = dataId || card.getAttribute('data-order-id') || orderShortId;
+            if (fid && window.__kgt_open_zone_order(fid)) return;
+          }
           openOrderDetailsModalFromCard(card, orderShortId, dataId);
         };
 
@@ -1353,6 +1603,15 @@
           card.addEventListener('click', function (e) {
             var target = e.target;
             if (target.closest('button, a, select, input, textarea')) return;
+            var reactBtn = findReactViewDetailsBtn(card);
+            if (reactBtn) {
+              reactBtn.click();
+              return;
+            }
+            if (typeof window.__kgt_open_zone_order === 'function') {
+              var fid = dataId || card.getAttribute('data-order-id') || orderShortId;
+              if (fid && window.__kgt_open_zone_order(fid)) return;
+            }
             openOrderDetailsModalFromCard(card, orderShortId, dataId);
           });
         }
@@ -1360,62 +1619,221 @@
     }
   }
 
+  function findReactViewDetailsBtn(card) {
+    if (!card) return null;
+    var allButtons = card.querySelectorAll('button');
+    for (var b = 0; b < allButtons.length; b++) {
+      var btn = allButtons[b];
+      if (btn.classList.contains('kgt-order-view-details-btn')) continue;
+      var bText = (btn.innerText || btn.textContent || '').trim().toLowerCase();
+      if (bText.indexOf('details') !== -1 || bText.indexOf('view') !== -1) {
+        return btn;
+      }
+    }
+    return null;
+  }
+
   function openOrderDetailsModalFromCard(card, orderShortId, dataId) {
-    var existing = document.getElementById('kgt-partner-order-details-modal');
-    if (existing) existing.remove();
+    // 1. Try finding native React View Details button first
+    var reactBtn = findReactViewDetailsBtn(card);
+    if (reactBtn) {
+      reactBtn.click();
+      return;
+    }
 
-    var cardText = card.innerText || '';
+    var fullId = dataId || (card ? card.getAttribute('data-order-id') : '') || '';
+    if (!fullId && card) {
+      var idMatch = (card.innerText || '').match(/#([0-9a-fA-F-]{6,36})/);
+      if (idMatch && window.__kgt_zone_orders && Array.isArray(window.__kgt_zone_orders)) {
+        var matched = window.__kgt_zone_orders.find(function (o) {
+          return (o.id || '').toUpperCase().startsWith(idMatch[1].toUpperCase());
+        });
+        if (matched) fullId = matched.id;
+      }
+    }
 
-    // Extract basic fields from card
-    var idMatch = cardText.match(/#([0-9a-fA-F-]{6,36})/);
-    var displayId = (dataId ? dataId.slice(0, 8).toUpperCase() : '') || orderShortId || (idMatch ? idMatch[1].toUpperCase() : 'DETAILS');
-
-    var priceMatch = cardText.match(/₹\s*([0-9,]+)/);
-    var totalPrice = priceMatch ? priceMatch[1] : '';
-
-    var phoneLink = card.querySelector('a[href^="tel:"]');
-    var rawPhone = phoneLink ? phoneLink.getAttribute('href').replace('tel:', '').trim() : '';
-
-    // Extract items using 3-tier parsing
-    var itemsList = [];
-
-    // 1. Check data-order-items attribute
-    var rawDataItems = card.getAttribute('data-order-items');
-    if (rawDataItems) {
+    // 2. Try opening native React modal function if available
+    if (typeof window.__kgt_open_zone_order === 'function') {
       try {
-        var parsed = JSON.parse(rawDataItems);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          parsed.forEach(function (it) {
-            var n = (it.name || it.item_name || 'Item') + (it.variant ? ' (' + it.variant + ')' : '');
-            var q = String(it.qty || it.quantity || 1);
-            var pr = it.price ? String(Math.round(Number(it.price) * Number(it.qty || 1))) : '';
-            itemsList.push({ qty: q, name: n, price: pr });
-          });
+        if (window.__kgt_open_zone_order(fullId || orderShortId)) {
+          return;
         }
       } catch (e) {}
     }
 
-    // 2. Child elements with [x×]
-    if (itemsList.length === 0) {
-      var allDivs = card.querySelectorAll('div, li, p');
-      for (var d = 0; d < allDivs.length; d++) {
-        var rowEl = allDivs[d];
-        if (rowEl.children.length > 4) continue;
-        var rText = (rowEl.innerText || rowEl.textContent || '').trim();
-        var mRow = rText.match(/^(\d+)\s*[x×]\s*([^₹\n\r]+?)(?:\s*₹\s*([0-9,.]+))?$/i);
-        if (mRow) {
-          var qRow = mRow[1].trim();
-          var nRow = mRow[2].trim();
-          var prRow = mRow[3] ? mRow[3].trim() : '';
-          if (nRow && !itemsList.some(function (it) { return it.name === nRow; })) {
-            itemsList.push({ qty: qRow, name: nRow, price: prRow });
+    var existing = document.getElementById('kgt-partner-order-details-modal');
+    if (existing) existing.remove();
+
+    var cardText = card ? (card.innerText || '') : '';
+    var idMatch = cardText.match(/#([0-9a-fA-F-]{6,36})/);
+    var cleanShort = orderShortId || (idMatch ? idMatch[1].toUpperCase() : '');
+    var displayId = (fullId ? fullId.slice(0, 8).toUpperCase() : '') || (dataId ? dataId.slice(0, 8).toUpperCase() : '') || cleanShort || 'DETAILS';
+
+    // Check in-memory caches (instant 0ms)
+    var memoryOrder = null;
+    if (window.__kgt_all_orders_cache) {
+      memoryOrder = window.__kgt_all_orders_cache[fullId] ||
+                    window.__kgt_all_orders_cache[cleanShort] ||
+                    window.__kgt_all_orders_cache[displayId];
+      if (!memoryOrder) {
+        var cacheKeys = Object.keys(window.__kgt_all_orders_cache);
+        for (var ck = 0; ck < cacheKeys.length; ck++) {
+          var kVal = cacheKeys[ck].toUpperCase();
+          if ((displayId && kVal.indexOf(displayId) !== -1) || (cleanShort && kVal.indexOf(cleanShort) !== -1)) {
+            memoryOrder = window.__kgt_all_orders_cache[cacheKeys[ck]];
+            break;
+          }
+        }
+      }
+    }
+    if (!memoryOrder && window.__kgt_zone_orders && Array.isArray(window.__kgt_zone_orders)) {
+      memoryOrder = window.__kgt_zone_orders.find(function (o) {
+        if (fullId && o.id === fullId) return true;
+        if (dataId && o.id === dataId) return true;
+        var oUpper = (o.id || '').toUpperCase();
+        if (cleanShort && oUpper.indexOf(cleanShort) !== -1) return true;
+        if (displayId && oUpper.indexOf(displayId) !== -1) return true;
+        return false;
+      });
+    }
+
+    // Extract attributes directly from card
+    var attrCustName = card ? (card.getAttribute('data-customer-name') || '') : '';
+    var attrCustPhone = card ? (card.getAttribute('data-customer-phone') || '') : '';
+    var attrCustAddress = card ? (card.getAttribute('data-customer-address') || '') : '';
+    var attrCustLandmark = card ? (card.getAttribute('data-customer-landmark') || '') : '';
+    var attrTotal = card ? (card.getAttribute('data-order-total') || '') : '';
+    var attrRestaurant = card ? (card.getAttribute('data-restaurant-name') || '') : '';
+
+    if (memoryOrder) {
+      if (!attrCustName && memoryOrder.customer_name) attrCustName = memoryOrder.customer_name;
+      if (!attrCustPhone && memoryOrder.customer_phone) attrCustPhone = memoryOrder.customer_phone;
+      if (!attrCustAddress && memoryOrder.address) attrCustAddress = memoryOrder.address;
+      if (!attrCustLandmark && memoryOrder.landmark) attrCustLandmark = memoryOrder.landmark;
+      if (!attrTotal && memoryOrder.total != null) attrTotal = String(Math.round(memoryOrder.total));
+      if (!attrRestaurant && memoryOrder.restaurant_name) attrRestaurant = memoryOrder.restaurant_name;
+    }
+
+    // Extract phone from links if missing
+    if (!attrCustPhone && card) {
+      var phoneLink = card.querySelector('a[href^="tel:"]');
+      if (phoneLink) attrCustPhone = phoneLink.getAttribute('href').replace('tel:', '').trim();
+      if (!attrCustPhone) {
+        var waLink = card.querySelector('a[href*="wa.me"]');
+        if (waLink) {
+          var waMatch = waLink.getAttribute('href').match(/wa\.me\/(?:91)?(\d{10})/);
+          if (waMatch) attrCustPhone = waMatch[1];
+        }
+      }
+    }
+
+    // Customer name & phone from card text: e.g. "suryapratap singh · 9711720846" or "suryapratap singh (9711720846)"
+    if ((!attrCustName || !attrCustPhone) && card) {
+      var allP = card.querySelectorAll('p, div, span');
+      for (var p = 0; p < allP.length; p++) {
+        var pTxt = (allP[p].innerText || allP[p].textContent || '').trim();
+        var sepMatch = pTxt.match(/^([A-Za-z\s.'-]{2,40})\s*(?:[\(·|•–—-]|\s{2,})\s*([0-9+\-\s]{7,15})\)?/);
+        if (sepMatch) {
+          if (!attrCustName) attrCustName = sepMatch[1].trim();
+          if (!attrCustPhone) attrCustPhone = sepMatch[2].replace(/\D/g, '');
+          var nextP = allP[p].nextElementSibling;
+          if (nextP && !attrCustAddress) {
+            var nextTxt = (nextP.innerText || nextP.textContent || '').trim();
+            if (nextTxt && nextTxt.toLowerCase().indexOf('call') === -1) {
+              attrCustAddress = nextTxt;
+            }
+          }
+          break;
+        }
+      }
+    }
+
+    // Address fallback
+    if (!attrCustAddress && card) {
+      var allPAddr = card.querySelectorAll('p');
+      for (var pa = 0; pa < allPAddr.length; pa++) {
+        var paTxt = (allPAddr[pa].innerText || '').trim();
+        if (paTxt.indexOf('Landmark:') !== -1 || (pa >= 3 && paTxt.length > 5 && paTxt.indexOf('₹') === -1 && paTxt.indexOf('#') === -1)) {
+          attrCustAddress = paTxt;
+          break;
+        }
+      }
+    }
+
+    // Restaurant fallback
+    if (!attrRestaurant && card) {
+      var allPRest = card.querySelectorAll('p');
+      for (var pr2 = 0; pr2 < allPRest.length; pr2++) {
+        var prTxt = (allPRest[pr2].innerText || '').trim();
+        if (prTxt.indexOf('#') === 0 && allPRest[pr2].nextElementSibling) {
+          attrRestaurant = (allPRest[pr2].nextElementSibling.innerText || '').trim();
+          break;
+        }
+      }
+    }
+
+    var priceMatch = cardText.match(/₹\s*([0-9,]+)/);
+    var totalPrice = attrTotal || (priceMatch ? priceMatch[1] : '');
+    var rawPhone = attrCustPhone;
+
+    // Extract items using multi-tier parsing
+    var itemsList = [];
+
+    // Tier 0: Memory order items
+    if (memoryOrder && memoryOrder.items) {
+      var memItems = memoryOrder.items;
+      if (typeof memItems === 'string') {
+        try { memItems = JSON.parse(memItems); } catch (e) { memItems = []; }
+      }
+      if (Array.isArray(memItems) && memItems.length > 0) {
+        memItems.forEach(function (it) {
+          var n = (it.name || it.item_name || 'Item') + (it.variant || it.portion ? ' (' + (it.variant || it.portion) + ')' : '');
+          var q = String(it.qty || it.quantity || 1);
+          var pr = it.price ? String(Math.round(Number(it.price) * Number(it.qty || 1))) : '';
+          itemsList.push({ qty: q, name: n, price: pr });
+        });
+      }
+    }
+
+    // Tier 1: Check data-order-items attribute
+    if (itemsList.length === 0 && card) {
+      var rawDataItems = card.getAttribute('data-order-items');
+      if (rawDataItems) {
+        try {
+          var parsed = JSON.parse(rawDataItems);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            parsed.forEach(function (it) {
+              var n = (it.name || it.item_name || 'Item') + (it.variant || it.portion ? ' (' + (it.variant || it.portion) + ')' : '');
+              var q = String(it.qty || it.quantity || 1);
+              var pr = it.price ? String(Math.round(Number(it.price) * Number(it.qty || 1))) : '';
+              itemsList.push({ qty: q, name: n, price: pr });
+            });
+          }
+        } catch (e) {}
+      }
+    }
+
+    // Tier 2: Child elements matching item pattern
+    if (itemsList.length === 0 && card) {
+      var allRows = card.querySelectorAll('div, li, p');
+      for (var r = 0; r < allRows.length; r++) {
+        var row = allRows[r];
+        if (row.children.length > 3) continue;
+        var rowTxt = (row.innerText || row.textContent || '').trim();
+        var mItem = rowTxt.match(/(\d+)\s*[x×]\s*([^\n\r₹]+?)(?:[\s\n\r]*₹\s*([0-9,.]+))?(?:$|\n)/i);
+        if (mItem) {
+          var itemQty = mItem[1].trim();
+          var itemName = mItem[2].trim();
+          var itemPr = mItem[3] ? mItem[3].trim() : '';
+          if (itemName && !itemsList.some(function (x) { return x.name === itemName; })) {
+            itemsList.push({ qty: itemQty, name: itemName, price: itemPr });
           }
         }
       }
     }
 
-    // 3. Fallback: split cardText by line
-    if (itemsList.length === 0) {
+    // Tier 3: Parse by lines of cardText
+    if (itemsList.length === 0 && cardText) {
       var lines = cardText.split(/\r?\n/);
       for (var l = 0; l < lines.length; l++) {
         var line = lines[l].trim();
@@ -1424,8 +1842,8 @@
           var lq = lm[1].trim();
           var rest = lm[2].trim();
           var pr = '';
-          var prMatch = rest.match(/^(.*?)(?:\s*₹\s*([0-9,.]+))?$/);
-          if (prMatch && prMatch[2]) {
+          var prMatch = rest.match(/^(.*?)(?:[\s\t]*₹\s*([0-9,.]+))$/);
+          if (prMatch) {
             rest = prMatch[1].trim();
             pr = prMatch[2].trim();
           } else if (l + 1 < lines.length && lines[l + 1].trim().match(/^₹\s*([0-9,.]+)$/)) {
@@ -1438,6 +1856,7 @@
       }
     }
 
+    // Modal UI creation
     var modal = document.createElement('div');
     modal.id = 'kgt-partner-order-details-modal';
     modal.style.cssText =
@@ -1458,16 +1877,18 @@
       '  <div>' +
       '    <div style="font-size:11px;font-weight:800;color:#64748B;font-family:monospace;letter-spacing:0.5px;">ORDER DETAILS</div>' +
       '    <div style="font-size:18px;font-weight:900;color:#0F172A;font-family:monospace;">#' + displayId + '</div>' +
+      (attrRestaurant ? '    <div style="font-size:12px;font-weight:700;color:#F45D2C;margin-top:2px;">🏪 ' + attrRestaurant + '</div>' : '') +
       '  </div>' +
       '  <button id="kgt-modal-close-btn" type="button" style="background:#F1F5F9;border:none;border-radius:9999px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:#64748B;cursor:pointer;">✕</button>' +
       '</div>';
 
     // Items Section container
+    var countLabel = itemsList.length > 0 ? itemsList.length + ' items' : (totalPrice ? 'Order Summary' : 'Loading...');
     var itemsBoxHtml =
       '<div id="kgt-modal-items-box" style="background:#F8FAFC;border:1.5px solid #E2E8F0;border-radius:16px;padding:14px;">' +
       '  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">' +
       '    <div style="font-size:12px;font-weight:900;text-transform:uppercase;color:#475569;letter-spacing:0.5px;">📦 Items Customer Ordered</div>' +
-      '    <div id="kgt-modal-items-count" style="font-size:11px;font-weight:800;background:#E2E8F0;padding:2px 8px;border-radius:9999px;color:#334155;">' + (itemsList.length ? itemsList.length + ' items' : 'Loading...') + '</div>' +
+      '    <div id="kgt-modal-items-count" style="font-size:11px;font-weight:800;background:#E2E8F0;padding:2px 8px;border-radius:9999px;color:#334155;">' + countLabel + '</div>' +
       '  </div>' +
       '  <div id="kgt-modal-items-list" style="display:flex;flex-direction:column;gap:8px;">';
 
@@ -1495,21 +1916,41 @@
       '</div>';
 
     // Customer & Contact Info
+    var custNameDisplay = attrCustName || 'Customer';
+    var custAddrDisplay = (attrCustAddress ? attrCustAddress + (attrCustLandmark ? ' (Landmark: ' + attrCustLandmark + ')' : '') : 'Delivery address');
+
+    function formatIndiaTel(p) {
+      if (!p) return "";
+      var cl = String(p).trim();
+      var dig = cl.replace(/\D/g, "");
+      if (!dig) return "";
+      if (dig.length === 12 && dig.indexOf("91") === 0) return "+" + dig;
+      if (dig.length === 11 && dig.indexOf("0") === 0) return "+91" + dig.substring(1);
+      if (dig.length >= 10) return "+91" + dig.slice(-10);
+      return "+91" + dig;
+    }
+
     var custBoxHtml =
       '<div id="kgt-modal-cust-box" style="background:#FFFFFF;border:1px solid #E2E8F0;border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:8px;">' +
       '  <div style="font-size:12px;font-weight:900;text-transform:uppercase;color:#475569;letter-spacing:0.5px;">👤 Customer &amp; Delivery Details</div>' +
-      '  <div id="kgt-modal-cust-name" style="font-size:14px;font-weight:800;color:#0F172A;">Customer</div>' +
-      '  <div id="kgt-modal-cust-address" style="font-size:12px;color:#64748B;line-height:1.4;">Delivery address</div>';
+      '  <div id="kgt-modal-cust-name" style="font-size:14px;font-weight:800;color:#0F172A;">' + custNameDisplay + '</div>' +
+      '  <div id="kgt-modal-cust-address" style="font-size:12px;color:#64748B;line-height:1.4;">' + custAddrDisplay + '</div>' +
+      '  <div id="kgt-modal-phone-actions" style="display:' + (rawPhone ? 'flex' : 'none') + ';align-items:center;gap:8px;margin-top:4px;">' +
+      '    <a id="kgt-modal-call-link" href="' + (rawPhone ? 'tel:' + formatIndiaTel(rawPhone) : '#') + '" style="display:inline-flex;align-items:center;gap:5px;background:#F1F5F9;color:#0F172A;text-decoration:none;padding:6px 12px;border-radius:9999px;font-size:11px;font-weight:800;">📞 Call Customer</a>' +
+      '    <a id="kgt-modal-wa-link" href="' + (rawPhone ? 'https://wa.me/91' + rawPhone.replace(/\D/g, '') : '#') + '" target="_blank" style="display:inline-flex;align-items:center;gap:5px;background:#ECFDF5;color:#059669;text-decoration:none;padding:6px 12px;border-radius:9999px;font-size:11px;font-weight:800;">💬 WhatsApp</a>' +
+      '  </div>' +
+      '</div>';
 
-    if (rawPhone) {
-      custBoxHtml +=
-        '  <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">' +
-        '    <a href="tel:' + rawPhone + '" style="display:inline-flex;align-items:center;gap:5px;background:#F1F5F9;color:#0F172A;text-decoration:none;padding:6px 12px;border-radius:9999px;font-size:11px;font-weight:800;">📞 Call Customer</a>' +
-        '    <a href="https://wa.me/91' + rawPhone.replace(/\D/g, '') + '" target="_blank" style="display:inline-flex;align-items:center;gap:5px;background:#ECFDF5;color:#059669;text-decoration:none;padding:6px 12px;border-radius:9999px;font-size:11px;font-weight:800;">💬 WhatsApp</a>' +
-        '  </div>';
+    // Rider Assign / Reassign selector directly in modal if card has a select element
+    var cardSelect = card ? card.querySelector('select') : null;
+    var riderBoxHtml = '';
+    if (cardSelect) {
+      riderBoxHtml =
+        '<div id="kgt-modal-rider-box" style="background:#F8FAFC;border:1.5px solid #E2E8F0;border-radius:16px;padding:12px;display:flex;flex-direction:column;gap:8px;">' +
+        '  <div style="font-size:12px;font-weight:900;text-transform:uppercase;color:#475569;letter-spacing:0.5px;">🚴 Assign / Reassign Rider</div>' +
+        '  <div id="kgt-modal-rider-select-slot"></div>' +
+        '</div>';
     }
-
-    custBoxHtml += '</div>';
 
     // Action button area (Close)
     var footerHtml =
@@ -1519,7 +1960,22 @@
       '  </button>' +
       '</div>';
 
-    cardBox.innerHTML = headerHtml + itemsBoxHtml + custBoxHtml + footerHtml;
+    cardBox.innerHTML = headerHtml + itemsBoxHtml + custBoxHtml + riderBoxHtml + footerHtml;
+
+    if (cardSelect) {
+      var slot = cardBox.querySelector('#kgt-modal-rider-select-slot');
+      if (slot) {
+        var clonedSelect = cardSelect.cloneNode(true);
+        clonedSelect.style.cssText = 'height:40px;width:100%;border-radius:12px;border:1.5px solid #CBD5E1;background:#FFFFFF;font-size:13px;font-weight:700;padding:0 10px;';
+        clonedSelect.value = cardSelect.value;
+        clonedSelect.onchange = function () {
+          cardSelect.value = clonedSelect.value;
+          cardSelect.dispatchEvent(new Event('change', { bubbles: true }));
+        };
+        slot.appendChild(clonedSelect);
+      }
+    }
+
     modal.appendChild(cardBox);
     (document.body || document.documentElement).appendChild(modal);
 
@@ -1540,57 +1996,78 @@
     try {
       var auth = getPartnerAuth();
       var token = auth ? auth.token : null;
-      var targetUuid = dataId && dataId.length >= 32 ? dataId : '';
-      if (targetUuid) {
-        var queryUrl =
-          SUPABASE_URL +
-          '/rest/v1/orders?select=id,status,customer_name,customer_phone,address,landmark,subtotal,delivery_fee,platform_fee,discount,total,items,created_at&id=eq.' +
-          encodeURIComponent(targetUuid) +
-          '&limit=1';
+      var role = detectRoleFromPath();
 
-        var hdrs = { apikey: SUPABASE_ANON };
-        if (token) hdrs['Authorization'] = 'Bearer ' + token;
-
-        fetch(queryUrl, { headers: hdrs })
-          .then(function (r) {
-            return r.json();
-          })
-          .then(function (res) {
-            if (!res || !res.length) return;
-            var ord = res[0];
-
-            // Parse items
-            var dbItems = ord.items;
-            if (typeof dbItems === 'string') {
-              try {
-                dbItems = JSON.parse(dbItems);
-              } catch (e) {
-                dbItems = [];
-              }
+      // Safety timeout: Never leave modal stuck on "Loading..." or "Fetching order items…"
+      setTimeout(function () {
+        var loadingEl = document.getElementById('kgt-modal-items-loading');
+        var countEl = document.getElementById('kgt-modal-items-count');
+        if (loadingEl) {
+          if (itemsList.length === 0) {
+            loadingEl.innerHTML =
+              '<div style="text-align:center;padding:10px;font-size:12px;color:#475569;font-weight:700;">' +
+              '  Order #' + displayId + (totalPrice ? ' · Total: ₹' + totalPrice : '') +
+              '</div>';
+            if (countEl && countEl.innerText === 'Loading...') {
+              countEl.innerText = 'Order Summary';
             }
-            if (!Array.isArray(dbItems)) dbItems = [];
+          } else {
+            loadingEl.remove();
+          }
+        }
+      }, 800);
 
-            var listContainer = document.getElementById('kgt-modal-items-list');
-            var countEl = document.getElementById('kgt-modal-items-count');
-            var totalAmtEl = document.getElementById('kgt-modal-total-amt');
-            var custNameEl = document.getElementById('kgt-modal-cust-name');
-            var custAddrEl = document.getElementById('kgt-modal-cust-address');
+      if (token) {
+        var hdrs = {
+          'apikey': SUPABASE_ANON,
+          'Authorization': 'Bearer ' + token,
+          'Content-Type': 'application/json'
+        };
 
-            if (countEl) countEl.innerText = dbItems.length + ' items';
-            if (totalAmtEl && ord.total != null) totalAmtEl.innerText = '₹' + Math.round(ord.total);
-            if (custNameEl && ord.customer_name) custNameEl.innerText = ord.customer_name;
-            if (custAddrEl && ord.address) {
-              custAddrEl.innerText = ord.address + (ord.landmark ? ' (Landmark: ' + ord.landmark + ')' : '');
-            }
+        function applyOrderToModal(ord) {
+          if (!ord) return;
+          var dbItems = ord.items;
+          if (typeof dbItems === 'string') {
+            try { dbItems = JSON.parse(dbItems); } catch (e) { dbItems = []; }
+          }
+          if (!Array.isArray(dbItems)) dbItems = [];
 
-            if (listContainer && dbItems.length > 0) {
+          var listContainer = document.getElementById('kgt-modal-items-list');
+          var countEl = document.getElementById('kgt-modal-items-count');
+          var totalAmtEl = document.getElementById('kgt-modal-total-amt');
+          var custNameEl = document.getElementById('kgt-modal-cust-name');
+          var custAddrEl = document.getElementById('kgt-modal-cust-address');
+          var phoneActions = document.getElementById('kgt-modal-phone-actions');
+          var callLink = document.getElementById('kgt-modal-call-link');
+          var waLink = document.getElementById('kgt-modal-wa-link');
+
+          // Always remove the loading element when order is applied
+          var loadingEl = document.getElementById('kgt-modal-items-loading');
+          if (loadingEl) loadingEl.remove();
+
+          if (countEl) countEl.innerText = dbItems.length ? dbItems.length + ' items' : 'Order Summary';
+          if (totalAmtEl && ord.total != null) totalAmtEl.innerText = '₹' + Math.round(ord.total);
+          if (custNameEl && ord.customer_name) custNameEl.innerText = ord.customer_name;
+          if (custAddrEl && ord.address) {
+            custAddrEl.innerText = ord.address + (ord.landmark ? ' (Landmark: ' + ord.landmark + ')' : '');
+          }
+
+          var livePhone = ord.customer_phone || ord.phone;
+          if (livePhone && phoneActions && callLink && waLink) {
+            phoneActions.style.display = 'flex';
+            callLink.href = 'tel:' + formatIndiaTel(livePhone);
+            waLink.href = 'https://wa.me/91' + String(livePhone).replace(/\D/g, '');
+          }
+
+          if (listContainer) {
+            if (dbItems.length > 0) {
               var out = '';
               dbItems.forEach(function (it) {
                 var itName = it.name || it.item_name || 'Item';
                 var itQty = it.qty || it.quantity || 1;
                 var itPrice = it.price || 0;
                 var itSub = Math.round(Number(itPrice) * Number(itQty));
-                var itVar = it.variant ? ' <span style="font-size:11px;color:#64748B;">(' + it.variant + ')</span>' : '';
+                var itVar = (it.variant || it.portion) ? ' <span style="font-size:11px;color:#64748B;">(' + (it.variant || it.portion) + ')</span>' : '';
 
                 out +=
                   '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px dashed #CBD5E1;">' +
@@ -1603,48 +2080,124 @@
                   itName +
                   itVar +
                   '</div>' +
-                  '      <div style="font-size:11px;color:#64748B;">₹' +
-                  itPrice +
-                  ' each</div>' +
+                  (itPrice ? '      <div style="font-size:11px;color:#64748B;">₹' + itPrice + ' each</div>' : '') +
                   '    </div>' +
                   '  </div>' +
-                  '  <span style="font-size:14px;font-weight:900;color:#0F172A;flex-shrink:0;">₹' +
-                  itSub +
-                  '</span>' +
+                  (itSub ? '  <span style="font-size:14px;font-weight:900;color:#0F172A;flex-shrink:0;">₹' + itSub + '</span>' : '') +
                   '</div>';
               });
 
-              // Add breakdown rows
-              out +=
-                '<div style="display:flex;justify-content:space-between;font-size:12px;color:#64748B;padding-top:8px;">' +
-                '  <span>Items Subtotal:</span><span>₹' +
-                Math.round(ord.subtotal || 0) +
-                '</span>' +
-                '</div>' +
-                '<div style="display:flex;justify-content:space-between;font-size:12px;color:#64748B;">' +
-                '  <span>Delivery Fee:</span><span>₹' +
-                Math.round(ord.delivery_fee || 0) +
-                '</span>' +
-                '</div>' +
-                '<div style="display:flex;justify-content:space-between;font-size:12px;color:#64748B;">' +
-                '  <span>Platform Fee:</span><span>₹' +
-                Math.round(ord.platform_fee || 0) +
-                '</span>' +
-                '</div>';
-
+              if (ord.subtotal != null) {
+                out +=
+                  '<div style="display:flex;justify-content:space-between;font-size:12px;color:#64748B;padding-top:8px;">' +
+                  '  <span>Items Subtotal:</span><span>₹' + Math.round(ord.subtotal) + '</span>' +
+                  '</div>';
+              }
+              if (ord.delivery_fee != null) {
+                out +=
+                  '<div style="display:flex;justify-content:space-between;font-size:12px;color:#64748B;">' +
+                  '  <span>Delivery Fee:</span><span>₹' + Math.round(ord.delivery_fee) + '</span>' +
+                  '</div>';
+              }
+              if (ord.platform_fee != null) {
+                out +=
+                  '<div style="display:flex;justify-content:space-between;font-size:12px;color:#64748B;">' +
+                  '  <span>Platform Fee:</span><span>₹' + Math.round(ord.platform_fee) + '</span>' +
+                  '</div>';
+              }
               if (Number(ord.discount || 0) > 0) {
                 out +=
                   '<div style="display:flex;justify-content:space-between;font-size:12px;color:#059669;font-weight:700;">' +
-                  '  <span>Discount:</span><span>-₹' +
-                  Math.round(ord.discount) +
-                  '</span>' +
+                  '  <span>Discount:</span><span>-₹' + Math.round(ord.discount) + '</span>' +
                   '</div>';
               }
 
               listContainer.innerHTML = out;
+            } else {
+              listContainer.innerHTML =
+                '<div style="text-align:center;padding:12px;font-size:12px;color:#64748B;">' +
+                '  Order confirmed · No itemized breakdown in database.' +
+                '</div>';
+            }
+          }
+        }
+
+        // Live fetch using RPCs that exist on Supabase
+        var pName = window.location.pathname || '';
+        if (role === 'zone_manager' || pName.indexOf('/zone') !== -1) {
+          var fetchZoneList = function(zid) {
+            fetch(SUPABASE_URL + '/rest/v1/rpc/zone_list_orders', {
+              method: 'POST',
+              headers: hdrs,
+              body: JSON.stringify({ _zone_id: zid, _limit: 300 })
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(orders) {
+              if (Array.isArray(orders)) {
+                window.__kgt_all_orders_cache = window.__kgt_all_orders_cache || {};
+                orders.forEach(function(o) {
+                  if (o && o.id) {
+                    window.__kgt_all_orders_cache[o.id] = o;
+                    if (o.id.length >= 8) window.__kgt_all_orders_cache[o.id.slice(0, 8).toUpperCase()] = o;
+                  }
+                });
+                var matched = orders.find(function(o) {
+                  var oId = (o.id || '').toUpperCase();
+                  return (fullId && o.id === fullId) ||
+                         (displayId && oId.indexOf(displayId) !== -1) ||
+                         (cleanShort && oId.indexOf(cleanShort) !== -1);
+                });
+                if (matched) applyOrderToModal(matched);
+              }
+            })
+            .catch(function() {});
+          };
+
+          if (window.__partner_zone_id) {
+            fetchZoneList(window.__partner_zone_id);
+          } else {
+            fetch(SUPABASE_URL + '/rest/v1/rpc/zone_my_zones', {
+              method: 'POST',
+              headers: hdrs,
+              body: '{}'
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(zones) {
+              if (Array.isArray(zones) && zones.length > 0 && zones[0].id) {
+                window.__partner_zone_id = zones[0].id;
+                fetchZoneList(zones[0].id);
+              }
+            })
+            .catch(function() {});
+          }
+        } else {
+          // Restaurant
+          fetch(SUPABASE_URL + '/rest/v1/rpc/owner_list_orders', {
+            method: 'POST',
+            headers: hdrs,
+            body: JSON.stringify({ _limit: 50 })
+          })
+          .then(function(r) { return r.json(); })
+          .then(function(orders) {
+            if (Array.isArray(orders)) {
+              window.__kgt_all_orders_cache = window.__kgt_all_orders_cache || {};
+              orders.forEach(function(o) {
+                if (o && o.id) {
+                  window.__kgt_all_orders_cache[o.id] = o;
+                  if (o.id.length >= 8) window.__kgt_all_orders_cache[o.id.slice(0, 8).toUpperCase()] = o;
+                }
+              });
+              var matched = orders.find(function(o) {
+                var oId = (o.id || '').toUpperCase();
+                return (fullId && o.id === fullId) ||
+                       (displayId && oId.indexOf(displayId) !== -1) ||
+                       (cleanShort && oId.indexOf(cleanShort) !== -1);
+              });
+              if (matched) applyOrderToModal(matched);
             }
           })
-          .catch(function (e) {});
+          .catch(function() {});
+        }
       }
     } catch (e) {}
   }

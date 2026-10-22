@@ -38,6 +38,7 @@ import type { ZonePoint } from "@/lib/zones";
 import { isRestaurantOpen, hoursLabel } from "@/lib/hours";
 import { useMinuteTick } from "@/hooks/useMinuteTick";
 import { silencePartnerOrderAlert } from "@/components/PartnerNotificationListener";
+import { formatIndiaTel } from "@/lib/phone";
 
 const ZoneMapEditor = lazy(() => import("@/components/ZoneMapEditor.client"));
 
@@ -172,6 +173,42 @@ function ZoneManagerPage() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
   useEffect(() => {
+    (window as any).__kgt_zone_orders = orders;
+    (window as any).__kgt_open_zone_order = (orderId: string) => {
+      if (!orderId) return false;
+      const cleanId = orderId.trim().toLowerCase();
+      const found = orders.find(
+        (x) =>
+          x.id.toLowerCase() === cleanId ||
+          x.id.toLowerCase().startsWith(cleanId) ||
+          x.id.replace(/-/g, "").toLowerCase().startsWith(cleanId.replace(/-/g, ""))
+      );
+      if (found) {
+        setSelectedOrder(found);
+        return true;
+      }
+      return false;
+    };
+
+    if (typeof window !== "undefined" && orders.length > 0) {
+      const params = new URLSearchParams(window.location.search);
+      const targetId = params.get("orderId") || params.get("order_id");
+      if (targetId) {
+        const cleanId = targetId.trim().toLowerCase();
+        const found = orders.find(
+          (x) =>
+            x.id.toLowerCase() === cleanId ||
+            x.id.toLowerCase().startsWith(cleanId) ||
+            x.id.replace(/-/g, "").toLowerCase().startsWith(cleanId.replace(/-/g, ""))
+        );
+        if (found) {
+          setSelectedOrder((prev) => (prev?.id === found.id ? prev : found));
+        }
+      }
+    }
+  }, [orders]);
+
+  useEffect(() => {
     if (!authLoading && !user) navigate({ to: "/login", search: { as: "manager" } });
   }, [user, authLoading, navigate]);
 
@@ -194,15 +231,27 @@ function ZoneManagerPage() {
       supabase.rpc("zone_list_customers" as any, { _zone_id: id }),
     ]);
 
-    const orderList = ((o ?? []) as any[]).map((ord) => ({
-      ...ord,
-      items: Array.isArray(ord.items)
-        ? ord.items
-        : typeof ord.items === "string"
-        ? JSON.parse(ord.items || "[]")
-        : null,
-    })) as Order[];
+    const orderList = ((o ?? []) as any[]).map((ord) => {
+      let parsedItems: OrderItem[] = [];
+      if (Array.isArray(ord.items)) {
+        parsedItems = ord.items;
+      } else if (typeof ord.items === "string") {
+        try {
+          const p = JSON.parse(ord.items);
+          parsedItems = Array.isArray(p) ? p : [];
+        } catch {
+          parsedItems = [];
+        }
+      }
+      return {
+        ...ord,
+        items: parsedItems,
+      };
+    }) as Order[];
     setOrders(orderList);
+    try {
+      (window as any).__kgt_zone_orders = orderList;
+    } catch {}
     setSelectedOrder((prev) => (prev ? orderList.find((x) => x.id === prev.id) ?? prev : null));
 
     const hasPlaced = orderList.some((ord) => ord.status === "placed" && !ord.rider_id);
@@ -598,6 +647,7 @@ function ZoneManagerPage() {
       discounts: pay.discount,
       settlement: pay.platformActual,
       rider: pay.rider,
+      zoneManager: (pay as any).zoneManager ?? Math.round(pay.platformNet * 0.1),
       net: pay.platformNet,
     };
   }, [orders, range]);
@@ -666,7 +716,7 @@ function ZoneManagerPage() {
           <DateRangeFilter value={range} onChange={setRange} />
         </div>
 
-        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-5">
+        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-6">
           <Stat label="Orders" value={String(stats.orders)} />
           <Stat label="Delivered" value={String(stats.delivered)} />
           <Stat label="Cancelled" value={String(stats.cancelled)} />
@@ -675,8 +725,9 @@ function ZoneManagerPage() {
           <Stat label="Discounts" value={inr(-stats.discounts)} />
           <Stat label="Revenue" value={inr(stats.revenue)} />
           <Stat label="Settlement" value={inr(stats.settlement)} />
-          <Stat label="Rider Cut" value={inr(stats.rider)} />
-          <Stat label="Net Profit" value={inr(stats.net)} />
+          <Stat label="Rider Cut (60%)" value={inr(stats.rider)} />
+          <Stat label="Zone Manager (10%)" value={inr(stats.zoneManager)} highlight />
+          <Stat label="KhanaGharTak (30%)" value={inr(stats.net)} />
         </div>
 
         {/* Tab Selector */}
@@ -754,6 +805,13 @@ function ZoneManagerPage() {
                   key={o.id}
                   data-order-id={o.id}
                   data-order-items={JSON.stringify(o.items || [])}
+                  data-customer-name={o.customer_name || ""}
+                  data-customer-phone={o.customer_phone || ""}
+                  data-customer-address={o.address || ""}
+                  data-customer-landmark={o.landmark || ""}
+                  data-restaurant-name={o.restaurant_name || ""}
+                  data-order-total={String(o.total || "")}
+                  data-order-status={o.status || ""}
                   onClick={() => setSelectedOrder(o)}
                   className="group relative cursor-pointer rounded-2xl border bg-card p-4 shadow-sm space-y-3 transition-all hover:border-primary/50 hover:shadow-md active:scale-[0.995]"
                 >
@@ -805,7 +863,7 @@ function ZoneManagerPage() {
                       {cleanCustPhone && (
                         <>
                           <a
-                            href={`tel:${cleanCustPhone}`}
+                            href={`tel:${formatIndiaTel(cleanCustPhone)}`}
                             onClick={(e) => e.stopPropagation()}
                             className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-[11px] font-bold text-foreground hover:bg-primary/10 hover:text-primary transition-colors"
                           >
@@ -1040,7 +1098,7 @@ function ZoneManagerPage() {
                       {cleanPhone && (
                         <>
                           <a
-                            href={`tel:${cleanPhone}`}
+                            href={`tel:${formatIndiaTel(cleanPhone)}`}
                             className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-[11px] font-bold text-foreground hover:bg-primary/10 hover:text-primary transition-colors"
                           >
                             <Phone className="h-3 w-3" /> Call
@@ -1225,7 +1283,7 @@ function ZoneManagerPage() {
                       {cleanPhone && (
                         <>
                           <a
-                            href={`tel:${cleanPhone}`}
+                            href={`tel:${formatIndiaTel(cleanPhone)}`}
                             className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-[11px] font-bold text-foreground hover:bg-primary/10 hover:text-primary transition-colors"
                           >
                             <Phone className="h-3 w-3" /> Call
@@ -1334,7 +1392,7 @@ function ZoneManagerPage() {
                     </div>
                     {cleanPhone && (
                       <a
-                        href={`tel:${cleanPhone}`}
+                        href={`tel:${formatIndiaTel(cleanPhone)}`}
                         className="rounded-full bg-secondary p-2 hover:bg-primary/10 hover:text-primary transition-colors"
                         title="Call Customer"
                       >
@@ -1808,7 +1866,7 @@ function ZoneManagerPage() {
                   return (
                     <div className="flex items-center gap-1">
                       <a
-                        href={`tel:${restPhone}`}
+                        href={`tel:${formatIndiaTel(restPhone)}`}
                         className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-[11px] font-bold text-foreground hover:bg-primary/10 hover:text-primary transition-colors"
                       >
                         <Phone className="h-3 w-3" /> Call Kitchen
@@ -1848,7 +1906,7 @@ function ZoneManagerPage() {
                   return (
                     <div className="flex items-center gap-1">
                       <a
-                        href={`tel:${custPhone}`}
+                        href={`tel:${formatIndiaTel(custPhone)}`}
                         className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-[11px] font-bold text-foreground hover:bg-primary/10 hover:text-primary transition-colors"
                       >
                         <Phone className="h-3 w-3" /> Call
@@ -1941,7 +1999,7 @@ function ZoneManagerPage() {
                   if (!riderPhone) return null;
                   return (
                     <a
-                      href={`tel:${riderPhone}`}
+                      href={`tel:${formatIndiaTel(riderPhone)}`}
                       className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-[11px] font-bold text-foreground hover:bg-primary/10 hover:text-primary transition-colors"
                     >
                       <Phone className="h-3 w-3" /> Call Rider
@@ -2103,11 +2161,11 @@ function ZoneManagerPage() {
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return (
-    <div className="rounded-2xl border bg-card p-3 shadow-xs">
+    <div className={`rounded-2xl border p-3 shadow-xs ${highlight ? "border-primary/40 bg-primary/5" : "bg-card"}`}>
       <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground truncate">{label}</p>
-      <p className="mt-1 text-lg font-black text-foreground truncate">{value}</p>
+      <p className={`mt-1 text-lg font-black truncate ${highlight ? "text-primary" : "text-foreground"}`}>{value}</p>
     </div>
   );
 }
@@ -2118,7 +2176,7 @@ function Empty({ children }: { children: React.ReactNode }) {
 
 function Modal({ title, children, onClose }: { title: string; children: React.ReactNode; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in duration-150">
       <div className="relative w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl border bg-card p-5 shadow-2xl space-y-4">
         <div className="flex items-center justify-between border-b pb-3 sticky top-0 bg-card z-10">
           <h3 className="text-base font-extrabold text-foreground">{title}</h3>

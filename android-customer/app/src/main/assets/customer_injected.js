@@ -1,18 +1,207 @@
 (function () {
   'use strict';
 
+  // Native Geolocation Bridge with Fused Location Support
+  try {
+    window.__kgt_pending_callbacks = window.__kgt_pending_callbacks || {};
+    window.__kgt_on_native_location = function (cbId, lat, lng, accuracy, err) {
+      var cb = window.__kgt_pending_callbacks[cbId];
+      if (cb) {
+        delete window.__kgt_pending_callbacks[cbId];
+        if (err) {
+          if (typeof cb.error === 'function') cb.error(err);
+        } else if (typeof lat === 'number' && typeof lng === 'number') {
+          window.__native_device_coords = { lat: lat, lng: lng, accuracy: accuracy || 10, ts: Date.now() };
+          try {
+            localStorage.setItem('kgt:user-coords', JSON.stringify(window.__native_device_coords));
+            window.dispatchEvent(new CustomEvent('kgt:native-coords', { detail: window.__native_device_coords }));
+            window.dispatchEvent(new Event('storage'));
+            window.dispatchEvent(new Event('kgt:address-changed'));
+          } catch (e) {}
+          if (typeof cb.success === 'function') {
+            cb.success({
+              coords: {
+                latitude: lat,
+                longitude: lng,
+                accuracy: accuracy || 10,
+                altitude: null,
+                altitudeAccuracy: null,
+                heading: null,
+                speed: null
+              },
+              timestamp: Date.now()
+            });
+          }
+        } else {
+          if (typeof cb.error === 'function') cb.error({ code: 2, message: 'Position unavailable' });
+        }
+      }
+    };
+
+    if (typeof navigator !== 'undefined' && navigator.geolocation) {
+      var origGetCurrentPosition = navigator.geolocation.getCurrentPosition.bind(navigator.geolocation);
+      navigator.geolocation.getCurrentPosition = function (successCallback, errorCallback, options) {
+        // 1. Try Android Native App Fused Location first
+        if (window.AndroidApp && typeof window.AndroidApp.requestFusedLocation === 'function') {
+          var cbId = 'loc_' + Math.random().toString(36).substring(2, 9);
+          var handled = false;
+          window.__kgt_pending_callbacks[cbId] = {
+            success: function (pos) {
+              if (handled) return;
+              handled = true;
+              if (typeof successCallback === 'function') successCallback(pos);
+            },
+            error: function (err) {
+              if (handled) return;
+              // If native failed, fallback to origGetCurrentPosition
+              fallbackWebGeo();
+            }
+          };
+
+          try {
+            window.AndroidApp.requestFusedLocation(cbId);
+            // Safety timeout after 9 seconds to trigger web fallback if native is delayed
+            setTimeout(function () {
+              if (!handled && window.__kgt_pending_callbacks[cbId]) {
+                delete window.__kgt_pending_callbacks[cbId];
+                fallbackWebGeo();
+              }
+            }, 9000);
+            return;
+          } catch (e) {
+            delete window.__kgt_pending_callbacks[cbId];
+          }
+        }
+
+        fallbackWebGeo();
+
+        function fallbackWebGeo() {
+          // 2. Check if fresh native coords already arrived
+          var nativeCoords = null;
+          if (window.AndroidApp && typeof window.AndroidApp.getDeviceCoordinates === 'function') {
+            try {
+              var raw = window.AndroidApp.getDeviceCoordinates();
+              if (raw) nativeCoords = JSON.parse(raw);
+            } catch (e) {}
+          }
+          if (!nativeCoords && window.__native_device_coords) {
+            nativeCoords = window.__native_device_coords;
+          }
+
+          if (nativeCoords && typeof nativeCoords.lat === 'number' && typeof nativeCoords.lng === 'number' && (Date.now() - (nativeCoords.ts || 0) < 60000)) {
+            if (typeof successCallback === 'function') {
+              setTimeout(function () {
+                successCallback({
+                  coords: {
+                    latitude: nativeCoords.lat,
+                    longitude: nativeCoords.lng,
+                    accuracy: nativeCoords.accuracy || 15,
+                    altitude: null,
+                    altitudeAccuracy: null,
+                    heading: null,
+                    speed: null
+                  },
+                  timestamp: nativeCoords.ts || Date.now()
+                });
+              }, 10);
+            }
+            return;
+          }
+
+          // Trigger native refresh
+          if (window.AndroidApp && typeof window.AndroidApp.refreshLocation === 'function') {
+            try { window.AndroidApp.refreshLocation(); } catch (e) {}
+          }
+
+          var safeOptions = {
+            enableHighAccuracy: true,
+            timeout: (options && options.timeout) || 12000,
+            maximumAge: (options && options.maximumAge) || 10000
+          };
+
+          origGetCurrentPosition(
+            function (pos) {
+              if (typeof successCallback === 'function') successCallback(pos);
+            },
+            function (err) {
+              // Check if native coordinates arrived during web timeout
+              var fallback = window.__native_device_coords;
+              if (fallback && typeof fallback.lat === 'number' && typeof fallback.lng === 'number' && typeof successCallback === 'function') {
+                successCallback({
+                  coords: {
+                    latitude: fallback.lat,
+                    longitude: fallback.lng,
+                    accuracy: fallback.accuracy || 20,
+                    altitude: null,
+                    altitudeAccuracy: null,
+                    heading: null,
+                    speed: null
+                  },
+                  timestamp: Date.now()
+                });
+                return;
+              }
+
+              if (typeof errorCallback === 'function') {
+                var isPermDenied = err && err.code === 1;
+                var customErr = {
+                  code: err ? err.code : 3,
+                  message: isPermDenied
+                    ? "Location permission denied. Please allow location access."
+                    : "Unable to detect exact location. Please select your address on the map.",
+                  PERMISSION_DENIED: 1,
+                  POSITION_UNAVAILABLE: 2,
+                  TIMEOUT: 3
+                };
+                errorCallback(customErr);
+              }
+            },
+            safeOptions
+          );
+        }
+      };
+    }
+  } catch (e) {}
+
   var SHANKARGARH_POLY = [
-    [25.226876, 81.584642],
-    [25.225354, 81.619860],
-    [25.219242, 81.647636],
-    [25.218954, 81.667853],
-    [25.212449, 81.685936],
-    [25.200505, 81.672039],
-    [25.184447, 81.655593],
-    [25.155628, 81.645967],
-    [25.160616, 81.600931],
-    [25.177561, 81.592403],
+    [25.231022, 81.586002],
+    [25.222831, 81.599661],
+    [25.219243, 81.647637],
+    [25.224099, 81.676012],
+    [25.215332, 81.677157],
+    [25.202136, 81.664307],
+    [25.185085, 81.638961],
+    [25.157103, 81.640885],
+    [25.167217, 81.611500],
+    [25.185978, 81.594873],
     [25.197182, 81.559681]
+  ];
+
+  var CHAKGHAT_POLY = [
+    [24.981876, 81.690224],
+    [24.981205, 81.698695],
+    [24.988809, 81.702797],
+    [25.001377, 81.713872],
+    [25.000292, 81.729683],
+    [25.009535, 81.737373],
+    [25.019709, 81.749361],
+    [25.027381, 81.752970],
+    [25.039671, 81.748045],
+    [25.044969, 81.747826],
+    [25.059190, 81.740312],
+    [25.075695, 81.741864],
+    [25.076044, 81.759938],
+    [25.082158, 81.742176],
+    [25.083460, 81.728367],
+    [25.074721, 81.735442],
+    [25.053820, 81.728049],
+    [25.055585, 81.704847],
+    [25.055181, 81.694430],
+    [25.044400, 81.671121],
+    [25.044501, 81.650983],
+    [25.020127, 81.664495],
+    [25.018384, 81.700384],
+    [25.005071, 81.694029]
   ];
 
   function isCoordInShankargarh(lat, lng) {
@@ -26,7 +215,18 @@
       }
     }
     if (inside) return true;
+
+    for (var k = 0, l = CHAKGHAT_POLY.length - 1; k < CHAKGHAT_POLY.length; l = k++) {
+      var xk = CHAKGHAT_POLY[k][1], yk = CHAKGHAT_POLY[k][0];
+      var xl = CHAKGHAT_POLY[l][1], yl = CHAKGHAT_POLY[l][0];
+      if (yk > lat !== yl > lat && lng < ((xl - xk) * (lat - yk)) / (yl - yk) + xk) {
+        inside = !inside;
+      }
+    }
+    if (inside) return true;
+
     var R = 6371.0;
+    // 1. Shankargarh center (25.1842, 81.6212) <= 12km
     var dLat = ((lat - 25.1842) * Math.PI) / 180;
     var dLon = ((lng - 81.6212) * Math.PI) / 180;
     var a =
@@ -36,11 +236,30 @@
         Math.sin(dLon / 2) *
         Math.sin(dLon / 2);
     var d = 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return d <= 10.0;
+    if (d <= 12.0) return true;
+
+    // 2. Chakghat center (25.0275, 81.7375) <= 15km
+    var dLatC = ((lat - 25.0275) * Math.PI) / 180;
+    var dLonC = ((lng - 81.7375) * Math.PI) / 180;
+    var aC =
+      Math.sin(dLatC / 2) * Math.sin(dLatC / 2) +
+      Math.cos((25.0275 * Math.PI) / 180) *
+        Math.cos((lat * Math.PI) / 180) *
+        Math.sin(dLonC / 2) *
+        Math.sin(dLonC / 2);
+    var dC = 2 * R * Math.atan2(Math.sqrt(aC), Math.sqrt(1 - aC));
+    return dC <= 15.0;
   }
 
   function isDeliveryLocationInZone(addr, coords) {
     var s = (addr || '').toLowerCase().trim();
+    var isChakghat =
+      s.indexOf('chakghat') !== -1 ||
+      s.indexOf('chak ghat') !== -1 ||
+      s.indexOf('486226') !== -1 ||
+      s.indexOf('teonthar') !== -1 ||
+      s.indexOf('ghuma') !== -1;
+
     var hasOutsideKeywords =
       s.indexOf('civil lines') !== -1 ||
       s.indexOf('katra') !== -1 ||
@@ -52,7 +271,8 @@
       s.indexOf('gurugram') !== -1 ||
       s.indexOf('varanasi') !== -1 ||
       (s.indexOf('allahabad') !== -1 && s.indexOf('shankargarh') === -1 && s.indexOf('212108') === -1) ||
-      (s.indexOf('prayagraj') !== -1 && s.indexOf('shankargarh') === -1 && s.indexOf('212108') === -1);
+      (s.indexOf('prayagraj') !== -1 && s.indexOf('shankargarh') === -1 && s.indexOf('212108') === -1) ||
+      (s.indexOf('rewa') !== -1 && !isChakghat);
     if (hasOutsideKeywords) return false;
 
     if (coords && typeof coords.lat === 'number' && typeof coords.lng === 'number' && !isNaN(coords.lat) && !isNaN(coords.lng)) {
@@ -66,7 +286,8 @@
       s.indexOf('raja market') !== -1 ||
       s.indexOf('station road') !== -1 ||
       s.indexOf('bara road') !== -1 ||
-      s.indexOf('lalita nagar') !== -1;
+      s.indexOf('lalita nagar') !== -1 ||
+      isChakghat;
     if (hasInsideKeywords) return true;
 
     if (s.length > 0) return false;
@@ -770,44 +991,8 @@
       document.body.classList.remove('khana-outside-service-zone');
       var locOutsideHome = document.getElementById('khana-outside-home-screen');
       if (locOutsideHome) locOutsideHome.remove();
-      var textarea = document.querySelector('textarea');
-      var formParent = textarea ? textarea.closest('div.space-y-3') || textarea.parentElement : null;
-      if (formParent && !document.getElementById('khana-presets-container')) {
-        var presetsContainer = document.createElement('div');
-        presetsContainer.id = 'khana-presets-container';
-        presetsContainer.style.cssText = 'margin:12px 0 16px 0;';
-        presetsContainer.innerHTML =
-          '<div style="font-size:12px;font-weight:700;color:#475569;margin-bottom:8px;display:flex;align-items:center;gap:4px;">' +
-          '  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#F45D2C" stroke-width="2.5"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>' +
-          '  Quick Select Locality (Shankargarh):' +
-          '</div>' +
-          '<div style="display:flex;flex-wrap:wrap;gap:6px;">' +
-          '  <button type="button" class="khana-preset-btn" data-addr="Main Bazaar / Market, Shankargarh, Prayagraj - 212108" style="background:#F1F5F9;border:1px solid #CBD5E1;border-radius:9999px;padding:6px 12px;font-size:11px;font-weight:600;color:#1E293B;cursor:pointer;">Shankargarh Market</button>' +
-          '  <button type="button" class="khana-preset-btn" data-addr="Railway Station Road, Shankargarh, Prayagraj - 212108" style="background:#F1F5F9;border:1px solid #CBD5E1;border-radius:9999px;padding:6px 12px;font-size:11px;font-weight:600;color:#1E293B;cursor:pointer;">Station Road</button>' +
-          '  <button type="button" class="khana-preset-btn" data-addr="Raja Market, Shankargarh, Prayagraj - 212108" style="background:#F1F5F9;border:1px solid #CBD5E1;border-radius:9999px;padding:6px 12px;font-size:11px;font-weight:600;color:#1E293B;cursor:pointer;">Raja Market</button>' +
-          '  <button type="button" class="khana-preset-btn" data-addr="Bara Road, Shankargarh, Prayagraj - 212108" style="background:#F1F5F9;border:1px solid #CBD5E1;border-radius:9999px;padding:6px 12px;font-size:11px;font-weight:600;color:#1E293B;cursor:pointer;">Bara Road</button>' +
-          '  <button type="button" class="khana-preset-btn" data-addr="Lalita Nagar, Shankargarh, Prayagraj - 212108" style="background:#F1F5F9;border:1px solid #CBD5E1;border-radius:9999px;padding:6px 12px;font-size:11px;font-weight:600;color:#1E293B;cursor:pointer;">Lalita Nagar</button>' +
-          '</div>' +
-          '<div id="khana-location-status" style="margin-top:10px;"></div>';
-        formParent.parentNode.insertBefore(presetsContainer, formParent);
-        presetsContainer.querySelectorAll('.khana-preset-btn').forEach(function (btn) {
-          btn.onclick = function () {
-            var addr = btn.getAttribute('data-addr') || '';
-            var ta = document.querySelector('textarea');
-            if (ta) {
-              ta.value = addr;
-              ta.dispatchEvent(new Event('input', { bubbles: true }));
-              ta.dispatchEvent(new Event('change', { bubbles: true }));
-            }
-            window.__khana_selected_coords = { lat: 25.1842, lng: 81.6212 };
-            var st = document.getElementById('khana-location-status');
-            if (st) {
-              st.innerHTML =
-                '<div style="background:#ECFDF5;border:1px solid #A7F3D0;border-radius:10px;padding:8px 12px;font-size:11px;font-weight:600;color:#065F46;">✓ Serviceable zone: Shankargarh Zone. Fast delivery available!</div>';
-            }
-          };
-        });
-      }
+      var oldPresets = document.getElementById('khana-presets-container');
+      if (oldPresets) oldPresets.remove();
       var confirmBtn = null;
       document.querySelectorAll('button').forEach(function (b) {
         var t = (b.textContent || '').trim();
@@ -829,11 +1014,11 @@
               return;
             }
             var coords = window.__khana_selected_coords || null;
-            if (!coords && isDeliveryLocationInZone(addr, null)) {
-              coords = { lat: 25.1842, lng: 81.6212 };
+            if (!coords && window.__native_device_coords) {
+              coords = window.__native_device_coords;
             }
             localStorage.setItem('kgt:delivery-address', addr);
-            if (coords) {
+            if (coords && typeof coords.lat === 'number' && typeof coords.lng === 'number') {
               localStorage.setItem(
                 'kgt:user-coords',
                 JSON.stringify({ lat: coords.lat, lng: coords.lng, ts: Date.now() })
@@ -882,34 +1067,19 @@
     var isCustomerDeliveryOutside = false;
     if (savedDeliveryAddr || (savedCoordsObj && typeof savedCoordsObj.lat === 'number')) {
       isCustomerDeliveryOutside = !isDeliveryLocationInZone(savedDeliveryAddr, savedCoordsObj);
-    } else if (window.__native_device_outside !== undefined) {
-      isCustomerDeliveryOutside = !!window.__native_device_outside;
     } else if (window.__native_device_coords && typeof window.__native_device_coords.lat === 'number') {
-      isCustomerDeliveryOutside = !isCoordInShankargarh(
-        window.__native_device_coords.lat,
-        window.__native_device_coords.lng
+      isCustomerDeliveryOutside = !isDeliveryLocationInZone(
+        '',
+        window.__native_device_coords
       );
-    } else if (localStorage.getItem('kgt:device-outside') === 'true') {
+    } else if (window.__native_device_outside === true) {
       isCustomerDeliveryOutside = true;
     }
 
     if (isHomePage) {
-      var totalCardsFound = 0;
-      var outsideCardsCount = 0;
-      document.querySelectorAll('a[href*="/menu"]').forEach(function (card) {
-        totalCardsFound++;
-        var text = (card.textContent || '').toLowerCase();
-        var match = text.match(/(\d+(?:\.\d+)?)\s*km/);
-        if (match) {
-          var dist = parseFloat(match[1]);
-          if (!isNaN(dist) && dist >= 15.0) {
-            outsideCardsCount++;
-            card.style.display = 'none';
-          }
-        }
-      });
-      if (totalCardsFound > 0 && outsideCardsCount === totalCardsFound) {
-        isCustomerDeliveryOutside = true;
+      var existingCards = document.querySelectorAll('a[href*="/menu"]');
+      if (existingCards.length > 0) {
+        isCustomerDeliveryOutside = false;
       }
     }
 
@@ -938,7 +1108,7 @@
             ? 'Delivery is currently unavailable at <strong style="color:#0F172A;">"' +
               (displayAddr.length > 35 ? displayAddr.slice(0, 35) + '…' : displayAddr) +
               '"</strong>.'
-            : 'KhanaGharTak is currently delivering only in our active service zone (Shankargarh & nearby areas).';
+            : 'KhanaGharTak is currently delivering in our active service zones (Shankargarh, Chakghat & nearby areas).';
 
           outsideHome.innerHTML =
             '<div style="position:relative;margin:0 auto 20px auto;width:112px;height:112px;display:flex;align-items:center;justify-content:center;">' +
@@ -967,9 +1137,6 @@
             '  <button id="khana-btn-change-addr" type="button" style="height:48px;width:100%;border-radius:16px;background:#F45D2C;color:#ffffff;font-size:15px;font-weight:700;border:none;cursor:pointer;box-shadow:0 4px 12px rgba(244,93,44,0.3);outline:none;">' +
             '    Change delivery address' +
             '  </button>' +
-            '  <button id="khana-btn-switch-shankargarh" type="button" style="height:44px;width:100%;border-radius:16px;background:rgba(244,93,44,0.08);color:#F45D2C;font-size:13px;font-weight:700;border:1px solid rgba(244,93,44,0.25);cursor:pointer;outline:none;display:inline-flex;align-items:center;justify-content:center;gap:6px;">' +
-            '    ✨ Switch to Shankargarh Zone' +
-            '  </button>' +
             '</div>';
 
           homeContainer.appendChild(outsideHome);
@@ -978,27 +1145,6 @@
           if (changeBtn) {
             changeBtn.onclick = function () {
               spaNavigate('/location');
-            };
-          }
-          var switchBtn = document.getElementById('khana-btn-switch-shankargarh');
-          if (switchBtn) {
-            switchBtn.onclick = function () {
-              localStorage.setItem(
-                'kgt:delivery-address',
-                'Main Bazaar, Shankargarh, Prayagraj - 212108'
-              );
-              localStorage.setItem(
-                'kgt:user-coords',
-                JSON.stringify({ lat: 25.1842, lng: 81.6212, ts: Date.now() })
-              );
-              localStorage.setItem('kgt:device-outside', 'false');
-              window.__native_device_outside = false;
-              window.__khana_selected_coords = { lat: 25.1842, lng: 81.6212 };
-              document.body.classList.remove('khana-outside-service-zone');
-              if (outsideHome) outsideHome.remove();
-              window.dispatchEvent(new Event('storage'));
-              window.dispatchEvent(new Event('kgt:address-changed'));
-              window.location.reload();
             };
           }
         }
@@ -1013,13 +1159,7 @@
         if (exSearch) exSearch.style.display = 'flex';
 
         document.querySelectorAll('a[href*="/menu"]').forEach(function (c) {
-          var text = (c.textContent || '').toLowerCase();
-          var match = text.match(/(\d+(?:\.\d+)?)\s*km/);
-          if (match && parseFloat(match[1]) >= 15.0) {
-            c.style.display = 'none';
-          } else {
-            c.style.display = '';
-          }
+          c.style.display = '';
         });
 
         // Circular Food Category Images
@@ -1683,6 +1823,36 @@
   }
 
   installCashfreeNativeHook();
+
+  // Universal Indian Phone Dialer Interceptor
+  // Guarantees all tel: links are dialed with India international code (+91)
+  // Prevents Android Phone / Samsung dialer from assuming NANP / Texas area codes
+  document.addEventListener('click', function (e) {
+    try {
+      var target = e.target;
+      while (target && target !== document.body && target !== document.documentElement) {
+        if (target.tagName === 'A' && target.href && target.href.indexOf('tel:') === 0) {
+          var raw = target.href.replace('tel:', '').trim();
+          var digits = raw.replace(/\D/g, '');
+          if (digits) {
+            var formatted = '';
+            if (digits.length === 12 && digits.indexOf('91') === 0) {
+              formatted = '+' + digits;
+            } else if (digits.length === 11 && digits.indexOf('0') === 0) {
+              formatted = '+91' + digits.substring(1);
+            } else if (digits.length >= 10) {
+              formatted = '+91' + digits.slice(-10);
+            } else {
+              formatted = '+91' + digits;
+            }
+            target.href = 'tel:' + formatted;
+          }
+          break;
+        }
+        target = target.parentElement;
+      }
+    } catch (err) {}
+  }, true);
 
   recordCustomerNav(window.location.pathname);
   updateAppUi();

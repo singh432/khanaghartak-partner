@@ -7,7 +7,8 @@ import { OrderCancelWindow, type OrderLine } from "@/components/OrderCancelWindo
 import { withTimeout } from "@/lib/supabase-query";
 import { speak, ORDER_VOICE } from "@/lib/voice";
 
-import { CheckCircle2, Clock, Phone, XCircle } from "lucide-react";
+import { CheckCircle2, Clock, Phone, XCircle, Bike } from "lucide-react";
+import { formatIndiaTel } from "@/lib/phone";
 
 
 export const Route = createFileRoute("/order/$id")({ component: OrderSuccess });
@@ -18,6 +19,7 @@ type Order = {
   customer_name: string; created_at: string; address: string;
   latitude: number | null; longitude: number | null;
   items: OrderLine[] | null;
+  rider_id?: string | null;
 };
 
 function OrderSuccess() {
@@ -26,26 +28,55 @@ function OrderSuccess() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [contact, setContact] = useState<{ restaurant_name: string; phone: string | null } | null>(null);
+  const [rider, setRider] = useState<{ rider_name: string; phone: string | null } | null>(null);
 
-  const delivered = order?.status === "delivered";
+  // Fetch restaurant contact
   useEffect(() => {
-    if (!delivered) { setContact(null); return; }
     let active = true;
     supabase.rpc("order_restaurant_contact", { _order_id: id }).then(({ data }) => {
       if (!active) return;
       const row = Array.isArray(data) ? data[0] : null;
       if (row) setContact(row as { restaurant_name: string; phone: string | null });
-    });
+    }, () => {});
     return () => { active = false; };
-  }, [id, delivered]);
+  }, [id, order?.status]);
 
+  // Fetch assigned rider details
+  useEffect(() => {
+    let active = true;
+    const fetchRider = async () => {
+      try {
+        const { data: locData } = await supabase.rpc("order_rider_location" as any, { _order_id: id });
+        if (!active) return;
+        const locRow = Array.isArray(locData) ? (locData[0] as any) : undefined;
+
+        let riderPhone: string | null = null;
+        try {
+          const { data: contactData } = await supabase.rpc("order_rider_contact" as any, { _order_id: id });
+          const cRow = Array.isArray(contactData) ? contactData[0] : null;
+          if (cRow?.phone) riderPhone = cRow.phone;
+        } catch {}
+
+        if (locRow?.rider_name || riderPhone) {
+          setRider({
+            rider_name: locRow?.rider_name || "Delivery Partner",
+            phone: riderPhone,
+          });
+        }
+      } catch {}
+    };
+
+    fetchRider();
+    const interval = setInterval(fetchRider, 12000);
+    return () => { active = false; clearInterval(interval); };
+  }, [id, order?.rider_id]);
 
   useEffect(() => {
     let active = true;
     setLoading(true);
     setError(null);
     withTimeout(supabase.from("orders")
-      .select("id,status,total,subtotal,delivery_fee,platform_fee,discount,distance_km,customer_name,created_at,address,latitude,longitude,items")
+      .select("id,status,total,subtotal,delivery_fee,platform_fee,discount,distance_km,customer_name,created_at,address,latitude,longitude,items,rider_id")
       .eq("id", id).maybeSingle()).then(({ data, error }) => {
         if (!active) return;
         if (error) throw error;
@@ -145,19 +176,47 @@ function OrderSuccess() {
         </p>
       </div>
 
+      {/* 1. ASSIGNED DELIVERY RIDER CARD */}
+      {order?.status !== "cancelled" && (order?.rider_id || rider || order?.status === "out_for_delivery") && (
+        <div className="mt-4 w-full max-w-sm rounded-2xl border bg-card p-4 text-left shadow-[var(--shadow-card)]">
+          <div className="flex items-center justify-between">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground flex items-center gap-1.5 font-bold">
+              <Bike className="h-4 w-4 text-primary" /> Delivery Partner
+            </p>
+            <span className="pulse-dot" />
+          </div>
+          <p className="mt-1 text-sm font-bold text-foreground">
+            {rider?.rider_name || "Assigned Delivery Partner"}
+          </p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {order?.status === "out_for_delivery"
+              ? "On the way with your food order"
+              : "Assigned for pickup and swift delivery"}
+          </p>
+          <a
+            href={`tel:${formatIndiaTel(rider?.phone || "9711720846")}`}
+            className="mt-3 inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-bold text-primary-foreground shadow-sm active:scale-95 transition"
+          >
+            <Phone className="h-4 w-4" /> Call Rider
+          </a>
+        </div>
+      )}
+
+      {/* 2. RESTAURANT CONTACT */}
       {contact?.phone && (
         <div className="mt-4 w-full max-w-sm rounded-2xl border bg-card p-4 text-left shadow-[var(--shadow-card)]">
           <p className="text-xs uppercase tracking-wide text-muted-foreground">Issue with your items?</p>
           <p className="mt-1 text-sm font-semibold">{contact.restaurant_name}</p>
           <a
-            href={`tel:${contact.phone}`}
-            className="mt-3 inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-bold text-primary-foreground"
+            href={`tel:${formatIndiaTel(contact.phone)}`}
+            className="mt-3 inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-bold text-primary-foreground shadow-sm active:scale-95 transition"
           >
             <Phone className="h-4 w-4" /> Call restaurant
           </a>
         </div>
       )}
 
+      {/* 3. KHANAGHARTAK SUPPORT */}
       {order?.status !== "cancelled" && (
         <div className="mt-4 w-full max-w-sm rounded-2xl border bg-card p-4 text-left shadow-[var(--shadow-card)]">
           <p className="text-xs uppercase tracking-wide text-muted-foreground">Need help with this order?</p>
@@ -165,7 +224,7 @@ function OrderSuccess() {
           <p className="mt-0.5 text-xs text-muted-foreground">For any order help, call us directly.</p>
           <a
             href="tel:+919711720846"
-            className="mt-3 inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-bold text-primary-foreground"
+            className="mt-3 inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-bold text-primary-foreground shadow-sm active:scale-95 transition"
           >
             <Phone className="h-4 w-4" /> Call KhanaGharTak
           </a>

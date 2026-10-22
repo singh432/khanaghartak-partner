@@ -200,6 +200,8 @@ export function UnifiedCartPage() {
       setRestaurantZoneId(r.zone_id ?? null);
       if (r.latitude != null && r.longitude != null) {
         setRestaurantCoords({ lat: r.latitude, lng: r.longitude });
+        // Seed default coords from restaurant so distance and delivery fee calculate immediately upfront
+        setCoords((cur) => cur ?? { lat: r.latitude!, lng: r.longitude! });
       }
     })();
     return () => {
@@ -208,15 +210,26 @@ export function UnifiedCartPage() {
   }, [ready, items]);
 
   // 9. Dynamic distance and delivery fee calculations on the SAME page
+  // Computes immediately so customer sees entire amount at once
+  const effectiveDistanceKm = useMemo(() => {
+    if (coords && restaurantCoords) {
+      return haversineKm(restaurantCoords, coords) * ROAD_FACTOR;
+    }
+    if (liveGpsCoords && restaurantCoords) {
+      return haversineKm(restaurantCoords, liveGpsCoords) * ROAD_FACTOR;
+    }
+    return 2.5; // Upfront baseline distance within active delivery zone
+  }, [coords, liveGpsCoords, restaurantCoords]);
+
   const distanceKm = useMemo(() => {
     if (!coords || !restaurantCoords) return null;
     return haversineKm(restaurantCoords, coords) * ROAD_FACTOR;
   }, [coords, restaurantCoords]);
 
   const baseDeliveryFee = useMemo(() => {
-    if (distanceKm == null) return 0;
-    return computeDeliveryCharge(subtotal, distanceKm, pricing.delivery_slabs, pricing.delivery_extra_per_km);
-  }, [subtotal, distanceKm, pricing.delivery_slabs, pricing.delivery_extra_per_km]);
+    const d = distanceKm ?? effectiveDistanceKm;
+    return computeDeliveryCharge(subtotal, d, pricing.delivery_slabs, pricing.delivery_extra_per_km);
+  }, [subtotal, distanceKm, effectiveDistanceKm, pricing.delivery_slabs, pricing.delivery_extra_per_km]);
 
   const deliveryFee = baseDeliveryFee;
 
@@ -229,7 +242,7 @@ export function UnifiedCartPage() {
   const outOfRange = !customerZone || !isLocationInServiceZone(coords, form.address, zones);
 
   const firstOrderDiscount = firstOrder ? Math.min(Math.round(subtotal * 0.05), 25) : 0;
-  const isDeliveryFeeApplicable = distanceKm != null && !outOfRange && !zoneMismatch;
+  const isDeliveryFeeApplicable = !outOfRange && !zoneMismatch;
   const effectiveDeliveryFee = isDeliveryFeeApplicable ? deliveryFee : 0;
 
   const grand = Math.max(
@@ -553,7 +566,7 @@ export function UnifiedCartPage() {
           <div className="flex items-center justify-between pb-1 border-b border-border/50">
             <h2 className="text-sm font-bold text-foreground">Bill Summary</h2>
             <span className="text-[11px] text-muted-foreground font-medium">
-              ETA: {estimateEta(items, distanceKm).label}
+              ETA: {estimateEta(items, distanceKm ?? effectiveDistanceKm).label}
             </span>
           </div>
 
@@ -565,18 +578,14 @@ export function UnifiedCartPage() {
               label={
                 distanceKm != null
                   ? `Delivery Fee (${distanceKm.toFixed(1)} km)`
-                  : "Delivery Fee"
+                  : `Delivery Fee (~${effectiveDistanceKm.toFixed(1)} km)`
               }
               value={
-                distanceKm != null
-                  ? outOfRange
-                    ? "—"
-                    : deliveryFee === 0
-                    ? "FREE"
-                    : `₹${deliveryFee.toFixed(2)}`
-                  : coords
-                  ? "Calculating…"
-                  : "Allow location"
+                outOfRange && coords
+                  ? "—"
+                  : deliveryFee === 0
+                  ? "FREE"
+                  : `₹${deliveryFee.toFixed(2)}`
               }
             />
 

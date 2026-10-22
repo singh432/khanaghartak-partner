@@ -11,6 +11,7 @@ import { DateRangeFilter } from "@/components/DateRangeFilter";
 import { inRange, rangeLabel, todayInputValue, type DateRange } from "@/lib/date-range";
 import { Bike, MapPin, Phone, Package, LogOut, CheckCircle2, Loader2, Clock, Wallet } from "lucide-react";
 import { firePartnerOrderAlert, silencePartnerOrderAlert } from "@/components/PartnerNotificationListener";
+import { formatIndiaTel } from "@/lib/phone";
 
 export const Route = createFileRoute("/rider")({
   component: RiderPanel,
@@ -25,6 +26,7 @@ type Order = {
   items: { name: string; qty: number; price: number }[];
   rider_id: string | null;
   restaurant_id: string | null;
+  payment_method?: string | null;
   created_at: string;
 };
 
@@ -39,7 +41,14 @@ type Offer = {
   expires_at: string;
 };
 
-type Restaurant = { id: string; name: string; address: string | null; phone: string | null };
+type Restaurant = {
+  id: string;
+  name: string;
+  address: string | null;
+  phone: string | null;
+  latitude: number | null;
+  longitude: number | null;
+};
 type RiderProfile = {
   status: "pending" | "approved" | "rejected" | "suspended";
   full_name: string | null;
@@ -180,6 +189,12 @@ function RiderPending({ profile, onSignOut }: { profile: RiderProfile; onSignOut
   );
 }
 
+function isOnlinePayment(method?: string | null): boolean {
+  if (!method) return false;
+  const m = method.trim().toLowerCase();
+  return m !== "cod" && m !== "cash" && m !== "cash_on_delivery";
+}
+
 function buildMapsUrl(o: Order) {
   if (o.latitude && o.longitude && !(o.latitude === 0 && o.longitude === 0)) {
     return `https://www.google.com/maps/dir/?api=1&destination=${o.latitude},${o.longitude}`;
@@ -192,6 +207,22 @@ function openMaps(o: Order) {
   const win = window.open(url, "_blank", "noopener,noreferrer");
   if (!win) {
     // popup blocked — fall back to top-level navigation
+    window.location.href = url;
+  }
+}
+
+function buildPickupMapsUrl(r: Restaurant) {
+  if (r.latitude && r.longitude && !(r.latitude === 0 && r.longitude === 0)) {
+    return `https://www.google.com/maps/dir/?api=1&destination=${r.latitude},${r.longitude}`;
+  }
+  const dest = [r.name, r.address].filter(Boolean).join(", ");
+  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(dest)}`;
+}
+
+function openPickupMaps(r: Restaurant) {
+  const url = buildPickupMapsUrl(r);
+  const win = window.open(url, "_blank", "noopener,noreferrer");
+  if (!win) {
     window.location.href = url;
   }
 }
@@ -236,23 +267,25 @@ function RiderDashboard({
       .from("orders")
       .select("*")
       .eq("rider_id", riderId)
-      .neq("status", "delivered")
+      .not("status", "in", '("delivered","cancelled","rejected")')
       .order("created_at", { ascending: false })
       .limit(100);
-    const mineList = ((mine ?? []) as any[]).map((ord) => {
-      let items = ord.items;
-      if (typeof items === "string") {
-        try {
-          items = JSON.parse(items);
-        } catch {
-          items = [];
+    const mineList = ((mine ?? []) as any[])
+      .filter((ord) => ord.status !== "delivered" && ord.status !== "cancelled" && ord.status !== "rejected")
+      .map((ord) => {
+        let items = ord.items;
+        if (typeof items === "string") {
+          try {
+            items = JSON.parse(items);
+          } catch {
+            items = [];
+          }
         }
-      }
-      return {
-        ...ord,
-        items: Array.isArray(items) ? items : [],
-      };
-    }) as Order[];
+        return {
+          ...ord,
+          items: Array.isArray(items) ? items : [],
+        };
+      }) as Order[];
     setMineOrders(mineList);
 
     // Earnings from completed deliveries
@@ -302,7 +335,7 @@ function RiderDashboard({
 
     const rIds = [...new Set(mineList.map((o) => o.restaurant_id).filter(Boolean))] as string[];
     if (rIds.length) {
-      const { data: rs } = await supabase.from("restaurants").select("id,name,address").in("id", rIds);
+      const { data: rs } = await supabase.from("restaurants").select("id,name,address,latitude,longitude").in("id", rIds);
       const map: Record<string, Restaurant> = {};
       (rs ?? []).forEach((r: any) => { map[r.id] = { ...r, phone: null }; });
       // Contact number is only released to the rider assigned to that order
@@ -313,6 +346,8 @@ function RiderDashboard({
         }),
       );
       setRestaurants(map);
+    } else {
+      setRestaurants({});
     }
   };
 
@@ -328,6 +363,37 @@ function RiderDashboard({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [riderId]);
+
+  useEffect(() => {
+    (window as any).__kgt_open_rider_order = (targetId: string) => {
+      if (!targetId) return false;
+      const clean = targetId.trim().toLowerCase();
+      const inMine = mineOrders.find((o) => o.id.toLowerCase().includes(clean));
+      if (inMine) {
+        setTab("mine");
+        return true;
+      }
+      const inOffers = offers.find((o) => o.order_id.toLowerCase().includes(clean));
+      if (inOffers) {
+        setTab("available");
+        return true;
+      }
+      return false;
+    };
+
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const targetId = params.get("orderId") || params.get("order_id");
+      if (targetId) {
+        const clean = targetId.trim().toLowerCase();
+        if (mineOrders.some((o) => o.id.toLowerCase().includes(clean))) {
+          setTab("mine");
+        } else if (offers.some((o) => o.order_id.toLowerCase().includes(clean))) {
+          setTab("available");
+        }
+      }
+    }
+  }, [mineOrders, offers]);
 
   // Broadcast live location to the customer while a delivery is in progress
   const onDelivery = mineOrders.length > 0;
@@ -488,7 +554,7 @@ function RiderDashboard({
               </div>
               <div className="text-right">
                 <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-bold text-primary">
-                  ₹{Number(o.total).toFixed(0)} COD
+                  ₹{Number(o.total).toFixed(0)}
                 </span>
                 <p className="mt-1 text-[11px] font-bold text-destructive">
                   <Countdown expiresAt={o.expires_at} onExpire={load} />
@@ -533,16 +599,45 @@ function RiderDashboard({
                   <p className="font-mono text-[11px] font-bold text-muted-foreground">#{o.id.slice(0, 8).toUpperCase()}</p>
                   <p className="text-base font-bold leading-tight">{o.customer_name}</p>
                 </div>
-                <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-bold text-primary">
-                  ₹{Number(o.total).toFixed(0)} COD
-                </span>
+                <div className="flex flex-col items-end gap-1">
+                  {isOnlinePayment(o.payment_method) ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-400">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      Paid Online · Do Not Collect Cash
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 border border-amber-500/30 px-2.5 py-1 text-[11px] font-bold text-amber-700 dark:text-amber-400">
+                      ₹{Number(o.total).toFixed(0)} COD · Collect Cash
+                    </span>
+                  )}
+                </div>
               </div>
 
               {r && (
                 <div className="mt-3 rounded-xl bg-accent/40 p-3 text-xs">
-                  <p className="font-bold text-foreground">Pickup: {r.name}</p>
-                  {r.address && <p className="text-muted-foreground">{r.address}</p>}
-                  {r.phone && <a href={`tel:${r.phone}`} className="mt-1 inline-flex items-center gap-1 font-semibold text-primary"><Phone className="h-3 w-3" /> {r.phone}</a>}
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="font-bold text-foreground">Pickup: {r.name}</p>
+                      {r.address && <p className="text-muted-foreground mt-0.5">{r.address}</p>}
+                    </div>
+                  </div>
+                  <div className="mt-2.5 flex flex-wrap gap-2">
+                    {r.phone && (
+                      <a
+                        href={`tel:${formatIndiaTel(r.phone)}`}
+                        className="inline-flex items-center gap-1 rounded-full bg-card px-3 py-1.5 text-xs font-bold text-foreground shadow-xs border hover:bg-secondary transition-colors"
+                      >
+                        <Phone className="h-3 w-3 text-primary" /> {r.phone}
+                      </a>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => openPickupMaps(r)}
+                      className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 px-3 py-1.5 text-xs font-bold transition-colors"
+                    >
+                      <MapPin className="h-3 w-3" /> Open Pickup in Maps
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -551,7 +646,7 @@ function RiderDashboard({
                 {o.landmark && <p className="text-muted-foreground">Landmark: {o.landmark}</p>}
                 {o.notes && <p className="mt-1 text-muted-foreground italic">Note: {o.notes}</p>}
                 <div className="mt-2 flex flex-wrap gap-2">
-                  <a href={`tel:${o.customer_phone}`} className="inline-flex items-center gap-1 rounded-full bg-card px-3 py-1.5 text-xs font-bold">
+                  <a href={`tel:${formatIndiaTel(o.customer_phone)}`} className="inline-flex items-center gap-1 rounded-full bg-card px-3 py-1.5 text-xs font-bold">
                     <Phone className="h-3 w-3" /> {o.customer_phone}
                   </a>
                   <button type="button" onClick={() => openMaps(o)}

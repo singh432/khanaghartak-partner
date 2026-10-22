@@ -2,7 +2,6 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { isRestaurantOpen } from "@/lib/hours";
 import { useMinuteTick } from "@/hooks/useMinuteTick";
-import { browseEta } from "@/lib/eta";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocationGate } from "@/hooks/useLocationGate";
@@ -801,10 +800,6 @@ function HomePage() {
                                   <span>{r.distance.toFixed(1)} km</span>
                                 </>
                               )}
-                              <span>•</span>
-                              <span className="font-semibold text-foreground/75">
-                                {browseEta(r.distance).label}
-                              </span>
                             </div>
                           )}
                         </div>
@@ -866,7 +861,6 @@ function HomePage() {
                         restaurant={restaurant}
                         items={dishes.filter((d) => d.restaurant_id === restaurant.id)}
                         isOpen={isRestaurantOpen(restaurant)}
-                        etaLabel={browseEta(restaurant.distance).label}
                         autoSlideIntervalMs={3000}
                       />
 
@@ -927,7 +921,6 @@ function HomePage() {
                       restaurant={restaurant}
                       items={dishes.filter((d) => d.restaurant_id === restaurant.id)}
                       isOpen={isRestaurantOpen(restaurant)}
-                      etaLabel={browseEta(restaurant.distance).label}
                       autoSlideIntervalMs={3000}
                     />
 

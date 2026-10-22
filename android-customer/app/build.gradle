@@ -7,8 +7,8 @@ android {
         applicationId "in.khanaghartak.customer"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 5
-        versionName "1.0.1"
+        versionCode 10
+        versionName "1.0.6"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -32,6 +32,8 @@ android {
                 storePassword keystoreProperties['storePassword'] ?: "FB6iP7tAXi5ysP5l6vNEOcDw"
                 keyAlias keystoreProperties['keyAlias'] ?: "khanaghartak-customer"
                 keyPassword keystoreProperties['keyPassword'] ?: "FB6iP7tAXi5ysP5l6vNEOcDw"
+                v1SigningEnabled true
+                v2SigningEnabled true
             }
         }
     }
@@ -61,6 +63,7 @@ dependencies {
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
     implementation project(':capacitor-cordova-android-plugins')
     implementation 'com.google.android.gms:play-services-auth-api-phone:18.1.0'
+    implementation 'com.google.android.gms:play-services-location:21.3.0'
     implementation 'com.cashfree.pg:api:2.6.0'
 }
 

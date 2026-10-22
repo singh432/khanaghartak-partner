@@ -23,7 +23,7 @@ interface RestaurantCoverCarouselProps {
   restaurant: CarouselRestaurant;
   items: CarouselDish[];
   isOpen: boolean;
-  etaLabel: string;
+  etaLabel?: string;
   autoSlideIntervalMs?: number;
 }
 
@@ -291,10 +291,12 @@ export function RestaurantCoverCarousel({
         </div>
       )}
 
-      {/* Bottom Right: ETA badge */}
-      <span className="absolute bottom-0 right-0 z-30 rounded-tl-2xl bg-card px-3 py-1.5 text-xs font-extrabold tracking-tight shadow-sm text-foreground">
-        {etaLabel}
-      </span>
+      {/* Bottom Right: ETA badge (hidden if not provided) */}
+      {etaLabel ? (
+        <span className="absolute bottom-0 right-0 z-30 rounded-tl-2xl bg-card px-3 py-1.5 text-xs font-extrabold tracking-tight shadow-sm text-foreground">
+          {etaLabel}
+        </span>
+      ) : null}
     </div>
   );
 }

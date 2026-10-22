@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Bike, MapPin, Navigation } from "lucide-react";
+import { Bike, MapPin, Navigation, Phone } from "lucide-react";
 
 type RiderLoc = {
   latitude: number;
@@ -106,18 +106,26 @@ export function RiderLiveTracker({
         loading="lazy"
       />
 
-      <div className="flex items-center justify-between gap-2 p-3">
+      <div className="flex items-center justify-between gap-2 p-3 bg-muted/20">
         <p className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
           <MapPin className="h-3 w-3" /> Live position refreshes every 10s
         </p>
-        <a
-          href={`https://www.google.com/maps/search/?api=1&query=${loc.latitude},${loc.longitude}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 rounded-full bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground"
-        >
-          <Navigation className="h-3 w-3" /> View in Maps
-        </a>
+        <div className="flex items-center gap-2">
+          <a
+            href={`https://www.google.com/maps/search/?api=1&query=${loc.latitude},${loc.longitude}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 rounded-full border bg-card px-3 py-1.5 text-xs font-bold text-foreground hover:bg-muted active:scale-95 transition"
+          >
+            <Navigation className="h-3 w-3 text-primary" /> Maps
+          </a>
+          <a
+            href="tel:+919711720846"
+            className="inline-flex items-center gap-1 rounded-full bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground shadow-xs active:scale-95 transition"
+          >
+            <Phone className="h-3 w-3" /> Call
+          </a>
+        </div>
       </div>
     </div>
   );
