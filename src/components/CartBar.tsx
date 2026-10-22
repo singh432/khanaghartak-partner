@@ -56,7 +56,7 @@ export function CartBar() {
           <div className="text-[11px] opacity-90">Extra charges may apply</div>
         </div>
       </div>
-      <span className="text-sm font-bold">View Cart →</span>
+      <span className="text-sm font-bold">View Cart & Order →</span>
     </Link>
   );
 }

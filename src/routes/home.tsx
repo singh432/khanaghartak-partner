@@ -15,7 +15,7 @@ import { withTimeout } from "@/lib/supabase-query";
 import { isCustomerApp, isPartnerApp } from "@/lib/capacitor";
 import { getCategoryImage } from "@/lib/categoryImages";
 import { RestaurantCoverCarousel } from "@/components/RestaurantCoverCarousel";
-import { Star, Clock, MapPin, LogOut, Search, X, UtensilsCrossed } from "lucide-react";
+import { Star, Clock, MapPin, LogOut, Search, X, UtensilsCrossed, Navigation } from "lucide-react";
 import { khanaGharTakLogoUrl } from "@/assets/brand";
 import hero from "@/assets/hero.jpg";
 
@@ -398,7 +398,44 @@ function HomePage() {
   if (!user) return <PageSpinner label="Opening sign in…" />;
 
   if (activeZones.length === 0 || (locationStatus === "checking" && !currentZone)) {
-    return <PageSpinner label="Detecting delivery zone…" />;
+    return <PageSpinner label="Detecting restaurants in your zone…" />;
+  }
+
+  // If zone cannot be determined yet (e.g. user has not allowed location yet)
+  if (!currentZone && !isOutsideZone) {
+    return (
+      <div className="pb-10">
+        <BrandHeader subtitle="Find food near you" />
+        <div className="mx-auto flex min-h-[65dvh] max-w-md flex-col items-center justify-center px-6 py-10 text-center">
+          <div className="relative mb-6 flex items-center justify-center">
+            <div className="absolute h-24 w-24 animate-ping rounded-full bg-primary/20 opacity-75 duration-1000" />
+            <div className="relative grid h-16 w-16 place-items-center rounded-3xl bg-gradient-to-tr from-primary to-amber-500 text-white shadow-lg">
+              <MapPin className="h-8 w-8 text-white drop-shadow" />
+            </div>
+          </div>
+          <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
+            Allow location to view restaurants
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground max-w-xs">
+            Allow device location to instantly discover local kitchens and home-style food delivering in your area.
+          </p>
+          <div className="mt-6 flex flex-col gap-3 w-full max-w-xs">
+            <button
+              onClick={() => requestLocation()}
+              className="inline-flex h-12 w-full items-center justify-center rounded-2xl bg-primary text-[15px] font-bold text-primary-foreground shadow-[var(--shadow-soft)] transition active:scale-95"
+            >
+              <Navigation className="mr-2 h-4 w-4" /> Allow Location
+            </button>
+            <button
+              onClick={() => navigate({ to: "/location" })}
+              className="inline-flex h-10 w-full items-center justify-center rounded-xl text-xs font-semibold text-muted-foreground hover:text-foreground transition"
+            >
+              Or select your delivery area
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   // OUTSIDE SERVICE ZONE: Do NOT show any restaurants, categories, dishes or restaurant cards.
@@ -548,15 +585,6 @@ function HomePage() {
             </div>
           )}
         </div>
-
-        {!profileAddress && (
-          <Link to="/location"
-            className="mb-4 flex items-center gap-3 rounded-2xl border bg-accent/50 p-3 text-sm">
-            <MapPin className="h-4 w-4 text-primary" />
-            <span className="flex-1">Add your delivery address to get started</span>
-            <span className="rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground">Add</span>
-          </Link>
-        )}
 
         {!isSearchActive && categoryNames.length > 0 && (
           <div className="-mx-4 mb-5 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
