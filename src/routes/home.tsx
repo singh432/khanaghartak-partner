@@ -7,14 +7,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocationGate } from "@/hooks/useLocationGate";
 import { distanceKm as haversineKm, isWithinServiceArea, type LatLng } from "@/lib/geo";
-import { fetchActiveZones, zoneForPoint, isLocationInServiceZone, type DeliveryZone } from "@/lib/zones";
+import { fetchActiveZones, zoneForPoint, zoneForAddress, resolveCustomerZone, isLocationInServiceZone, type DeliveryZone } from "@/lib/zones";
 import { BrandHeader } from "@/components/BrandHeader";
 import { PageError, PageSpinner } from "@/components/PageState";
 import { RatingPrompt } from "@/components/RatingPrompt";
 import { withTimeout } from "@/lib/supabase-query";
-import { isCustomerApp } from "@/lib/capacitor";
+import { isCustomerApp, isPartnerApp } from "@/lib/capacitor";
 import { getCategoryImage } from "@/lib/categoryImages";
-import { Star, Clock, MapPin, LogOut, Search, X, UtensilsCrossed, Sparkles } from "lucide-react";
+import { RestaurantCoverCarousel } from "@/components/RestaurantCoverCarousel";
+import { Star, Clock, MapPin, LogOut, Search, X, UtensilsCrossed } from "lucide-react";
 import { khanaGharTakLogoUrl } from "@/assets/brand";
 import hero from "@/assets/hero.jpg";
 
@@ -112,7 +113,7 @@ function HomePage() {
           if (data?.latitude && data?.longitude) {
             const p = { lat: data.latitude, lng: data.longitude };
             setDeliveryCoords(p);
-            if (!selectedCoords) setSelectedCoords(p);
+            if (!selectedCoords && !coords) setSelectedCoords(p);
           } else if (coords && !selectedCoords) {
             setDeliveryCoords(coords);
           }
@@ -125,96 +126,107 @@ function HomePage() {
 
   // Keep delivery address and coords synchronized with storage changes
   useEffect(() => {
-    const handleStorage = () => {
+    const handleStorage = (e?: any) => {
       const addr = localStorage.getItem("kgt:delivery-address") || "";
       setSelectedAddress(addr);
       try {
-        const raw = localStorage.getItem("kgt:user-coords");
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          if (typeof parsed.lat === "number" && typeof parsed.lng === "number") {
-            setSelectedCoords({ lat: parsed.lat, lng: parsed.lng });
+        let p: LatLng | null = null;
+        if (e && e.detail && typeof e.detail.lat === "number" && typeof e.detail.lng === "number") {
+          p = { lat: e.detail.lat, lng: e.detail.lng };
+        } else {
+          const raw = localStorage.getItem("kgt:user-coords");
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (typeof parsed.lat === "number" && typeof parsed.lng === "number") {
+              p = { lat: parsed.lat, lng: parsed.lng };
+            }
           }
+        }
+        if (p) {
+          setSelectedCoords(p);
         }
       } catch {}
     };
+    window.addEventListener("kgt:native-coords", handleStorage);
     window.addEventListener("storage", handleStorage);
     window.addEventListener("kgt:address-changed", handleStorage);
     return () => {
+      window.removeEventListener("kgt:native-coords", handleStorage);
       window.removeEventListener("storage", handleStorage);
       window.removeEventListener("kgt:address-changed", handleStorage);
     };
   }, []);
 
+  // Priority: live GPS coords from useLocationGate or native device coords take precedence over stale stored profile coords
+  const gpsCoords = coords || (typeof window !== "undefined" && (window as any).__native_device_coords ? (window as any).__native_device_coords : null);
+  const effectiveCoords = gpsCoords || selectedCoords || deliveryCoords;
   const effectiveAddress = selectedAddress || profileAddress;
-  const effectiveCoords = selectedCoords || deliveryCoords || coords;
+
+  // Resolve authoritative delivery zone for this customer
+  const currentZone = useMemo(() => {
+    if (activeZones.length === 0) return null;
+    if (gpsCoords) {
+      const z = zoneForPoint(gpsCoords, activeZones);
+      if (z) return z;
+    }
+    return resolveCustomerZone(effectiveCoords, effectiveAddress, activeZones);
+  }, [gpsCoords, effectiveCoords, effectiveAddress, activeZones]);
 
   // Accurately check whether the delivery location / address is outside supported service zones
   const isOutsideZone = useMemo(() => {
+    if (isPartnerApp()) return false;
+    // If activeZones hasn't finished loading yet, do not falsely flag outside zone
+    if (activeZones.length === 0) return false;
+    // If coords and address are not yet determined (e.g. asking for location), do not show outside zone
+    if (!effectiveCoords && !effectiveAddress) return false;
     if (locationStatus === "outside_zone") return true;
-    const isServiceable = isLocationInServiceZone(effectiveCoords, effectiveAddress, activeZones);
-    return !isServiceable;
-  }, [effectiveAddress, effectiveCoords, activeZones, locationStatus]);
+    return !currentZone;
+  }, [effectiveAddress, effectiveCoords, activeZones, locationStatus, currentZone]);
 
-  const quickSwitchToShankargarh = async () => {
-    const shankargarhAddr = "Main Bazaar, Shankargarh, Prayagraj - 212108";
-    const shankargarhCoords = { lat: 25.1842, lng: 81.6212 };
-    setSelectedAddress(shankargarhAddr);
-    setSelectedCoords(shankargarhCoords);
-    setProfileAddress(shankargarhAddr);
-    setDeliveryCoords(shankargarhCoords);
-    try {
-      localStorage.setItem("kgt:delivery-address", shankargarhAddr);
-      localStorage.setItem("kgt:user-coords", JSON.stringify({ ...shankargarhCoords, ts: Date.now() }));
-      window.dispatchEvent(new Event("kgt:address-changed"));
-    } catch {}
-    if (user) {
-      await supabase.from("profiles").upsert({
-        id: user.id,
-        address: shankargarhAddr,
-        latitude: shankargarhCoords.lat,
-        longitude: shankargarhCoords.lng,
-      }, { onConflict: "id" });
+  const displayDeliverTo = useMemo(() => {
+    if (currentZone) {
+      const addrZone = effectiveAddress ? zoneForAddress(effectiveAddress, activeZones) : null;
+      if (effectiveAddress && (!addrZone || addrZone.id === currentZone.id)) {
+        return `Deliver to: ${effectiveAddress.slice(0, 30)}${effectiveAddress.length > 30 ? "…" : ""}`;
+      }
+      return `Deliver to: ${currentZone.name}`;
     }
-  };
+    if (effectiveAddress) {
+      return `Deliver to: ${effectiveAddress.slice(0, 30)}${effectiveAddress.length > 30 ? "…" : ""}`;
+    }
+    return "Set your delivery location";
+  }, [currentZone, effectiveAddress, activeZones]);
 
   useEffect(() => {
     let active = true;
 
-    // If outside service zone, do not fetch restaurants or categories
-    if (isOutsideZone) {
+    // If outside service zone or active zone could not be resolved, do not fetch restaurants or categories
+    if (isOutsideZone || !currentZone) {
       setRestaurants([]);
       setDishes([]);
+      setCategoryMap({});
       setRestaurantLoading(false);
       return;
     }
 
     setRestaurantLoading(true);
     setRestaurantError(null);
-    withTimeout(supabase.from("restaurants").select("id, name, tagline, image_url, banner_url, rating, rating_count, is_open, address, opening_time, closing_time, min_order_value, delivery_charges, status, latitude, longitude, created_at, zone_id").eq("status", "active"))
+
+    // CRITICAL: Filter at the database query level with .eq("zone_id", currentZone.id)
+    withTimeout(
+      supabase
+        .from("restaurants")
+        .select("id, name, tagline, image_url, banner_url, rating, rating_count, is_open, address, opening_time, closing_time, min_order_value, delivery_charges, status, latitude, longitude, created_at, zone_id")
+        .eq("status", "active")
+        .eq("zone_id", currentZone.id)
+    )
       .then(({ data, error }) => {
         if (!active) return;
         if (error) throw error;
         const all = (data ?? []) as Restaurant[];
-        const targetZone = effectiveCoords ? zoneForPoint(effectiveCoords, activeZones) : null;
 
-        // Show only restaurants available for the detected delivery zone
-        const zoneRestaurants = all.filter((r) => {
-          // If restaurant has zone_id and targetZone is resolved, must match
-          if (r.zone_id && targetZone?.id) {
-            return r.zone_id === targetZone.id;
-          }
-          // If restaurant has zone_id for a different zone, exclude it
-          if (r.zone_id && activeZones.length > 0 && targetZone && r.zone_id !== targetZone.id) {
-            return false;
-          }
-          // If distance is known, ensure restaurant is within reachable delivery radius (15km)
-          if (effectiveCoords && r.latitude != null && r.longitude != null) {
-            const d = haversineKm(effectiveCoords, { lat: r.latitude, lng: r.longitude });
-            return d <= 15;
-          }
-          return true;
-        });
+        // Strict in-memory safety check to ensure 0 restaurants from other zones slip through
+        const zoneRestaurants = all.filter((r) => r.zone_id === currentZone.id);
 
         const nearby = zoneRestaurants
           .map((r) => {
@@ -226,6 +238,30 @@ function HomePage() {
           .sort((a, b) => (a.distance ?? Number.MAX_SAFE_INTEGER) - (b.distance ?? Number.MAX_SAFE_INTEGER));
 
         setRestaurants(nearby);
+
+        // Fetch categories strictly for the restaurants in this zone
+        const rIds = nearby.map((r) => r.id);
+        if (rIds.length > 0) {
+          withTimeout(
+            supabase
+              .from("categories")
+              .select("name, restaurant_id")
+              .in("restaurant_id", rIds)
+          )
+            .then(({ data: catData }) => {
+              if (!active) return;
+              const map: Record<string, string[]> = {};
+              for (const row of (catData ?? []) as Array<{ name: string; restaurant_id: string }>) {
+                const key = row.name.trim();
+                if (!key) continue;
+                (map[key] ||= []).push(row.restaurant_id);
+              }
+              setCategoryMap(map);
+            })
+            .catch(() => undefined);
+        } else {
+          setCategoryMap({});
+        }
       })
       .catch((err) => {
         if (active) setRestaurantError(err instanceof Error ? err.message : "Could not load restaurants");
@@ -234,21 +270,8 @@ function HomePage() {
         if (active) setRestaurantLoading(false);
       });
 
-    withTimeout(supabase.from("categories").select("name, restaurant_id"))
-      .then(({ data }) => {
-        if (!active) return;
-        const map: Record<string, string[]> = {};
-        for (const row of (data ?? []) as Array<{ name: string; restaurant_id: string }>) {
-          const key = row.name.trim();
-          if (!key) continue;
-          (map[key] ||= []).push(row.restaurant_id);
-        }
-        setCategoryMap(map);
-      })
-      .catch(() => undefined);
-
     return () => { active = false; };
-  }, [user, effectiveCoords, activeZones, isOutsideZone]);
+  }, [user, currentZone?.id, effectiveCoords?.lat, effectiveCoords?.lng, isOutsideZone]);
 
   // Zomato-style popular food categories
   const POPULAR_CATEGORIES = [
@@ -280,25 +303,31 @@ function HomePage() {
   }, [categoryMap, restaurants]);
 
   useEffect(() => {
-    if (!isOutsideZone && restaurants.length > 0 && !dishesLoaded) {
-      const ids = restaurants.map((r) => r.id);
-      withTimeout(
-        supabase
-          .from("menu_items")
-          .select("id, restaurant_id, name, price, offer_price, image_url, veg_type")
-          .eq("is_available", true)
-          .in("restaurant_id", ids)
-          .limit(300)
-      )
-        .then(({ data }) => {
-          if (data) {
-            setDishes(data as Dish[]);
-            setDishesLoaded(true);
-          }
-        })
-        .catch(() => {});
+    let active = true;
+    if (isOutsideZone || restaurants.length === 0) {
+      setDishes([]);
+      setDishesLoaded(true);
+      return;
     }
-  }, [isOutsideZone, restaurants, dishesLoaded]);
+    const ids = restaurants.map((r) => r.id);
+    withTimeout(
+      supabase
+        .from("menu_items")
+        .select("id, restaurant_id, name, price, offer_price, image_url, veg_type")
+        .eq("is_available", true)
+        .in("restaurant_id", ids)
+        .order("image_url", { ascending: false, nullsFirst: false })
+        .limit(1500)
+    )
+      .then(({ data }) => {
+        if (active && data) {
+          setDishes(data as Dish[]);
+          setDishesLoaded(true);
+        }
+      })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [isOutsideZone, restaurants]);
 
   const visibleRestaurants = useMemo(() => {
     let list = restaurants;
@@ -363,6 +392,10 @@ function HomePage() {
   if (loading) return <PageSpinner label="Checking your session…" />;
   if (!user) return <PageSpinner label="Opening sign in…" />;
 
+  if (activeZones.length === 0 || (locationStatus === "checking" && !currentZone)) {
+    return <PageSpinner label="Detecting delivery zone…" />;
+  }
+
   // OUTSIDE SERVICE ZONE: Do NOT show any restaurants, categories, dishes or restaurant cards.
   if (isOutsideZone) {
     const chipAddr = effectiveAddress
@@ -397,7 +430,7 @@ function HomePage() {
                 Delivery is currently unavailable at <strong className="text-foreground font-semibold">"{effectiveAddress.length > 35 ? effectiveAddress.slice(0, 35) + "…" : effectiveAddress}"</strong>.
               </>
             ) : (
-              "KhanaGharTak is currently delivering only in our active service zone (Shankargarh & nearby areas)."
+              "KhanaGharTak is currently delivering only in our active service zones (Shankargarh, Chakghat & nearby areas)."
             )}
             {" "}Change your delivery address to order to another location!
           </p>
@@ -408,14 +441,6 @@ function HomePage() {
               className="inline-flex h-12 w-full items-center justify-center rounded-2xl bg-primary text-[15px] font-bold text-primary-foreground shadow-[var(--shadow-soft)] transition active:scale-95"
             >
               Change delivery address
-            </button>
-
-            <button
-              onClick={quickSwitchToShankargarh}
-              className="inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-2xl border border-primary/30 bg-primary/5 text-xs font-bold text-primary transition hover:bg-primary/10 active:scale-95"
-            >
-              <Sparkles className="h-3.5 w-3.5" />
-              Switch to Shankargarh Zone
             </button>
 
             <button
@@ -433,7 +458,7 @@ function HomePage() {
 
   return (
     <div className="pb-10">
-      <BrandHeader subtitle={effectiveAddress ? `Deliver to: ${effectiveAddress.slice(0, 30)}${effectiveAddress.length > 30 ? "…" : ""}` : "Set your delivery location"} />
+      <BrandHeader subtitle={displayDeliverTo} />
       <RatingPrompt userId={user.id} />
 
       <div className="px-4 pt-4">
@@ -706,16 +731,13 @@ function HomePage() {
                     aria-label={`View menu of ${restaurant.name}`}
                     className="block overflow-hidden rounded-3xl bg-card shadow-[var(--shadow-card)] fade-in"
                   >
-                    <div className="relative h-48 w-full overflow-hidden">
-                      <img src={restaurant.banner_url ?? restaurant.image_url ?? hero} alt={restaurant.name}
-                        className="h-full w-full object-cover" width={1600} height={900} loading="lazy" />
-                      <span className={`absolute left-3 top-3 rounded-full px-3 py-1 text-xs font-semibold ${isRestaurantOpen(restaurant) ? "bg-success text-success-foreground" : "bg-destructive text-destructive-foreground"}`}>
-                        {isRestaurantOpen(restaurant) ? "Open" : "Closed"}
-                      </span>
-                      <span className="absolute bottom-0 right-0 rounded-tl-2xl bg-card px-3 py-1.5 text-xs font-extrabold tracking-tight">
-                        {browseEta(restaurant.distance).label}
-                      </span>
-                    </div>
+                    <RestaurantCoverCarousel
+                      restaurant={restaurant}
+                      items={dishes.filter((d) => d.restaurant_id === restaurant.id)}
+                      isOpen={isRestaurantOpen(restaurant)}
+                      etaLabel={browseEta(restaurant.distance).label}
+                      autoSlideIntervalMs={3000}
+                    />
 
                     <div className="px-4 pb-4 pt-3">
                       <h2 className="text-lg font-extrabold leading-tight tracking-tight">{restaurant.name}</h2>

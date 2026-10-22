@@ -4,11 +4,13 @@ import { useCart } from "@/hooks/useCart";
 import { usePricingSettings } from "@/hooks/usePricingSettings";
 import { useEffect, useState } from "react";
 import { useLocationGate } from "@/hooks/useLocationGate";
-import { fetchActiveZones, isLocationInServiceZone, type DeliveryZone } from "@/lib/zones";
+import { fetchActiveZones, resolveCustomerZone, isLocationInServiceZone, type DeliveryZone } from "@/lib/zones";
+import { supabase } from "@/integrations/supabase/client";
 import { PageSpinner } from "@/components/PageState";
 import { AlertCircle, MapPin, Plus, Minus, Trash2, ShoppingBag } from "lucide-react";
 
 import { cartHasHandiNonVeg, HANDI_PREP_NOTE, cartHasCake, CAKE_PREP_NOTE } from "@/lib/portions";
+import { isPartnerApp } from "@/lib/capacitor";
 
 export const Route = createFileRoute("/cart")({
   component: CartPage,
@@ -27,7 +29,7 @@ export const Route = createFileRoute("/cart")({
 
 function CartPage() {
   const navigate = useNavigate();
-  const { items, ready, inc, dec, remove, subtotal, totalQty } = useCart();
+  const { items, ready, inc, dec, remove, clear, subtotal, totalQty } = useCart();
   const pricing = usePricingSettings();
 
   const { coords, status: locationStatus } = useLocationGate();
@@ -72,8 +74,30 @@ function CartPage() {
     };
   }, []);
 
-  const effectiveCoords = selectedCoords || coords;
-  const isOutsideZone = locationStatus === "outside_zone" || !isLocationInServiceZone(effectiveCoords, selectedAddress, activeZones);
+  const gpsCoords = coords || (typeof window !== "undefined" && (window as any).__native_device_coords ? (window as any).__native_device_coords : null);
+  const effectiveCoords = gpsCoords || selectedCoords;
+  const currentZone = resolveCustomerZone(effectiveCoords, selectedAddress, activeZones);
+  const isOutsideZone = !isPartnerApp() && (locationStatus === "outside_zone" || (activeZones.length > 0 && !currentZone && (effectiveCoords || selectedAddress)));
+
+  const [cartRestaurantZoneId, setCartRestaurantZoneId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const rId = items[0]?.restaurant_id;
+    if (!rId) {
+      setCartRestaurantZoneId(null);
+      return;
+    }
+    supabase
+      .from("restaurants")
+      .select("zone_id")
+      .eq("id", rId)
+      .maybeSingle()
+      .then(({ data }) => {
+        setCartRestaurantZoneId(data?.zone_id ?? null);
+      });
+  }, [items]);
+
+  const isZoneMismatch = !!(currentZone && cartRestaurantZoneId && cartRestaurantZoneId !== currentZone.id);
 
   const grand = subtotal + (subtotal > 0 ? pricing.platform_fee : 0);
 
@@ -150,7 +174,7 @@ function CartPage() {
               <span>Delivery unavailable in your area</span>
             </div>
             <p className="text-muted-foreground leading-relaxed">
-              KhanaGharTak does not deliver to your selected location yet. Please change to an address in Shankargarh to place your order.
+              KhanaGharTak does not deliver to your selected location yet. Please change to an address in Shankargarh, Chakghat, or nearby active areas to place your order.
             </p>
             <button
               onClick={() => navigate({ to: "/location" })}
@@ -158,6 +182,35 @@ function CartPage() {
             >
               <MapPin className="h-3.5 w-3.5" /> Change delivery address
             </button>
+          </div>
+        )}
+
+        {isZoneMismatch && (
+          <div className="mt-4 rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-xs text-destructive">
+            <div className="flex items-center gap-2 font-bold text-sm mb-1">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span>Cross-zone delivery not allowed</span>
+            </div>
+            <p className="text-muted-foreground leading-relaxed">
+              The restaurant in your cart belongs to another delivery zone and cannot deliver to your current location. Please empty your cart and order from restaurants in your zone.
+            </p>
+            <div className="mt-3 flex gap-2">
+              <button
+                onClick={() => {
+                  clear();
+                  navigate({ to: "/home" });
+                }}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-destructive px-3.5 py-2 font-bold text-destructive-foreground active:scale-95 transition"
+              >
+                Clear Cart & Browse Local
+              </button>
+              <button
+                onClick={() => navigate({ to: "/location" })}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-destructive/40 bg-card px-3.5 py-2 font-bold text-destructive active:scale-95 transition"
+              >
+                Change Address
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -168,13 +221,17 @@ function CartPage() {
       >
         <button
           onClick={() => {
-            if (isOutsideZone) return;
+            if (isOutsideZone || isZoneMismatch) return;
             navigate({ to: "/checkout" });
           }}
-          disabled={isOutsideZone}
+          disabled={isOutsideZone || isZoneMismatch}
           className="flex h-12 w-full items-center justify-center rounded-2xl bg-primary text-sm font-bold text-primary-foreground shadow-[var(--shadow-soft)] disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {isOutsideZone ? "Cannot Checkout Outside Service Area" : `Proceed to Checkout · ₹${grand.toFixed(0)}`}
+          {isOutsideZone
+            ? "Cannot Checkout Outside Service Area"
+            : isZoneMismatch
+            ? "Cannot Order Across Delivery Zones"
+            : `Proceed to Checkout · ₹${grand.toFixed(0)}`}
         </button>
       </div>
     </div>

@@ -22,7 +22,7 @@ import { PhoneVerification } from "@/components/PhoneVerification";
 import { withTimeout } from "@/lib/supabase-query";
 import { MapPin, Navigation, Loader2, Wallet, AlertTriangle } from "lucide-react";
 import { cartHasHandiNonVeg, HANDI_PREP_NOTE, cartHasCake, CAKE_PREP_NOTE } from "@/lib/portions";
-import { fetchActiveZones, zoneForPoint, isLocationInServiceZone, OUTSIDE_ZONE_MESSAGE, type DeliveryZone } from "@/lib/zones";
+import { fetchActiveZones, zoneForPoint, resolveCustomerZone, isLocationInServiceZone, OUTSIDE_ZONE_MESSAGE, type DeliveryZone } from "@/lib/zones";
 
 const LocationPicker = lazy(() => import("@/components/LocationPicker.client"));
 
@@ -56,6 +56,7 @@ function CheckoutPage() {
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [showPicker, setShowPicker] = useState(false);
   const [restaurantCoords, setRestaurantCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [restaurantZoneId, setRestaurantZoneId] = useState<string | null>(null);
   const [restaurantClosed, setRestaurantClosed] = useState(false);
   const [placing, setPlacing] = useState(false);
   const [placed, setPlaced] = useState(false);
@@ -146,11 +147,12 @@ function CheckoutPage() {
       if (!active || !mi?.restaurant_id) return;
       const { data: r } = await supabase
         .from("restaurants")
-        .select("latitude, longitude, is_open, opening_time, closing_time")
+        .select("latitude, longitude, is_open, opening_time, closing_time, zone_id")
         .eq("id", mi.restaurant_id)
         .maybeSingle();
       if (!active) return;
       setRestaurantClosed(!!r && !isRestaurantOpen(r as any));
+      setRestaurantZoneId(r?.zone_id ?? null);
       if (r?.latitude != null && r?.longitude != null) {
         setRestaurantCoords({ lat: r.latitude, lng: r.longitude });
       }
@@ -181,13 +183,14 @@ function CheckoutPage() {
       : 0;
   
   const deliveryFee = baseDeliveryFee;
-  // Delivery eligibility comes from the service zone check (both polygon and Shankargarh radius)
-  const zone = coords && zones ? zoneForPoint(coords, zones) : null;
-  const outOfRange = !isLocationInServiceZone(coords, form.address, zones || []);
+  // Delivery eligibility comes from the authoritative service zone check
+  const customerZone = coords && zones ? resolveCustomerZone(coords, form.address, zones) : null;
+  const zoneMismatch = !!(customerZone && restaurantZoneId && customerZone.id !== restaurantZoneId);
+  const outOfRange = !customerZone || !isLocationInServiceZone(coords, form.address, zones || []);
   const firstOrderDiscount = firstOrder ? Math.min(Math.round(subtotal * 0.05), 25) : 0;
   const grand = Math.max(
     0,
-    subtotal + (distanceKm != null && !outOfRange ? deliveryFee : 0) + pricing.platform_fee - firstOrderDiscount,
+    subtotal + (distanceKm != null && !outOfRange && !zoneMismatch ? deliveryFee : 0) + pricing.platform_fee - firstOrderDiscount,
   );
   const currentGate = gate?.phone === phoneDigits ? gate : null;
   const codBlocked = !!currentGate && (!currentGate.cod_allowed || currentGate.blocked);
@@ -220,6 +223,7 @@ function CheckoutPage() {
 
     if (!coords) return toast.error("Please select your delivery location on the map");
     if (outOfRange) return toast.error(OUTSIDE_ZONE_MESSAGE);
+    if (zoneMismatch) return toast.error("This restaurant belongs to another zone and cannot deliver to your location.");
     if (!user) return;
 
     setPlacing(true);
@@ -300,7 +304,7 @@ function CheckoutPage() {
           {coords && !outOfRange && (
             <div className="flex items-center gap-1 text-xs text-success">
               <MapPin className="h-3.5 w-3.5" /> Delivery location confirmed
-              {zone ? ` · ${zone.name} delivery zone` : ""}
+              {customerZone ? ` · ${customerZone.name} delivery zone` : ""}
             </div>
           )}
 
@@ -316,6 +320,13 @@ function CheckoutPage() {
             <div className="flex items-start gap-2 rounded-xl border-2 border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
               <span>{OUTSIDE_ZONE_MESSAGE}</span>
+            </div>
+          )}
+
+          {zoneMismatch && !outOfRange && (
+            <div className="flex items-start gap-2 rounded-xl border-2 border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>This restaurant belongs to another delivery zone and cannot deliver to your selected location. Please change address or order from local kitchens.</span>
             </div>
           )}
         </Section>
@@ -397,7 +408,7 @@ function CheckoutPage() {
       </div>
 
       <div className="fixed bottom-0 left-1/2 z-30 w-full max-w-[480px] -translate-x-1/2 border-t bg-background p-4">
-        <button onClick={placeOrder} disabled={placing || !coords || outOfRange || restaurantClosed || codBlocked}
+        <button onClick={placeOrder} disabled={placing || !coords || outOfRange || zoneMismatch || restaurantClosed || codBlocked}
           className="flex h-12 w-full items-center justify-center rounded-2xl bg-primary text-sm font-bold text-primary-foreground shadow-[var(--shadow-soft)] disabled:opacity-60">
           {placing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           {codBlocked
@@ -406,7 +417,9 @@ function CheckoutPage() {
                 ? "Select location to continue"
                 : outOfRange
                   ? "Outside delivery area"
-                   : `Place Order · ₹${grand.toFixed(2)}`}
+                  : zoneMismatch
+                    ? "Kitchen outside your delivery zone"
+                    : `Place Order · ₹${grand.toFixed(2)}`}
         </button>
       </div>
 
