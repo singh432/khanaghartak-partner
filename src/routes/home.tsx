@@ -68,6 +68,7 @@ function HomePage() {
   const [restaurantLoading, setRestaurantLoading] = useState(true);
   const [restaurantError, setRestaurantError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchTab, setSearchTab] = useState<"all" | "dishes" | "restaurants">("all");
   const [dishes, setDishes] = useState<Dish[]>([]);
   const [dishesLoaded, setDishesLoaded] = useState(false);
 
@@ -361,13 +362,9 @@ function HomePage() {
   const trimmedQuery = searchQuery.trim().toLowerCase();
   const isSearchActive = !isOutsideZone && trimmedQuery.length > 0;
 
-  const matchingRestaurants = useMemo(() => {
+  // Direct restaurant matches (matching restaurant name, tagline, address, or category)
+  const directMatchingRestaurants = useMemo(() => {
     if (!isSearchActive) return [];
-    // Also include restaurants that have dishes matching the search query
-    const rIdsFromDishes = new Set<string>(
-      dishes.filter((d) => d.name.toLowerCase().includes(trimmedQuery)).map((d) => d.restaurant_id)
-    );
-    // Also include restaurants with categories matching search query
     const rIdsFromCategories = new Set<string>(
       Object.entries(categoryMap)
         .filter(([cat]) => cat.toLowerCase().includes(trimmedQuery))
@@ -379,15 +376,23 @@ function HomePage() {
         r.name.toLowerCase().includes(trimmedQuery) ||
         (r.tagline && r.tagline.toLowerCase().includes(trimmedQuery)) ||
         (r.address && r.address.toLowerCase().includes(trimmedQuery)) ||
-        rIdsFromDishes.has(r.id) ||
         rIdsFromCategories.has(r.id)
     );
-  }, [restaurants, trimmedQuery, isSearchActive, dishes, categoryMap]);
+  }, [restaurants, trimmedQuery, isSearchActive, categoryMap]);
 
+  // Dishes matching the search query across all restaurants
   const matchingDishes = useMemo(() => {
     if (!isSearchActive) return [];
     return dishes.filter((d) => d.name.toLowerCase().includes(trimmedQuery));
   }, [dishes, trimmedQuery, isSearchActive]);
+
+  // Combined restaurants (direct matches + restaurants serving matching dishes)
+  const allMatchingRestaurants = useMemo(() => {
+    if (!isSearchActive) return [];
+    if (directMatchingRestaurants.length > 0) return directMatchingRestaurants;
+    const rIdsFromDishes = new Set<string>(matchingDishes.map((d) => d.restaurant_id));
+    return restaurants.filter((r) => rIdsFromDishes.has(r.id));
+  }, [isSearchActive, directMatchingRestaurants, matchingDishes, restaurants]);
 
   if (loading) return <PageSpinner label="Checking your session…" />;
   if (!user) return <PageSpinner label="Opening sign in…" />;
@@ -463,26 +468,85 @@ function HomePage() {
 
       <div className="px-4 pt-4">
 
-        <div id="khana-customer-search-bar" className="mb-4">
+        <div id="khana-customer-search-bar" className="mb-4 space-y-2.5">
           <div className="relative flex items-center">
             <Search className="absolute left-3.5 h-4 w-4 text-muted-foreground pointer-events-none" />
             <input
               type="text"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                if (!e.target.value.trim()) setSearchTab("all");
+              }}
               placeholder="Search restaurants, dishes, biryani, pizza…"
               className="h-11 w-full rounded-2xl border border-border/80 bg-card pl-10 pr-10 text-sm font-medium text-foreground placeholder:text-muted-foreground/70 shadow-sm transition focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
             {searchQuery && (
               <button
                 type="button"
-                onClick={() => setSearchQuery("")}
+                onClick={() => {
+                  setSearchQuery("");
+                  setSearchTab("all");
+                }}
                 className="absolute right-2.5 grid h-6 w-6 place-items-center rounded-full bg-muted/80 text-muted-foreground hover:text-foreground active:scale-90"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
             )}
           </div>
+
+          {/* Zomato-style search filter tabs: All | Dishes | Restaurants */}
+          {isSearchActive && (
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5 animate-fadeIn">
+              <button
+                type="button"
+                onClick={() => setSearchTab("all")}
+                className={`rounded-full px-3.5 py-1 text-xs font-bold transition-all shadow-sm ${
+                  searchTab === "all"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-card border border-border/80 text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                All ({matchingDishes.length + directMatchingRestaurants.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setSearchTab("dishes")}
+                className={`rounded-full px-3.5 py-1 text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 ${
+                  searchTab === "dishes"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-card border border-border/80 text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <span>Dishes</span>
+                <span
+                  className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
+                    searchTab === "dishes" ? "bg-white/20 text-white" : "bg-muted text-foreground/80"
+                  }`}
+                >
+                  {matchingDishes.length}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setSearchTab("restaurants")}
+                className={`rounded-full px-3.5 py-1 text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 ${
+                  searchTab === "restaurants"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-card border border-border/80 text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <span>Restaurants</span>
+                <span
+                  className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
+                    searchTab === "restaurants" ? "bg-white/20 text-white" : "bg-muted text-foreground/80"
+                  }`}
+                >
+                  {directMatchingRestaurants.length}
+                </span>
+              </button>
+            </div>
+          )}
         </div>
 
         {!profileAddress && (
@@ -571,19 +635,30 @@ function HomePage() {
         )}
 
         {isSearchActive ? (
-          <div className="space-y-6">
+          <div className="space-y-5 animate-fadeIn">
+            {/* Header: Query display + clear */}
             <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground px-1">
-              <span>Results for "{searchQuery}"</span>
+              <span>
+                {searchTab === "dishes"
+                  ? `Dishes for "${searchQuery}" (${matchingDishes.length})`
+                  : searchTab === "restaurants"
+                  ? `Restaurants for "${searchQuery}" (${directMatchingRestaurants.length})`
+                  : `Results for "${searchQuery}"`}
+              </span>
               <button
                 type="button"
-                onClick={() => setSearchQuery("")}
+                onClick={() => {
+                  setSearchQuery("");
+                  setSearchTab("all");
+                }}
                 className="text-primary font-bold hover:underline"
               >
                 Clear
               </button>
             </div>
 
-            {matchingRestaurants.length === 0 && matchingDishes.length === 0 && (
+            {/* Zero results */}
+            {matchingDishes.length === 0 && directMatchingRestaurants.length === 0 && (
               <div className="my-6 rounded-3xl border border-dashed border-border/80 bg-card p-6 text-center">
                 <div className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-2xl bg-primary/10 text-primary">
                   <Search className="h-6 w-6" />
@@ -598,108 +673,197 @@ function HomePage() {
               </div>
             )}
 
-            {matchingRestaurants.length > 0 && (
-              <div className="space-y-3">
-                <h3 className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground px-1">
-                  Restaurants ({matchingRestaurants.length})
-                </h3>
-                <div className="space-y-3">
-                  {matchingRestaurants.map((restaurant) => (
-                    <Link
-                      key={restaurant.id}
-                      to="/menu"
-                      search={{ r: restaurant.id }}
-                      className="flex items-center gap-3.5 rounded-2xl border border-border/70 bg-card p-3 shadow-sm transition active:scale-[0.99]"
-                    >
-                      <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-xl">
-                        <img
-                          src={restaurant.banner_url ?? restaurant.image_url ?? hero}
-                          alt={restaurant.name}
-                          className="h-full w-full object-cover"
-                          loading="lazy"
-                        />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-2">
-                          <h4 className="truncate text-sm font-extrabold text-foreground">{restaurant.name}</h4>
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                            isRestaurantOpen(restaurant) ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive"
-                          }`}>
-                            {isRestaurantOpen(restaurant) ? "Open" : "Closed"}
-                          </span>
-                        </div>
-                        {restaurant.tagline && (
-                          <p className="truncate text-xs text-muted-foreground mt-0.5">{restaurant.tagline}</p>
-                        )}
-                        <div className="mt-1.5 flex items-center gap-2 text-[11px] text-muted-foreground">
-                          {restaurant.rating != null && restaurant.rating_count > 0 && (
-                            <span className="inline-flex items-center gap-0.5 font-bold text-success">
-                              <Star className="h-3 w-3 fill-current" />
-                              {Number(restaurant.rating).toFixed(1)}
-                            </span>
-                          )}
-                          {restaurant.distance != null && (
-                            <span>• {restaurant.distance.toFixed(1)} km</span>
-                          )}
-                          <span>• {browseEta(restaurant.distance).label}</span>
-                        </div>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
+            {/* Empty state when user is specifically on "dishes" tab but no dishes matched */}
+            {searchTab === "dishes" && matchingDishes.length === 0 && directMatchingRestaurants.length > 0 && (
+              <div className="my-6 rounded-2xl border bg-card p-5 text-center">
+                <p className="text-xs text-muted-foreground">No dishes matching "{searchQuery}".</p>
+                <button
+                  type="button"
+                  onClick={() => setSearchTab("restaurants")}
+                  className="mt-2 text-xs font-bold text-primary hover:underline"
+                >
+                  View {directMatchingRestaurants.length} matching restaurants →
+                </button>
               </div>
             )}
 
-            {matchingDishes.length > 0 && (
+            {/* Empty state when user is specifically on "restaurants" tab but no restaurants matched */}
+            {searchTab === "restaurants" && directMatchingRestaurants.length === 0 && matchingDishes.length > 0 && (
+              <div className="my-6 rounded-2xl border bg-card p-5 text-center">
+                <p className="text-xs text-muted-foreground">No restaurants named "{searchQuery}".</p>
+                <button
+                  type="button"
+                  onClick={() => setSearchTab("dishes")}
+                  className="mt-2 text-xs font-bold text-primary hover:underline"
+                >
+                  View {matchingDishes.length} matching dishes →
+                </button>
+              </div>
+            )}
+
+            {/* DISHES LIST: Rendered when tab is 'dishes' or 'all' */}
+            {(searchTab === "all" || searchTab === "dishes") && matchingDishes.length > 0 && (
               <div className="space-y-3">
-                <h3 className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground px-1">
-                  Dishes & Food Items ({matchingDishes.length})
-                </h3>
-                <div className="space-y-2.5">
+                <div className="flex items-center justify-between px-1">
+                  <h3 className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">
+                    Dishes ({matchingDishes.length})
+                  </h3>
+                  {searchTab === "all" && directMatchingRestaurants.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchTab("dishes")}
+                      className="text-[11px] font-bold text-primary hover:underline"
+                    >
+                      See all dishes
+                    </button>
+                  )}
+                </div>
+
+                <div className="space-y-3">
                   {matchingDishes.map((dish) => {
                     const r = restaurants.find((res) => res.id === dish.restaurant_id);
                     const price = dish.offer_price ?? dish.price;
                     const hasDiscount = dish.offer_price != null && dish.offer_price < dish.price;
+                    const fallback = r?.banner_url ?? r?.image_url ?? hero;
+
                     return (
                       <Link
                         key={dish.id}
                         to="/menu"
                         search={{ r: dish.restaurant_id }}
-                        className="flex items-center gap-3 rounded-2xl border border-border/70 bg-card p-3 shadow-sm transition active:scale-[0.99]"
+                        className="flex items-center justify-between gap-3.5 rounded-3xl border border-border/80 bg-card p-3.5 shadow-[var(--shadow-card)] transition hover:border-primary/40 active:scale-[0.99] group"
                       >
-                        <div className="relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-xl bg-muted/30">
-                          <img
-                            src={dish.image_url ?? getCategoryImage(dish.name)}
-                            alt={dish.name}
-                            className="h-full w-full object-cover"
-                            loading="lazy"
-                          />
-                        </div>
+                        {/* Left: Dish Information & Kitchen attribution */}
                         <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-1.5">
-                            <span className={`inline-block h-2 w-2 rounded-full ${
-                              dish.veg_type === "nonveg" ? "bg-red-500" : "bg-emerald-600"
-                            }`} />
-                            <h4 className="truncate text-sm font-bold text-foreground">{dish.name}</h4>
+                          {/* Veg / Non-Veg badge + Dish Name */}
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`grid h-3.5 w-3.5 flex-shrink-0 place-items-center rounded-[3px] border ${
+                                dish.veg_type === "nonveg" ? "border-red-500 bg-white" : "border-emerald-600 bg-white"
+                              }`}
+                            >
+                              <span
+                                className={`h-1.5 w-1.5 rounded-full ${
+                                  dish.veg_type === "nonveg" ? "bg-red-500" : "bg-emerald-600"
+                                }`}
+                              />
+                            </span>
+                            <h4 className="truncate text-sm font-extrabold text-foreground group-hover:text-primary transition-colors">
+                              {dish.name}
+                            </h4>
                           </div>
-                          {r && (
-                            <p className="truncate text-xs text-muted-foreground mt-0.5">
-                              at <span className="font-semibold text-foreground/80">{r.name}</span>
-                            </p>
-                          )}
+
+                          {/* Price & Discount */}
                           <div className="mt-1 flex items-center gap-2">
-                            <span className="text-xs font-extrabold text-foreground">₹{price}</span>
+                            <span className="text-sm font-black text-foreground">₹{price}</span>
                             {hasDiscount && (
-                              <span className="text-[11px] text-muted-foreground line-through">₹{dish.price}</span>
+                              <span className="text-xs text-muted-foreground line-through">₹{dish.price}</span>
                             )}
                           </div>
+
+                          {/* Kitchen Name, Distance, ETA */}
+                          {r && (
+                            <div className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-muted-foreground">
+                              <span className="font-bold text-foreground/85 truncate max-w-[140px] sm:max-w-[200px]">
+                                {r.name}
+                              </span>
+                              {r.distance != null && (
+                                <>
+                                  <span>•</span>
+                                  <span>{r.distance.toFixed(1)} km</span>
+                                </>
+                              )}
+                              <span>•</span>
+                              <span className="font-semibold text-foreground/75">
+                                {browseEta(r.distance).label}
+                              </span>
+                            </div>
+                          )}
                         </div>
-                        <span className="flex-shrink-0 rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary">
-                          View
-                        </span>
+
+                        {/* Right: Food Image with Order/View button */}
+                        <div className="relative flex-shrink-0 flex flex-col items-center">
+                          <div className="relative h-20 w-20 overflow-hidden rounded-2xl bg-muted/40 shadow-inner">
+                            <img
+                              src={dish.image_url ?? getCategoryImage(dish.name)}
+                              alt={dish.name}
+                              onError={(e) => {
+                                if (e.currentTarget.src !== fallback) {
+                                  e.currentTarget.src = fallback;
+                                }
+                              }}
+                              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                              loading="lazy"
+                            />
+                          </div>
+                          <span className="-mt-3.5 z-10 inline-flex items-center justify-center rounded-xl bg-card border-2 border-primary/40 px-3.5 py-1 text-[11px] font-black text-primary shadow-sm group-hover:bg-primary group-hover:text-primary-foreground group-hover:border-primary transition-all uppercase tracking-wider">
+                            Order
+                          </span>
+                        </div>
                       </Link>
                     );
                   })}
+                </div>
+              </div>
+            )}
+
+            {/* RESTAURANTS LIST: Rendered when tab is 'restaurants' or 'all' */}
+            {(searchTab === "all" || searchTab === "restaurants") && directMatchingRestaurants.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between px-1">
+                  <h3 className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">
+                    Restaurants ({directMatchingRestaurants.length})
+                  </h3>
+                  {searchTab === "all" && matchingDishes.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchTab("restaurants")}
+                      className="text-[11px] font-bold text-primary hover:underline"
+                    >
+                      See all kitchens
+                    </button>
+                  )}
+                </div>
+
+                <div className="space-y-5">
+                  {directMatchingRestaurants.map((restaurant) => (
+                    <Link
+                      key={restaurant.id}
+                      to="/menu"
+                      search={{ r: restaurant.id }}
+                      aria-label={`View menu of ${restaurant.name}`}
+                      className="block overflow-hidden rounded-3xl bg-card shadow-[var(--shadow-card)] fade-in"
+                    >
+                      <RestaurantCoverCarousel
+                        restaurant={restaurant}
+                        items={dishes.filter((d) => d.restaurant_id === restaurant.id)}
+                        isOpen={isRestaurantOpen(restaurant)}
+                        etaLabel={browseEta(restaurant.distance).label}
+                        autoSlideIntervalMs={3000}
+                      />
+
+                      <div className="px-4 pb-4 pt-3">
+                        <h2 className="text-lg font-extrabold leading-tight tracking-tight">{restaurant.name}</h2>
+                        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+                          {restaurant.rating_count > 0 && restaurant.rating != null && (
+                            <span className="inline-flex items-center gap-1 font-semibold text-success">
+                              <Star className="h-3.5 w-3.5 fill-current" />
+                              {Number(restaurant.rating).toFixed(1)}
+                              <span className="font-normal text-muted-foreground">({restaurant.rating_count})</span>
+                            </span>
+                          )}
+                          {restaurant.rating_count > 0 && restaurant.address && <span aria-hidden>•</span>}
+                          {restaurant.address && <span className="truncate">{restaurant.address}</span>}
+                          {restaurant.distance != null && (
+                            <>
+                              <span aria-hidden>•</span>
+                              <span>{restaurant.distance.toFixed(1)} km</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
                 </div>
               </div>
             )}
