@@ -447,6 +447,11 @@
       return;
     }
 
+    if (bar && (!bar.querySelector('[data-path="/profile"]') || bar.querySelectorAll('.kgt-nav-tab').length < 4)) {
+      bar.remove();
+      bar = null;
+    }
+
     if (!bar) {
       bar = document.createElement('nav');
       bar.id = 'kgt-customer-bottom-bar';
@@ -454,7 +459,7 @@
         'position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;z-index:99999;' +
         'background:rgba(255,255,255,0.96);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);' +
         'border-top:1px solid #E2E8F0;padding-bottom:env(safe-area-inset-bottom,0px);' +
-        'box-shadow:0 -2px 10px rgba(0,0,0,0.04);display:grid;grid-template-columns:repeat(3,1fr);' +
+        'box-shadow:0 -2px 10px rgba(0,0,0,0.04);display:grid;grid-template-columns:repeat(4,1fr);' +
         'user-select:none;-webkit-user-select:none;box-sizing:border-box;';
 
       bar.innerHTML =
@@ -476,6 +481,12 @@
         '    <span id="kgt-cart-badge" style="display:none;position:absolute;top:-4px;right:-10px;height:16px;min-width:16px;border-radius:9999px;background:#F45D2C;color:#FFFFFF;font-size:10px;font-weight:700;line-height:16px;text-align:center;padding:0 4px;box-shadow:0 1px 3px rgba(244,93,44,0.4);"></span>' +
         '  </span>' +
         '  <span class="kgt-tab-label" style="font-size:11px;font-weight:500;color:#64748B;">Cart</span>' +
+        '</button>' +
+        '<button type="button" class="kgt-nav-tab" data-path="/profile" style="position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:8px 0;background:none;border:none;cursor:pointer;outline:none;font-family:system-ui,-apple-system,sans-serif;-webkit-tap-highlight-color:transparent;">' +
+        '  <span class="kgt-tab-icon" style="position:relative;display:flex;align-items:center;justify-content:center;height:22px;">' +
+        '    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>' +
+        '  </span>' +
+        '  <span class="kgt-tab-label" style="font-size:11px;font-weight:500;color:#64748B;">Profile</span>' +
         '</button>';
 
       document.body.appendChild(bar);
@@ -492,6 +503,325 @@
 
     bar.style.display = 'grid';
     updateCustomBottomNavActive(pathname);
+  }
+
+  function getCustomerSessionInfo() {
+    var name = localStorage.getItem('kgt:customer-name') || '';
+    var phone = localStorage.getItem('kgt:customer-phone') || '';
+    var address = localStorage.getItem('kgt:delivery-address') || '';
+    var landmark = localStorage.getItem('kgt:delivery-landmark') || '';
+
+    try {
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i) || '';
+        if (k.indexOf('-auth-token') !== -1) {
+          var raw = localStorage.getItem(k);
+          if (raw) {
+            var session = JSON.parse(raw);
+            if (session && session.user) {
+              if (!phone && session.user.phone) {
+                phone = session.user.phone.replace('+91', '').trim();
+              }
+              if (!name && session.user.user_metadata && session.user.user_metadata.full_name) {
+                name = session.user.user_metadata.full_name;
+              }
+            }
+          }
+        }
+      }
+    } catch (e) {}
+
+    return {
+      name: name || 'Customer',
+      phone: phone || '',
+      address: address || '',
+      landmark: landmark || ''
+    };
+  }
+
+  function isReactProfileInDom() {
+    var main = document.querySelector('main');
+    if (!main) return false;
+    var t = main.innerText || '';
+    return t.indexOf('Saved Delivery Address') !== -1 || (t.indexOf('My Profile') !== -1 && t.indexOf('Customer') !== -1);
+  }
+
+  function showFallbackSupportModal() {
+    var existing = document.getElementById('kgt-support-modal');
+    if (existing) existing.remove();
+    var m = document.createElement('div');
+    m.id = 'kgt-support-modal';
+    m.style.cssText = 'position:fixed;inset:0;z-index:999999;background:rgba(0,0,0,0.5);display:flex;align-items:flex-end;justify-content:center;';
+    m.innerHTML =
+      '<div style="background:#FFFFFF;width:100%;max-width:480px;border-radius:24px 24px 0 0;padding:24px;box-sizing:border-box;display:flex;flex-direction:column;gap:14px;box-shadow:0 -4px 20px rgba(0,0,0,0.1);">' +
+      '  <div style="display:flex;justify-content:space-between;align-items:center;">' +
+      '    <div style="font-size:16px;font-weight:800;color:#0F172A;">KhanaGharTak Support</div>' +
+      '    <button id="kgt-close-support" style="background:none;border:none;font-size:22px;cursor:pointer;color:#64748B;line-height:1;padding:4px;">✕</button>' +
+      '  </div>' +
+      '  <p style="font-size:13px;color:#64748B;margin:0;">Need help with your order or have a query? We are here to help!</p>' +
+      '  <a href="tel:+919711720846" style="padding:14px;border-radius:16px;background:#F45D2C;color:#FFFFFF;text-align:center;font-weight:700;font-size:14px;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 3px 10px rgba(244,93,44,0.3);">' +
+      '    📞 Call Helpline: +91 97117 20846' +
+      '  </a>' +
+      '  <a href="https://wa.me/919711720846?text=Hi%20KhanaGharTak%20Support" target="_blank" style="padding:14px;border-radius:16px;background:#25D366;color:#FFFFFF;text-align:center;font-weight:700;font-size:14px;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 3px 10px rgba(37,211,102,0.3);">' +
+      '    💬 Chat on WhatsApp' +
+      '  </a>' +
+      '</div>';
+    document.body.appendChild(m);
+    m.querySelector('#kgt-close-support').onclick = function () { m.remove(); };
+    m.onclick = function (e) { if (e.target === m) m.remove(); };
+  }
+
+  function showFallbackRateModal() {
+    var existing = document.getElementById('kgt-rate-modal');
+    if (existing) existing.remove();
+    var m = document.createElement('div');
+    m.id = 'kgt-rate-modal';
+    m.style.cssText = 'position:fixed;inset:0;z-index:999999;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;';
+    var selectedStars = 5;
+    m.innerHTML =
+      '<div style="background:#FFFFFF;width:100%;max-width:380px;border-radius:24px;padding:24px;box-sizing:border-box;display:flex;flex-direction:column;gap:14px;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,0.15);">' +
+      '  <div style="font-size:18px;font-weight:800;color:#0F172A;">Rate KhanaGharTak</div>' +
+      '  <p style="font-size:13px;color:#64748B;margin:0;">How is your experience with KhanaGharTak food delivery?</p>' +
+      '  <div id="kgt-stars-row" style="font-size:36px;display:flex;justify-content:center;gap:8px;cursor:pointer;color:#F59E0B;user-select:none;">' +
+      '    <span data-val="1">★</span><span data-val="2">★</span><span data-val="3">★</span><span data-val="4">★</span><span data-val="5">★</span>' +
+      '  </div>' +
+      '  <button id="kgt-submit-rating" style="padding:13px;border-radius:14px;background:#F45D2C;color:#FFFFFF;border:none;font-weight:700;font-size:14px;cursor:pointer;box-shadow:0 3px 10px rgba(244,93,44,0.3);">Submit Review</button>' +
+      '  <button id="kgt-cancel-rating" style="background:none;border:none;color:#64748B;font-size:13px;cursor:pointer;font-weight:600;">Cancel</button>' +
+      '</div>';
+    document.body.appendChild(m);
+    var starSpans = m.querySelectorAll('#kgt-stars-row span');
+    function updateStars(num) {
+      selectedStars = num;
+      starSpans.forEach(function (s, i) {
+        s.textContent = (i < num) ? '★' : '☆';
+      });
+    }
+    starSpans.forEach(function (s) {
+      s.onclick = function () {
+        updateStars(parseInt(s.getAttribute('data-val')));
+      };
+    });
+    m.querySelector('#kgt-submit-rating').onclick = function () {
+      try { localStorage.setItem('kgt:app-rated', '' + selectedStars); } catch (e) {}
+      alert('Thank you for rating KhanaGharTak (' + selectedStars + '/5 stars)!');
+      m.remove();
+    };
+    m.querySelector('#kgt-cancel-rating').onclick = function () { m.remove(); };
+    m.onclick = function (e) { if (e.target === m) m.remove(); };
+  }
+
+  function showFallbackEditModal(info) {
+    var existing = document.getElementById('kgt-edit-modal');
+    if (existing) existing.remove();
+    var m = document.createElement('div');
+    m.id = 'kgt-edit-modal';
+    m.style.cssText = 'position:fixed;inset:0;z-index:999999;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;';
+    m.innerHTML =
+      '<div style="background:#FFFFFF;width:100%;max-width:400px;border-radius:24px;padding:22px;box-sizing:border-box;display:flex;flex-direction:column;gap:12px;box-shadow:0 10px 30px rgba(0,0,0,0.15);">' +
+      '  <div style="display:flex;justify-content:space-between;align-items:center;">' +
+      '    <div style="font-size:16px;font-weight:800;color:#0F172A;">Edit Profile</div>' +
+      '    <button id="kgt-close-edit" style="background:none;border:none;font-size:22px;cursor:pointer;color:#64748B;line-height:1;padding:4px;">✕</button>' +
+      '  </div>' +
+      '  <div>' +
+      '    <label style="font-size:11px;font-weight:700;color:#64748B;display:block;margin-bottom:4px;">Full Name</label>' +
+      '    <input id="kgt-edit-name-inp" type="text" value="' + (info.name === 'Customer' ? '' : info.name) + '" placeholder="Your Full Name" style="width:100%;height:44px;border:1.5px solid #CBD5E1;border-radius:12px;padding:0 12px;font-size:14px;box-sizing:border-box;outline:none;" />' +
+      '  </div>' +
+      '  <div>' +
+      '    <label style="font-size:11px;font-weight:700;color:#64748B;display:block;margin-bottom:4px;">Mobile Number</label>' +
+      '    <input id="kgt-edit-phone-inp" type="tel" maxlength="10" value="' + info.phone + '" placeholder="10-digit mobile number" style="width:100%;height:44px;border:1.5px solid #CBD5E1;border-radius:12px;padding:0 12px;font-size:14px;box-sizing:border-box;outline:none;" />' +
+      '  </div>' +
+      '  <div>' +
+      '    <label style="font-size:11px;font-weight:700;color:#64748B;display:block;margin-bottom:4px;">Delivery Address</label>' +
+      '    <textarea id="kgt-edit-addr-inp" placeholder="House/Flat, Road, Area" style="width:100%;height:70px;border:1.5px solid #CBD5E1;border-radius:12px;padding:8px 12px;font-size:13px;box-sizing:border-box;outline:none;resize:none;">' + info.address + '</textarea>' +
+      '  </div>' +
+      '  <button id="kgt-save-edit-btn" style="height:46px;margin-top:6px;border-radius:14px;background:#F45D2C;color:#FFFFFF;border:none;font-weight:700;font-size:14px;cursor:pointer;box-shadow:0 3px 10px rgba(244,93,44,0.3);">Save Changes</button>' +
+      '</div>';
+    document.body.appendChild(m);
+    m.querySelector('#kgt-close-edit').onclick = function () { m.remove(); };
+    m.onclick = function (e) { if (e.target === m) m.remove(); };
+    m.querySelector('#kgt-save-edit-btn').onclick = function () {
+      var newName = (m.querySelector('#kgt-edit-name-inp').value || '').trim();
+      var newPhone = (m.querySelector('#kgt-edit-phone-inp').value || '').trim();
+      var newAddr = (m.querySelector('#kgt-edit-addr-inp').value || '').trim();
+      if (newName) localStorage.setItem('kgt:customer-name', newName);
+      if (newPhone) localStorage.setItem('kgt:customer-phone', newPhone);
+      if (newAddr) {
+        localStorage.setItem('kgt:delivery-address', newAddr);
+        window.dispatchEvent(new Event('kgt:address-changed'));
+      }
+      var nameEl = document.getElementById('kgt-fb-name-display');
+      if (nameEl && newName) nameEl.textContent = newName;
+      var phoneEl = document.getElementById('kgt-fb-phone-display');
+      if (phoneEl && newPhone) phoneEl.textContent = '📞 +91 ' + newPhone;
+      var addrEl = document.getElementById('kgt-fb-address-display');
+      if (addrEl && newAddr) addrEl.textContent = newAddr;
+      m.remove();
+    };
+  }
+
+  function renderCustomerProfileFallback() {
+    if (isReactProfileInDom()) {
+      var fb = document.getElementById('kgt-customer-profile-fallback');
+      if (fb) fb.remove();
+      return;
+    }
+
+    var existingFallback = document.getElementById('kgt-customer-profile-fallback');
+    if (existingFallback) return;
+
+    var info = getCustomerSessionInfo();
+    var initials = info.name
+      ? info.name.split(' ').map(function (w) { return w ? w[0] : ''; }).join('').slice(0, 2).toUpperCase()
+      : 'CU';
+
+    var container = document.createElement('div');
+    container.id = 'kgt-customer-profile-fallback';
+    container.style.cssText =
+      'position:relative;z-index:100;min-height:100vh;padding-bottom:120px;background:#FAFAFA;color:#0F172A;font-family:system-ui,-apple-system,sans-serif;box-sizing:border-box;';
+
+    container.innerHTML =
+      '<!-- Header -->' +
+      '<header style="position:sticky;top:0;z-index:30;display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,0.95);backdrop-filter:blur(10px);padding:10px 16px;border-bottom:1px solid #E2E8F0;">' +
+      '  <div style="display:flex;align-items:center;gap:10px;">' +
+      '    <img src="/khanaghartak-logo.png" onerror="this.src=\'https://khanaghartak.in/__l5e/assets-v1/8863a66e-7115-4037-ab62-8765b7ae09f3/khanaghartak-logo.png\'" style="width:36px;height:36px;border-radius:10px;object-fit:contain;" />' +
+      '    <div>' +
+      '      <div style="font-size:15px;font-weight:900;color:#0F172A;line-height:1.2;">KhanaGharTak</div>' +
+      '      <div style="font-size:11px;font-weight:600;color:#64748B;">My Profile</div>' +
+      '    </div>' +
+      '  </div>' +
+      '  <button id="kgt-fb-top-loc-btn" style="display:flex;align-items:center;gap:4px;padding:6px 12px;border-radius:9999px;border:1px solid rgba(244,93,44,0.3);background:#FFF8F5;color:#F45D2C;font-size:11px;font-weight:700;cursor:pointer;">' +
+      '    📍 Location ∨' +
+      '  </button>' +
+      '</header>' +
+
+      '<div style="max-width:480px;margin:0 auto;padding:16px;display:flex;flex-direction:column;gap:14px;box-sizing:border-box;">' +
+      '  <!-- Customer Card -->' +
+      '  <div style="background:#FFFFFF;border-radius:24px;border:1px solid #E2E8F0;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,0.03);display:flex;align-items:center;gap:14px;">' +
+      '    <div style="width:56px;height:56px;border-radius:18px;background:linear-gradient(135deg,#F45D2C,#E04818);display:flex;align-items:center;justify-content:center;color:#FFFFFF;font-size:20px;font-weight:900;flex-shrink:0;box-shadow:0 4px 12px rgba(244,93,44,0.25);">' +
+      '      ' + initials +
+      '    </div>' +
+      '    <div style="flex:1;min-width:0;">' +
+      '      <div style="display:flex;align-items:center;gap:6px;">' +
+      '        <div id="kgt-fb-name-display" style="font-size:17px;font-weight:800;color:#0F172A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + info.name + '</div>' +
+      '        <span style="font-size:10px;font-weight:700;color:#059669;background:#ECFDF5;padding:2px 8px;border-radius:9999px;">Customer</span>' +
+      '      </div>' +
+      '      <div id="kgt-fb-phone-display" style="font-size:12px;color:#64748B;margin-top:3px;display:flex;align-items:center;gap:4px;">' +
+      '        📞 <span>' + (info.phone ? '+91 ' + info.phone : 'No mobile added') + '</span>' +
+      '      </div>' +
+      '    </div>' +
+      '    <button id="kgt-fb-edit-btn" style="padding:8px 10px;border-radius:12px;border:1px solid #CBD5E1;background:#F8FAFC;font-size:12px;font-weight:700;color:#334155;cursor:pointer;">' +
+      '      Edit' +
+      '    </button>' +
+      '  </div>' +
+
+      '  <!-- Saved Delivery Address -->' +
+      '  <div style="background:#FFFFFF;border-radius:20px;border:1px solid #E2E8F0;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,0.03);">' +
+      '    <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:10px;border-bottom:1px solid #F1F5F9;">' +
+      '      <span style="font-size:11px;font-weight:800;letter-spacing:0.5px;text-transform:uppercase;color:#64748B;">📍 Saved Delivery Address</span>' +
+      '      <button id="kgt-fb-change-map-btn" style="background:none;border:none;font-size:12px;font-weight:700;color:#F45D2C;cursor:pointer;">Change on Map</button>' +
+      '    </div>' +
+      '    <div id="kgt-fb-address-display" style="padding-top:12px;font-size:13px;font-weight:600;color:#1E293B;line-height:1.5;word-break:break-word;">' +
+      '      ' + (info.address || 'No address saved yet. Tap "Change on Map" to set your location.') +
+      '    </div>' +
+      '  </div>' +
+
+      '  <!-- Shortcuts: Orders, Help, Rate -->' +
+      '  <div style="background:#FFFFFF;border-radius:20px;border:1px solid #E2E8F0;box-shadow:0 2px 8px rgba(0,0,0,0.03);overflow:hidden;">' +
+      '    <button id="kgt-fb-orders-row" style="width:100%;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;background:none;border:none;border-bottom:1px solid #F1F5F9;cursor:pointer;text-align:left;">' +
+      '      <div style="display:flex;align-items:center;gap:12px;">' +
+      '        <div style="width:36px;height:36px;border-radius:10px;background:rgba(244,93,44,0.1);color:#F45D2C;display:flex;align-items:center;justify-content:center;font-size:17px;">🧾</div>' +
+      '        <div>' +
+      '          <div style="font-size:14px;font-weight:700;color:#0F172A;">My Orders</div>' +
+      '          <div style="font-size:11px;color:#64748B;">View past orders and live tracking</div>' +
+      '        </div>' +
+      '      </div>' +
+      '      <span style="color:#94A3B8;font-size:18px;">›</span>' +
+      '    </button>' +
+
+      '    <button id="kgt-fb-support-row" style="width:100%;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;background:none;border:none;border-bottom:1px solid #F1F5F9;cursor:pointer;text-align:left;">' +
+      '      <div style="display:flex;align-items:center;gap:12px;">' +
+      '        <div style="width:36px;height:36px;border-radius:10px;background:rgba(244,93,44,0.1);color:#F45D2C;display:flex;align-items:center;justify-content:center;font-size:17px;">🎧</div>' +
+      '        <div>' +
+      '          <div style="font-size:14px;font-weight:700;color:#0F172A;">Help & Support</div>' +
+      '          <div style="font-size:11px;color:#64748B;">Call or WhatsApp our delivery team</div>' +
+      '        </div>' +
+      '      </div>' +
+      '      <span style="color:#94A3B8;font-size:18px;">›</span>' +
+      '    </button>' +
+
+      '    <button id="kgt-fb-rate-row" style="width:100%;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;background:none;border:none;cursor:pointer;text-align:left;">' +
+      '      <div style="display:flex;align-items:center;gap:12px;">' +
+      '        <div style="width:36px;height:36px;border-radius:10px;background:rgba(245,158,11,0.12);color:#F59E0B;display:flex;align-items:center;justify-content:center;font-size:17px;">⭐</div>' +
+      '        <div>' +
+      '          <div style="font-size:14px;font-weight:700;color:#0F172A;">Rate & Review KhanaGharTak</div>' +
+      '          <div style="font-size:11px;color:#64748B;">Help us serve you better</div>' +
+      '        </div>' +
+      '      </div>' +
+      '      <span style="color:#94A3B8;font-size:18px;">›</span>' +
+      '    </button>' +
+      '  </div>' +
+
+      '  <!-- Legal -->' +
+      '  <div style="background:#FFFFFF;border-radius:20px;border:1px solid #E2E8F0;box-shadow:0 2px 8px rgba(0,0,0,0.03);overflow:hidden;">' +
+      '    <button id="kgt-fb-terms-row" style="width:100%;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;background:none;border:none;border-bottom:1px solid #F1F5F9;cursor:pointer;text-align:left;">' +
+      '      <div style="display:flex;align-items:center;gap:12px;">' +
+      '        <div style="width:36px;height:36px;border-radius:10px;background:#F1F5F9;color:#64748B;display:flex;align-items:center;justify-content:center;font-size:16px;">📄</div>' +
+      '        <div style="font-size:14px;font-weight:600;color:#0F172A;">Terms & Conditions</div>' +
+      '      </div>' +
+      '      <span style="color:#94A3B8;font-size:18px;">›</span>' +
+      '    </button>' +
+
+      '    <button id="kgt-fb-privacy-row" style="width:100%;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;background:none;border:none;cursor:pointer;text-align:left;">' +
+      '      <div style="display:flex;align-items:center;gap:12px;">' +
+      '        <div style="width:36px;height:36px;border-radius:10px;background:#F1F5F9;color:#64748B;display:flex;align-items:center;justify-content:center;font-size:16px;">🛡️</div>' +
+      '        <div style="font-size:14px;font-weight:600;color:#0F172A;">Privacy Policy</div>' +
+      '      </div>' +
+      '      <span style="color:#94A3B8;font-size:18px;">›</span>' +
+      '    </button>' +
+      '  </div>' +
+
+      '  <!-- Logout Button -->' +
+      '  <button id="kgt-fb-logout-btn" style="width:100%;padding:14px;border-radius:18px;border:1px solid #FEE2E2;background:#FEF2F2;color:#DC2626;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">' +
+      '    🚪 Logout' +
+      '  </button>' +
+      '</div>';
+
+    document.body.appendChild(container);
+
+    // Bind fallback events
+    var locTopBtn = document.getElementById('kgt-fb-top-loc-btn');
+    if (locTopBtn) locTopBtn.onclick = function () { doCustomerNavigate('/location'); };
+    var changeMapBtn = document.getElementById('kgt-fb-change-map-btn');
+    if (changeMapBtn) changeMapBtn.onclick = function () { doCustomerNavigate('/location'); };
+    var ordersRow = document.getElementById('kgt-fb-orders-row');
+    if (ordersRow) ordersRow.onclick = function () { doCustomerNavigate('/orders'); };
+    var supportRow = document.getElementById('kgt-fb-support-row');
+    if (supportRow) supportRow.onclick = function () { showFallbackSupportModal(); };
+    var rateRow = document.getElementById('kgt-fb-rate-row');
+    if (rateRow) rateRow.onclick = function () { showFallbackRateModal(); };
+    var termsRow = document.getElementById('kgt-fb-terms-row');
+    if (termsRow) termsRow.onclick = function () { doCustomerNavigate('/terms-and-conditions'); };
+    var privacyRow = document.getElementById('kgt-fb-privacy-row');
+    if (privacyRow) privacyRow.onclick = function () { doCustomerNavigate('/privacy-policy'); };
+    var editBtn = document.getElementById('kgt-fb-edit-btn');
+    if (editBtn) editBtn.onclick = function () { showFallbackEditModal(info); };
+    var logoutBtn = document.getElementById('kgt-fb-logout-btn');
+    if (logoutBtn) {
+      logoutBtn.onclick = function () {
+        if (confirm('Are you sure you want to logout?')) {
+          try {
+            localStorage.removeItem('kgt:has-session');
+            for (var i = localStorage.length - 1; i >= 0; i--) {
+              var k = localStorage.key(i) || '';
+              if (k.indexOf('-auth-token') !== -1) {
+                localStorage.removeItem(k);
+              }
+            }
+          } catch (e) {}
+          window.location.replace('/login?as=customer');
+        }
+      };
+    }
   }
 
   function checkHasCustomerSession() {
@@ -887,7 +1217,7 @@
       window.location.replace('/home');
       return;
     }
-    if ((isHomePage || isMenuPage) && !hasCustomerSession) {
+    if ((isHomePage || isMenuPage || pathname === '/profile') && !hasCustomerSession) {
       window.location.replace('/login?as=customer');
       return;
     }
@@ -903,7 +1233,7 @@
       document.head.appendChild(style);
     }
 
-    // 3. Customer Bottom Nav: Render dedicated 3-tab bar and off-screen remote React nav
+    // 3. Customer Bottom Nav: Render dedicated 4-tab bar and off-screen remote React nav
     var remoteNavs = document.querySelectorAll('nav:not(#kgt-customer-bottom-bar)');
     remoteNavs.forEach(function (n) {
       n.classList.add('khana-remote-nav');
@@ -918,6 +1248,14 @@
       n.style.setProperty('z-index', '-9999', 'important');
     });
     renderCustomerBottomBar(pathname);
+
+    // Profile Page fallback renderer
+    if (pathname === '/profile') {
+      renderCustomerProfileFallback();
+    } else {
+      var fbProf = document.getElementById('kgt-customer-profile-fallback');
+      if (fbProf) fbProf.remove();
+    }
 
     // 4. Dedicated Sign-In Portal (Upper ~50% logo, lower mobile input)
     if (isLoginPage) {
@@ -1280,6 +1618,10 @@
       window.__kgt_customer_nav_stack = ['/cart'];
       return;
     }
+    if (p === '/profile') {
+      window.__kgt_customer_nav_stack = ['/profile'];
+      return;
+    }
     if (p === '/login' || p.indexOf('/login') !== -1) {
       window.__kgt_customer_nav_stack = ['/login'];
       return;
@@ -1301,13 +1643,14 @@
     var isLogin = p === '/login' || p.indexOf('/login') !== -1;
     var isOrdersRoot = p === '/orders';
     var isCartRoot = p === '/cart';
+    var isProfileRoot = p === '/profile';
 
     if (isHome) {
       exitCustomerApp();
       return;
     }
 
-    if (isOrdersRoot || isCartRoot) {
+    if (isOrdersRoot || isCartRoot || isProfileRoot) {
       doCustomerNavigate('/home');
       return;
     }
