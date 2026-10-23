@@ -53,7 +53,7 @@ export function CartBar() {
           <div className="font-bold leading-tight">
             {totalQty} item{totalQty > 1 ? "s" : ""} · ₹{subtotal.toFixed(0)}
           </div>
-          <div className="text-[11px] opacity-90">Delivery charges at checkout</div>
+          <div className="text-[11px] opacity-90">Doorstep delivery · Tap to order</div>
         </div>
       </div>
       <span className="text-sm font-bold">View Cart →</span>
