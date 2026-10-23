@@ -15,6 +15,7 @@ import { Route as SuperRouteImport } from './routes/super'
 import { Route as RiderRouteImport } from './routes/rider'
 import { Route as RestaurantsRouteImport } from './routes/restaurants'
 import { Route as QrRouteImport } from './routes/qr'
+import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as PrivacyPolicyRouteImport } from './routes/privacy-policy'
 import { Route as OrdersRouteImport } from './routes/orders'
 import { Route as MenuRouteImport } from './routes/menu'
@@ -77,6 +78,11 @@ const RestaurantsRoute = RestaurantsRouteImport.update({
 const QrRoute = QrRouteImport.update({
   id: '/qr',
   path: '/qr',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrivacyPolicyRoute = PrivacyPolicyRouteImport.update({
@@ -259,6 +265,7 @@ export interface FileRoutesByFullPath {
   '/menu': typeof MenuRoute
   '/orders': typeof OrdersRoute
   '/privacy-policy': typeof PrivacyPolicyRoute
+  '/profile': typeof ProfileRoute
   '/qr': typeof QrRoute
   '/restaurants': typeof RestaurantsRoute
   '/rider': typeof RiderRoute
@@ -299,6 +306,7 @@ export interface FileRoutesByTo {
   '/menu': typeof MenuRoute
   '/orders': typeof OrdersRoute
   '/privacy-policy': typeof PrivacyPolicyRoute
+  '/profile': typeof ProfileRoute
   '/qr': typeof QrRoute
   '/restaurants': typeof RestaurantsRoute
   '/rider': typeof RiderRoute
@@ -340,6 +348,7 @@ export interface FileRoutesById {
   '/menu': typeof MenuRoute
   '/orders': typeof OrdersRoute
   '/privacy-policy': typeof PrivacyPolicyRoute
+  '/profile': typeof ProfileRoute
   '/qr': typeof QrRoute
   '/restaurants': typeof RestaurantsRoute
   '/rider': typeof RiderRoute
@@ -383,6 +392,7 @@ export interface FileRouteTypes {
     | '/menu'
     | '/orders'
     | '/privacy-policy'
+    | '/profile'
     | '/qr'
     | '/restaurants'
     | '/rider'
@@ -423,6 +433,7 @@ export interface FileRouteTypes {
     | '/menu'
     | '/orders'
     | '/privacy-policy'
+    | '/profile'
     | '/qr'
     | '/restaurants'
     | '/rider'
@@ -463,6 +474,7 @@ export interface FileRouteTypes {
     | '/menu'
     | '/orders'
     | '/privacy-policy'
+    | '/profile'
     | '/qr'
     | '/restaurants'
     | '/rider'
@@ -505,6 +517,7 @@ export interface RootRouteChildren {
   MenuRoute: typeof MenuRoute
   OrdersRoute: typeof OrdersRoute
   PrivacyPolicyRoute: typeof PrivacyPolicyRoute
+  ProfileRoute: typeof ProfileRoute
   QrRoute: typeof QrRoute
   RestaurantsRoute: typeof RestaurantsRoute
   RiderRoute: typeof RiderRoute
@@ -558,6 +571,13 @@ declare module '@tanstack/react-router' {
       path: '/qr'
       fullPath: '/qr'
       preLoaderRoute: typeof QrRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/privacy-policy': {
@@ -859,6 +879,7 @@ const rootRouteChildren: RootRouteChildren = {
   MenuRoute: MenuRoute,
   OrdersRoute: OrdersRoute,
   PrivacyPolicyRoute: PrivacyPolicyRoute,
+  ProfileRoute: ProfileRoute,
   QrRoute: QrRoute,
   RestaurantsRoute: RestaurantsRoute,
   RiderRoute: RiderRoute,
