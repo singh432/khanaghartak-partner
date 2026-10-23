@@ -27,7 +27,7 @@ export const Route = createFileRoute("/cart")({
 export function CartPage() {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
-  const { items, ready, inc, dec, remove, clear, subtotal, totalQty } = useCart();
+  const { items, ready, inc, dec, remove, totalQty } = useCart();
 
   const [restaurantName, setRestaurantName] = useState<string>("");
   const [restaurantClosed, setRestaurantClosed] = useState(false);
@@ -115,7 +115,7 @@ export function CartPage() {
           </div>
         )}
 
-        {/* CART ITEMS LIST */}
+        {/* CART ITEMS ONLY */}
         <div className="rounded-2xl border bg-card p-4 shadow-[var(--shadow-card)] space-y-3">
           <div className="flex items-center justify-between pb-2 border-b border-border/50">
             <div>
@@ -181,21 +181,9 @@ export function CartPage() {
             ))}
           </div>
         </div>
-
-        {/* FOOD SUBTOTAL SUMMARY (Clean & Simple) */}
-        <div className="rounded-2xl border bg-card p-4 shadow-[var(--shadow-card)] space-y-2.5">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-muted-foreground">Item Subtotal</span>
-            <span className="text-base font-extrabold text-foreground">₹{subtotal.toFixed(0)}</span>
-          </div>
-
-          <div className="rounded-xl bg-muted/40 p-3 text-xs text-muted-foreground leading-relaxed">
-            💡 <strong>Overall charges</strong> (delivery fee, platform fee & discounts) will be calculated on the next checkout page once you confirm your delivery location.
-          </div>
-        </div>
       </div>
 
-      {/* FIXED BOTTOM ACTION BAR */}
+      {/* FIXED BOTTOM ACTION BAR: PROCEED TO CHECKOUT ONLY */}
       <div
         className="fixed left-1/2 z-50 w-full max-w-[480px] -translate-x-1/2 border-t bg-background/95 backdrop-blur px-4 py-3 shadow-lg"
         style={{ bottom: "calc(64px + env(safe-area-inset-bottom))" }}
@@ -203,12 +191,10 @@ export function CartPage() {
         <button
           onClick={() => navigate({ to: "/checkout" })}
           disabled={restaurantClosed || items.length === 0}
-          className="flex h-12 w-full items-center justify-between rounded-2xl bg-primary px-5 text-sm font-bold text-primary-foreground shadow-[var(--shadow-soft)] disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] transition"
+          className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-primary px-5 text-[15px] font-bold text-primary-foreground shadow-[var(--shadow-soft)] disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] transition"
         >
           <span>Proceed to Checkout</span>
-          <span className="flex items-center gap-1">
-            ₹{subtotal.toFixed(0)} <ArrowRight className="h-4 w-4" />
-          </span>
+          <ArrowRight className="h-4 w-4" />
         </button>
       </div>
     </div>

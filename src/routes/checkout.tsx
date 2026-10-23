@@ -15,6 +15,7 @@ import { primeVoice } from "@/lib/voice";
 import { track } from "@/lib/analytics";
 import { useFormDraft } from "@/hooks/useFormDraft";
 import { withTimeout } from "@/lib/supabase-query";
+import { cartHasHandiNonVeg, HANDI_PREP_NOTE, cartHasCake, CAKE_PREP_NOTE } from "@/lib/portions";
 import { fetchActiveZones, resolveCustomerZone, isLocationInServiceZone, OUTSIDE_ZONE_MESSAGE, type DeliveryZone } from "@/lib/zones";
 import { BrandHeader } from "@/components/BrandHeader";
 import { PageSpinner } from "@/components/PageState";
@@ -27,7 +28,6 @@ import {
   Wallet,
   AlertTriangle,
   CheckCircle2,
-  UtensilsCrossed,
 } from "lucide-react";
 
 const LocationPicker = lazy(() => import("@/components/LocationPicker.client"));
@@ -37,9 +37,9 @@ export const Route = createFileRoute("/checkout")({
   head: () => ({
     meta: [
       { name: "robots", content: "noindex, nofollow" },
-      { title: "Checkout & Delivery — KhanaGharTak" },
+      { title: "Checkout & Order — KhanaGharTak" },
       { name: "description", content: "Review overall charges, enter delivery address, and place your Cash on Delivery order." },
-      { property: "og:title", content: "Checkout & Delivery — KhanaGharTak" },
+      { property: "og:title", content: "Checkout & Order — KhanaGharTak" },
       { property: "og:description", content: "Review overall charges, enter delivery address, and place your Cash on Delivery order." },
       { property: "og:url", content: "https://khanaghartak.in/checkout" },
     ],
@@ -333,10 +333,10 @@ export function CheckoutPage() {
 
   return (
     <div className="pb-36 bg-background min-h-screen">
-      <BrandHeader subtitle="Checkout & Order" />
+      <BrandHeader subtitle="Checkout" />
 
       <div className="px-4 pt-3 space-y-4 max-w-lg mx-auto">
-        {/* TOP NAVIGATION: BACK TO CART & RESTAURANT INFO */}
+        {/* TOP NAVIGATION: BACK TO CART */}
         <div className="flex items-center justify-between">
           <Link
             to="/cart"
@@ -344,39 +344,18 @@ export function CheckoutPage() {
           >
             <ArrowLeft className="h-3.5 w-3.5" /> Back to Cart
           </Link>
-          <span className="text-[11px] font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
-            Step 2 of 2 · Final Review
-          </span>
-        </div>
-
-        {/* ORDER RECAP CARD */}
-        <div className="rounded-2xl border bg-card p-3.5 shadow-[var(--shadow-card)] flex items-center justify-between">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary shrink-0">
-              <UtensilsCrossed className="h-5 w-5" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs font-bold text-foreground truncate">
-                {restaurantName || "Restaurant Order"}
-              </p>
-              <p className="text-[11px] text-muted-foreground">
-                {totalQty} item{totalQty > 1 ? "s" : ""} · Food Total: ₹{subtotal.toFixed(0)}
-              </p>
-            </div>
-          </div>
-          <Link
-            to="/cart"
-            className="text-xs font-bold text-primary hover:underline shrink-0"
-          >
-            Edit
-          </Link>
+          {restaurantName && (
+            <span className="text-xs text-muted-foreground font-medium truncate max-w-[200px]">
+              {restaurantName}
+            </span>
+          )}
         </div>
 
         {/* DELIVERY ADDRESS & LOCATION CONFIRMATION */}
         <div className="rounded-2xl border bg-card p-4 shadow-[var(--shadow-card)] space-y-3">
           <div className="flex items-center justify-between pb-1 border-b border-border/50">
             <h2 className="text-sm font-bold text-foreground flex items-center gap-1.5">
-              <MapPin className="h-4 w-4 text-primary" /> Delivery Address
+              <MapPin className="h-4 w-4 text-primary" /> Delivery Details
             </h2>
             {customerZone && (
               <span className="text-[11px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
@@ -461,12 +440,24 @@ export function CheckoutPage() {
               {coords && !outOfRange && (
                 <p className="text-[11px] text-success font-semibold flex items-center gap-1">
                   <CheckCircle2 className="h-3 w-3 shrink-0" />
-                  Location pinned for rider navigation {customerZone ? `(${customerZone.name})` : ""}
+                  Delivery location confirmed {customerZone ? `· ${customerZone.name} delivery zone` : ""}
                 </p>
               )}
             </div>
           </div>
         </div>
+
+        {/* PREPARATION NOTES */}
+        {cartHasHandiNonVeg(items) && (
+          <p className="rounded-xl border border-primary/30 bg-accent/40 px-3 py-2 text-xs font-medium text-foreground">
+            {HANDI_PREP_NOTE}
+          </p>
+        )}
+        {cartHasCake(items) && (
+          <p className="rounded-xl border border-primary/30 bg-accent/40 px-3 py-2 text-xs font-medium text-foreground">
+            {CAKE_PREP_NOTE}
+          </p>
+        )}
 
         {/* SERVICE AREA WARNINGS */}
         {restaurantClosed && (
@@ -490,42 +481,66 @@ export function CheckoutPage() {
           </div>
         )}
 
-        {/* OVERALL CHARGES (BILL SUMMARY) — CALCULATED ON THIS LAST PAGE ONLY */}
-        <div className="rounded-2xl border bg-card p-4 shadow-[var(--shadow-card)] space-y-2.5 text-sm">
+        {/* ORDER SUMMARY (The ONLY place where overall charges & full breakdown are shown) */}
+        <div className="rounded-2xl border bg-card p-4 shadow-[var(--shadow-card)] space-y-3">
           <div className="flex items-center justify-between pb-1 border-b border-border/50">
-            <h2 className="text-sm font-bold text-foreground">Overall Charges</h2>
-            <span className="text-[11px] text-muted-foreground font-medium">
-              ETA: {estimateEta(items, distanceKm ?? effectiveDistanceKm).label}
-            </span>
+            <h2 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Order Summary</h2>
+            <Link to="/cart" className="text-xs font-bold text-primary hover:underline">
+              Edit Cart
+            </Link>
           </div>
 
-          <div className="space-y-1.5 pt-1">
-            <Row label="Food Subtotal" value={`₹${subtotal.toFixed(0)}`} />
+          <div className="rounded-xl bg-secondary/60 px-3 py-2 text-xs font-semibold text-foreground">
+            Estimated delivery: {estimateEta(items, distanceKm ?? effectiveDistanceKm).label}
+            {distanceKm == null && " (share location for exact ETA)"}
+          </div>
+
+          {/* ITEM ROWS */}
+          <div className="space-y-1.5 divide-y divide-border/20">
+            {items.map((it) => (
+              <div key={it.id} className="flex justify-between py-1 text-xs first:pt-0">
+                <span className="text-foreground">
+                  {it.name} × {it.qty}
+                </span>
+                <span className="font-semibold text-foreground">
+                  ₹{(it.price * it.qty).toFixed(0)}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          <div className="my-1.5 h-px bg-border/60" />
+
+          {/* CHARGES BREAKDOWN */}
+          <div className="space-y-1.5 text-xs">
+            <Row label="Food subtotal" value={`₹${subtotal.toFixed(0)}`} />
 
             {/* LIVE DELIVERY FEE */}
             <Row
               label={
                 distanceKm != null
-                  ? `Delivery Fee (${distanceKm.toFixed(1)} km)`
-                  : `Delivery Fee (~${effectiveDistanceKm.toFixed(1)} km)`
+                  ? `Delivery fee (${distanceKm.toFixed(1)} km road route)`
+                  : `Delivery fee (~${effectiveDistanceKm.toFixed(1)} km)`
               }
               value={
                 outOfRange && coords
                   ? "—"
                   : deliveryFee === 0
                   ? "FREE"
-                  : `₹${deliveryFee.toFixed(0)}`
+                  : `₹${deliveryFee.toFixed(2)}`
               }
             />
 
             {/* PLATFORM FEE */}
-            <Row label="Platform Fee" value={`₹${pricing.platform_fee.toFixed(0)}`} />
+            <Row label="Platform fee" value={`₹${pricing.platform_fee.toFixed(0)}`} />
 
             {/* FIRST ORDER OFFER */}
             {firstOrder && (
               <>
-                <Row label="Welcome Offer (5% off)" value={`− ₹${firstOrderDiscount.toFixed(0)}`} highlight />
-                <p className="text-[11px] font-semibold text-success">🎉 Welcome offer applied on your first order!</p>
+                <Row label="First order offer (5% off)" value={`− ₹${firstOrderDiscount.toFixed(0)}`} highlight />
+                <p className="text-[11px] font-semibold text-success">
+                  Welcome offer applied — 5% off your first order 🎉
+                </p>
               </>
             )}
 
@@ -533,8 +548,8 @@ export function CheckoutPage() {
 
             {/* GRAND TOTAL */}
             <Row
-              label="Grand Total"
-              value={outOfRange && coords ? "—" : `₹${grand.toFixed(0)}`}
+              label="Grand total"
+              value={outOfRange && coords ? "—" : `₹${grand.toFixed(2)}`}
               bold
             />
           </div>
@@ -542,7 +557,7 @@ export function CheckoutPage() {
 
         {/* PAYMENT METHOD */}
         <div className="rounded-2xl border bg-card p-4 shadow-[var(--shadow-card)] space-y-2">
-          <h2 className="text-sm font-bold text-foreground">Payment Method</h2>
+          <h2 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Payment</h2>
           <div
             className={`flex items-center gap-3 rounded-xl border-2 p-3 ${
               codBlocked ? "border-destructive/40 bg-destructive/5" : "border-primary bg-primary/5"
@@ -554,7 +569,7 @@ export function CheckoutPage() {
               <p className="text-[11px] text-muted-foreground">
                 {codBlocked
                   ? "COD is paused for this account"
-                  : `Pay ₹${outOfRange && coords ? "—" : grand.toFixed(0)} in cash or UPI when order arrives`}
+                  : `Pay ₹${outOfRange && coords ? "—" : grand.toFixed(2)} in cash or UPI when order arrives`}
               </p>
             </div>
             {!codBlocked && <span className="h-4 w-4 rounded-full border-4 border-primary" />}
@@ -587,17 +602,17 @@ export function CheckoutPage() {
           ) : codBlocked ? (
             "Cash on Delivery Unavailable"
           ) : !coords ? (
-            "Select Delivery Location"
+            "Select Location to Continue"
           ) : form.address.trim().length < 5 ? (
             "Enter Delivery Address Above"
           ) : outOfRange ? (
-            "Outside Delivery Service Area"
+            "Outside Delivery Area"
           ) : zoneMismatch ? (
             "Kitchen Outside Delivery Zone"
           ) : restaurantClosed ? (
             "Restaurant is Closed"
           ) : (
-            `Place Order (COD) · ₹${grand.toFixed(0)}`
+            `Place Order · ₹${grand.toFixed(2)}`
           )}
         </button>
       </div>
