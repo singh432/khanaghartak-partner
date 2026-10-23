@@ -36,7 +36,7 @@ export function BottomNav() {
 
   return (
     <nav
-      className="fixed bottom-0 left-1/2 z-40 w-full max-w-[480px] -translate-x-1/2 border-t bg-background/95 backdrop-blur"
+      className="fixed bottom-0 left-1/2 z-40 w-full max-w-[480px] -translate-x-1/2 border-t border-border/50 bg-background/95 backdrop-blur shadow-[0_-2px_10px_rgba(0,0,0,0.03)]"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
       <ul className="grid grid-cols-4">
@@ -47,19 +47,19 @@ export function BottomNav() {
               <Link
                 to={to}
                 preload="intent"
-                className={`relative flex flex-col items-center justify-center gap-1 py-2.5 text-[11px] font-medium transition-colors ${
-                  active ? "text-primary" : "text-muted-foreground"
+                className={`relative flex flex-col items-center justify-center gap-1 py-2 text-[11px] font-medium transition-colors ${
+                  active ? "text-primary font-bold" : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 <span className="relative">
-                  <Icon className={`h-5 w-5 ${active ? "stroke-[2.5]" : ""}`} />
+                  <Icon className={`h-5 w-5 ${active ? "stroke-[2.5]" : "stroke-[1.8]"}`} />
                   {badge && badge > 0 ? (
-                    <span className="absolute -top-1.5 -right-2 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
+                    <span className="absolute -top-1.5 -right-2 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[10px] font-black text-primary-foreground shadow-sm">
                       {badge}
                     </span>
                   ) : null}
                 </span>
-                {label}
+                <span>{label}</span>
               </Link>
             </li>
           );

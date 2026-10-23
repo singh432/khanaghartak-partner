@@ -32,18 +32,61 @@ export async function setupPushNotifications(
       if (!token?.value) return;
       try {
         localStorage.setItem("kgt:fcm-token", token.value);
-        await (supabase.from("user_fcm_tokens" as any) as any).upsert(
-          {
-            user_id: userId,
-            token: token.value,
-            app_type: appType,
-            role: role,
-            platform: "android",
-            is_active: true,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: "token" }
-        );
+
+        // 1. Primary: register_push_device RPC (Live Lovable Cloud RPC)
+        try {
+          await supabase.rpc("register_push_device" as any, {
+            _token: token.value,
+            _platform: "android",
+          });
+        } catch (pdRpcErr) {
+          console.warn("RPC register_push_device error:", pdRpcErr);
+        }
+
+        // 2. Primary: Direct upsert to push_devices (Live Lovable Cloud table)
+        try {
+          await (supabase.from("push_devices" as any) as any).upsert(
+            {
+              user_id: userId,
+              token: token.value,
+              platform: "android",
+              role: role,
+              app_type: appType,
+              is_active: true,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "token" }
+          );
+        } catch (pdUpsertErr) {
+          console.warn("Direct push_devices upsert error:", pdUpsertErr);
+        }
+
+        // 3. Secondary fallback: register_partner_fcm_token RPC
+        try {
+          await supabase.rpc("register_partner_fcm_token" as any, {
+            _token: token.value,
+            _role: role,
+            _platform: "android",
+          });
+        } catch (rpcErr) {
+          console.warn("RPC register_partner_fcm_token error:", rpcErr);
+        }
+
+        // 4. Secondary fallback: user_fcm_tokens table
+        try {
+          await (supabase.from("user_fcm_tokens" as any) as any).upsert(
+            {
+              user_id: userId,
+              token: token.value,
+              app_type: appType,
+              role: role,
+              platform: "android",
+              is_active: true,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "token" }
+          );
+        } catch (e) {}
       } catch (err) {
         console.error("Failed to save FCM token to Supabase:", err);
       }
@@ -68,7 +111,7 @@ export async function setupPushNotifications(
         if (role === "restaurant") {
           window.location.href = orderId ? `/admin/orders?order_id=${encodeURIComponent(orderId)}` : "/admin/orders";
         } else if (role === "rider") {
-          window.location.href = "/rider";
+          window.location.href = orderId ? `/rider?orderId=${encodeURIComponent(orderId)}` : "/rider";
         } else if (role === "zone_manager") {
           window.location.href = orderId ? `/zone?order_id=${encodeURIComponent(orderId)}` : "/zone";
         } else {
@@ -93,6 +136,11 @@ export async function clearPushNotifications() {
   try {
     const savedToken = localStorage.getItem("kgt:fcm-token");
     if (savedToken) {
+      try {
+        await (supabase.from("push_devices" as any) as any)
+          .update({ is_active: false })
+          .eq("token", savedToken);
+      } catch (e) {}
       try {
         await (supabase.from("user_fcm_tokens" as any) as any)
           .update({ is_active: false })

@@ -1,7 +1,11 @@
 // Service-area constants for KhanaGharTak.
-// Center: Shankargarh, Prayagraj, UP.
+// 1. Center: Shankargarh, Prayagraj, UP.
 export const SERVICE_CENTER = { lat: 25.1842, lng: 81.6212 } as const;
-export const SERVICE_RADIUS_KM = 10;
+export const SERVICE_RADIUS_KM = 12;
+
+// 2. Center: Chakghat (Border region adjoining Shankargarh)
+export const CHAKGHAT_CENTER = { lat: 25.0275, lng: 81.7375 } as const;
+export const CHAKGHAT_RADIUS_KM = 10;
 
 export type LatLng = { lat: number; lng: number };
 
@@ -20,9 +24,12 @@ export function distanceKm(a: LatLng, b: LatLng): number {
 }
 
 export function distanceFromServiceCenterKm(p: LatLng): number {
-  return distanceKm(SERVICE_CENTER, p);
+  return Math.min(distanceKm(SERVICE_CENTER, p), distanceKm(CHAKGHAT_CENTER, p));
 }
 
 export function isWithinServiceArea(p: LatLng): boolean {
-  return distanceFromServiceCenterKm(p) <= SERVICE_RADIUS_KM;
+  return (
+    distanceKm(SERVICE_CENTER, p) <= SERVICE_RADIUS_KM ||
+    distanceKm(CHAKGHAT_CENTER, p) <= CHAKGHAT_RADIUS_KM
+  );
 }

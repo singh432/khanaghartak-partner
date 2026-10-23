@@ -12,6 +12,8 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.media.AudioAttributes;
 import android.media.AudioManager;
@@ -24,11 +26,25 @@ import android.os.PowerManager;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.provider.Settings;
+import android.content.res.ColorStateList;
+import android.graphics.Typeface;
+import android.os.Handler;
+import android.os.Looper;
+import android.util.TypedValue;
+import android.view.Gravity;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebView;
+import android.widget.Button;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.ProgressBar;
+import android.widget.RelativeLayout;
+import android.widget.Space;
+import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
@@ -55,6 +71,7 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.HashSet;
+import android.util.Log;
 import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.Executors;
@@ -66,6 +83,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 public class MainActivity extends BridgeActivity {
+    private static final String TAG = "MainActivity";
     private static final int NOTIFICATION_PERMISSION_REQUEST_CODE = 2001;
     private static final int LOCATION_PERMISSION_REQUEST_CODE = 2002;
     private static final int SMS_CONSENT_REQUEST = 2003;
@@ -125,6 +143,9 @@ public class MainActivity extends BridgeActivity {
             });
         }
 
+        // Initialize branded native loading overlay so users never see a blank white screen
+        initLoadingOverlay();
+
         // Keep screen awake on partner/counter devices
         try {
             getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
@@ -157,28 +178,47 @@ public class MainActivity extends BridgeActivity {
                 @Override
                 public void onPageStarted(WebView webView) {
                     super.onPageStarted(webView);
+                    isPageLoaded = false;
                     applyPartnerScripts(webView);
                 }
 
                 @Override
                 public void onPageLoaded(WebView webView) {
                     super.onPageLoaded(webView);
+                    isPageLoaded = true;
                     try {
                         String ua = webView.getSettings().getUserAgentString();
                         if (!ua.contains("KhanaGharTakPartnerApp")) {
                             webView.getSettings().setUserAgentString(ua + " KhanaGharTakPartnerApp");
                         }
-                        webView.addJavascriptInterface(new OtpJavascriptInterface(), "AndroidOtp");
-                        webView.addJavascriptInterface(new AppJavascriptInterface(), "AndroidApp");
-                        webView.addJavascriptInterface(new AlertJavascriptInterface(), "AndroidAlert");
                     } catch (Exception ignored) {}
                     applyPartnerScripts(webView);
+                    hideLoadingOverlay();
+                    if (pendingAlertOrderId != null || pendingAlertRole != null) {
+                        dispatchPendingAlertNavigation();
+                    }
                 }
 
                 @Override
                 public void onPageCommitVisible(WebView view, String url) {
                     super.onPageCommitVisible(view, url);
                     applyPartnerScripts(view);
+                    hideLoadingOverlay();
+                }
+
+                @Override
+                public void onReceivedError(WebView webView) {
+                    super.onReceivedError(webView);
+                    if (!isPageLoaded) {
+                        showLoadingError("Failed to reach Partner Portal. Please check your internet connection.");
+                    }
+                }
+
+                @Override
+                public void onReceivedHttpError(WebView webView) {
+                    super.onReceivedHttpError(webView);
+                    // Do not block UI on background or subresource HTTP errors (e.g. 404 image/favicon)
+                    Log.w(TAG, "WebView onReceivedHttpError ignored for background resource");
                 }
             });
         }
@@ -194,6 +234,19 @@ public class MainActivity extends BridgeActivity {
                 this.activeAccessToken = savedToken;
                 this.activeRole = prefs.getString("role", "restaurant");
                 this.activeUserId = prefs.getString("user_id", null);
+                startOrderPoller();
+
+                // Proactively refresh FCM token and register with Supabase push_devices
+                final String curAccessToken = this.activeAccessToken;
+                final String curUserId = this.activeUserId;
+                final String curRole = this.activeRole;
+                FirebaseMessaging.getInstance().getToken().addOnCompleteListener(task -> {
+                    if (task.isSuccessful() && task.getResult() != null) {
+                        String fcmToken = task.getResult();
+                        prefs.edit().putString("fcm_token", fcmToken).apply();
+                        PartnerFirebaseMessagingService.syncTokenToSupabase(curAccessToken, curUserId, curRole, fcmToken);
+                    }
+                });
             }
         } catch (Exception ignored) {}
 
@@ -220,6 +273,155 @@ public class MainActivity extends BridgeActivity {
         }
     }
 
+    private String pendingAlertOrderId = null;
+    private String pendingAlertRole = null;
+    private boolean isPageLoaded = false;
+    private View loadingOverlayView = null;
+    private TextView loadingStatusText = null;
+    private Button retryButton = null;
+
+    private void initLoadingOverlay() {
+        ViewGroup root = (ViewGroup) findViewById(android.R.id.content);
+        if (root == null) return;
+
+        RelativeLayout overlay = new RelativeLayout(this);
+        overlay.setLayoutParams(new RelativeLayout.LayoutParams(
+                RelativeLayout.LayoutParams.MATCH_PARENT,
+                RelativeLayout.LayoutParams.MATCH_PARENT));
+        overlay.setBackgroundColor(Color.WHITE);
+        overlay.setClickable(true);
+
+        LinearLayout centerLayout = new LinearLayout(this);
+        centerLayout.setOrientation(LinearLayout.VERTICAL);
+        centerLayout.setGravity(Gravity.CENTER);
+        RelativeLayout.LayoutParams centerParams = new RelativeLayout.LayoutParams(
+                RelativeLayout.LayoutParams.WRAP_CONTENT,
+                RelativeLayout.LayoutParams.WRAP_CONTENT);
+        centerParams.addRule(RelativeLayout.CENTER_IN_PARENT, RelativeLayout.TRUE);
+        centerLayout.setLayoutParams(centerParams);
+
+        // App Logo
+        ImageView logoView = new ImageView(this);
+        int logoSizePx = (int) (100 * getResources().getDisplayMetrics().density);
+        LinearLayout.LayoutParams logoParams = new LinearLayout.LayoutParams(logoSizePx, logoSizePx);
+        logoView.setLayoutParams(logoParams);
+        Bitmap logoBmp = PartnerFirebaseMessagingService.getDrawableBitmap(this, R.drawable.ic_kgt_brand_logo);
+        if (logoBmp != null) {
+            logoView.setImageBitmap(logoBmp);
+        } else {
+            logoView.setImageResource(R.drawable.splash);
+        }
+        centerLayout.addView(logoView);
+
+        // Spacer
+        Space space1 = new Space(this);
+        space1.setLayoutParams(new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                (int) (24 * getResources().getDisplayMetrics().density)));
+        centerLayout.addView(space1);
+
+        // Orange Spinner
+        ProgressBar spinner = new ProgressBar(this);
+        int spinnerSizePx = (int) (40 * getResources().getDisplayMetrics().density);
+        LinearLayout.LayoutParams spinnerParams = new LinearLayout.LayoutParams(spinnerSizePx, spinnerSizePx);
+        spinner.setLayoutParams(spinnerParams);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            spinner.setIndeterminateTintList(ColorStateList.valueOf(Color.parseColor("#F45D2C")));
+        }
+        centerLayout.addView(spinner);
+
+        // Spacer
+        Space space2 = new Space(this);
+        space2.setLayoutParams(new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                (int) (16 * getResources().getDisplayMetrics().density)));
+        centerLayout.addView(space2);
+
+        // App Title
+        TextView titleText = new TextView(this);
+        titleText.setText("KhanaGharTak Partner");
+        titleText.setTextColor(Color.parseColor("#0F172A"));
+        titleText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17);
+        titleText.setTypeface(Typeface.DEFAULT_BOLD);
+        titleText.setGravity(Gravity.CENTER);
+        centerLayout.addView(titleText);
+
+        // Status Text
+        loadingStatusText = new TextView(this);
+        loadingStatusText.setText("Opening Partner Portal...");
+        loadingStatusText.setTextColor(Color.parseColor("#64748B"));
+        loadingStatusText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+        loadingStatusText.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams statusParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        statusParams.topMargin = (int) (6 * getResources().getDisplayMetrics().density);
+        loadingStatusText.setLayoutParams(statusParams);
+        centerLayout.addView(loadingStatusText);
+
+        // Retry Button
+        retryButton = new Button(this);
+        retryButton.setText("Tap to Retry");
+        retryButton.setTextColor(Color.WHITE);
+        retryButton.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        retryButton.setTypeface(Typeface.DEFAULT_BOLD);
+        retryButton.setBackgroundColor(Color.parseColor("#F45D2C"));
+        retryButton.setVisibility(View.GONE);
+        LinearLayout.LayoutParams btnParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        btnParams.topMargin = (int) (20 * getResources().getDisplayMetrics().density);
+        retryButton.setLayoutParams(btnParams);
+        retryButton.setOnClickListener(v -> {
+            retryButton.setVisibility(View.GONE);
+            loadingStatusText.setText("Reconnecting...");
+            loadingStatusText.setTextColor(Color.parseColor("#64748B"));
+            if (bridge != null && bridge.getWebView() != null) {
+                bridge.getWebView().reload();
+            }
+        });
+        centerLayout.addView(retryButton);
+
+        overlay.addView(centerLayout);
+        root.addView(overlay);
+        loadingOverlayView = overlay;
+
+        // Safety timeout: if page hasn't loaded after 15 seconds, show retry option
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            if (!isPageLoaded && loadingOverlayView != null && loadingOverlayView.getVisibility() == View.VISIBLE) {
+                showLoadingError("Taking longer than usual to load.");
+            }
+        }, 15000);
+    }
+
+    private void hideLoadingOverlay() {
+        if (loadingOverlayView != null && loadingOverlayView.getVisibility() == View.VISIBLE) {
+            loadingOverlayView.animate()
+                    .alpha(0f)
+                    .setDuration(250)
+                    .withEndAction(() -> {
+                        if (loadingOverlayView != null) {
+                            loadingOverlayView.setVisibility(View.GONE);
+                            loadingOverlayView.setAlpha(1f);
+                        }
+                    });
+        }
+    }
+
+    private void showLoadingError(String message) {
+        if (loadingOverlayView != null) {
+            loadingOverlayView.setVisibility(View.VISIBLE);
+            loadingOverlayView.setAlpha(1f);
+            if (loadingStatusText != null) {
+                loadingStatusText.setText(message != null ? message : "Unable to reach Partner Portal. Please check your connection.");
+                loadingStatusText.setTextColor(Color.parseColor("#DC2626"));
+            }
+            if (retryButton != null) {
+                retryButton.setVisibility(View.VISIBLE);
+            }
+        }
+    }
+
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
@@ -230,26 +432,82 @@ public class MainActivity extends BridgeActivity {
     private void handleIncomingAlertIntent(Intent intent) {
         if (intent != null && intent.getBooleanExtra("from_order_alert", false)) {
             final String role = intent.getStringExtra("role");
+            final String orderId = intent.getStringExtra("order_id");
             stopContinuousAlarm();
-            if (this.bridge != null && this.bridge.getWebView() != null) {
-                this.bridge.getWebView().post(new Runnable() {
-                    @Override
-                    public void run() {
-                        String targetPath = "/admin/orders";
-                        if ("rider".equals(role)) targetPath = "/rider";
-                        else if ("zone_manager".equals(role)) targetPath = "/zone";
-                        bridge.getWebView().evaluateJavascript(
-                            "(function() { " +
-                            "  if (typeof window.__kgt_stop_order_alarm === 'function') window.__kgt_stop_order_alarm(); " +
-                            "  if (window.location.pathname !== '" + targetPath + "') { " +
-                            "    window.location.href = '" + targetPath + "'; " +
-                            "  } " +
-                            "})();",
-                            null
-                        );
-                    }
-                });
+            PartnerFirebaseMessagingService.stopAuxiliarySiren();
+
+            this.pendingAlertOrderId = orderId;
+            this.pendingAlertRole = role;
+            if (isPageLoaded) {
+                dispatchPendingAlertNavigation();
             }
+        }
+    }
+
+    private void dispatchPendingAlertNavigation() {
+        if (pendingAlertOrderId == null && pendingAlertRole == null) return;
+        final String role = pendingAlertRole;
+        final String orderId = pendingAlertOrderId;
+
+        // CRITICAL: Consume the pending alert immediately so it can never re-trigger in a loop!
+        this.pendingAlertOrderId = null;
+        this.pendingAlertRole = null;
+
+        if (this.bridge != null && this.bridge.getWebView() != null) {
+            this.bridge.getWebView().post(new Runnable() {
+                @Override
+                public void run() {
+                    String cleanId = orderId != null ? orderId.trim() : "";
+                    String cleanRole = role != null ? role.trim() : "";
+
+                    String targetBase = "/admin/orders";
+                    if ("rider".equals(cleanRole)) targetBase = "/rider";
+                    else if ("zone_manager".equals(cleanRole) || "manager".equals(cleanRole)) targetBase = "/zone";
+
+                    String targetPath = targetBase;
+                    if (!cleanId.isEmpty()) {
+                        targetPath += "?orderId=" + Uri.encode(cleanId);
+                    }
+
+                    String js = "(function() { " +
+                        "  try { " +
+                        "    if (typeof window.__kgt_stop_order_alarm === 'function') window.__kgt_stop_order_alarm(); " +
+                        "    var targetBase = '" + targetBase + "'; " +
+                        "    var targetPath = '" + targetPath + "'; " +
+                        "    var orderId = '" + cleanId + "'; " +
+                        "    var role = '" + cleanRole + "'; " +
+                        "    if (typeof window.__kgt_navigate_to_order === 'function') { " +
+                        "      window.__kgt_navigate_to_order(role, orderId); " +
+                        "      return; " +
+                        "    } " +
+                        "    if (window.location.pathname === targetBase) { " +
+                        "      if (typeof window.__kgt_open_zone_order === 'function' && window.__kgt_open_zone_order(orderId)) return; " +
+                        "      if (typeof window.__kgt_open_partner_order === 'function' && window.__kgt_open_partner_order(orderId)) return; " +
+                        "      if (typeof window.__kgt_open_rider_order === 'function' && window.__kgt_open_rider_order(orderId)) return; " +
+                        "    } " +
+                        "    if (window.__kgt_router && typeof window.__kgt_router.navigate === 'function') { " +
+                        "      window.__kgt_router.navigate({ to: targetBase, search: orderId ? { orderId: orderId } : {} }); " +
+                        "      return; " +
+                        "    } " +
+                        "    if (window.history && window.history.pushState) { " +
+                        "      window.history.pushState(null, '', targetPath); " +
+                        "      window.dispatchEvent(new PopStateEvent('popstate')); " +
+                        "      return; " +
+                        "    } " +
+                        "    if (window.location.pathname !== targetBase) { " +
+                        "      window.location.href = targetPath; " +
+                        "    } " +
+                        "  } catch(e) { " +
+                        "    try { " +
+                        "      if (window.location.pathname !== '" + targetBase + "') { " +
+                        "        window.location.href = '" + targetPath + "'; " +
+                        "      } " +
+                        "    } catch(err) {} " +
+                        "  } " +
+                        "})();";
+                    bridge.getWebView().evaluateJavascript(js, null);
+                }
+            });
         }
     }
 
@@ -259,6 +517,21 @@ public class MainActivity extends BridgeActivity {
         instance = this;
         isForeground = true;
         stopContinuousAlarm();
+        if (this.activeAccessToken != null && !this.activeAccessToken.trim().isEmpty()) {
+            startOrderPoller();
+
+            final String curAccessToken = this.activeAccessToken;
+            final String curUserId = this.activeUserId;
+            final String curRole = this.activeRole;
+            final SharedPreferences prefs = getSharedPreferences("kgt_partner_prefs", Context.MODE_PRIVATE);
+            FirebaseMessaging.getInstance().getToken().addOnCompleteListener(task -> {
+                if (task.isSuccessful() && task.getResult() != null) {
+                    String fcmToken = task.getResult();
+                    prefs.edit().putString("fcm_token", fcmToken).apply();
+                    PartnerFirebaseMessagingService.syncTokenToSupabase(curAccessToken, curUserId, curRole, fcmToken);
+                }
+            });
+        }
         if (this.bridge != null && this.bridge.getWebView() != null) {
             applyPartnerScripts(this.bridge.getWebView());
         }
@@ -313,34 +586,66 @@ public class MainActivity extends BridgeActivity {
         }
     }
 
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == NOTIFICATION_PERMISSION_REQUEST_CODE) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                createNotificationChannels();
+                final SharedPreferences prefs = getSharedPreferences("kgt_partner_prefs", Context.MODE_PRIVATE);
+                final String savedToken = prefs.getString("access_token", null);
+                if (savedToken != null && !savedToken.trim().isEmpty() && activeUserId != null) {
+                    try {
+                        FirebaseMessaging.getInstance().getToken().addOnCompleteListener(task -> {
+                            if (task.isSuccessful() && task.getResult() != null) {
+                                String token = task.getResult();
+                                prefs.edit().putString("fcm_token", token).apply();
+                                PartnerFirebaseMessagingService.syncTokenToSupabase(savedToken, activeUserId, activeRole, token);
+                            }
+                        });
+                    } catch (Exception ignored) {}
+                }
+            }
+        }
+    }
+
     private void createNotificationChannels() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationManager notificationManager = getSystemService(NotificationManager.class);
             if (notificationManager == null) return;
 
-            Uri soundUri = Uri.parse(ContentResolver.SCHEME_ANDROID_RESOURCE + "://" + getPackageName() + "/" + R.raw.order_siren);
+            // Canonical sound URI using resource name
+            Uri soundUri = Uri.parse(ContentResolver.SCHEME_ANDROID_RESOURCE + "://" + getPackageName() + "/raw/order_siren");
 
-            // If existing orders_channel does not have the custom siren sound, delete and recreate it
-            NotificationChannel existingOrdersChannel = notificationManager.getNotificationChannel("orders_channel");
-            if (existingOrdersChannel != null) {
-                Uri currSound = existingOrdersChannel.getSound();
-                if (currSound == null || !currSound.toString().contains("order_siren")) {
-                    try {
-                        notificationManager.deleteNotificationChannel("orders_channel");
-                    } catch (Exception ignored) {}
+            // Clean up old legacy channel if present
+            try {
+                NotificationChannel legacyOrdersChannel = notificationManager.getNotificationChannel("orders_channel");
+                if (legacyOrdersChannel != null) {
+                    notificationManager.deleteNotificationChannel("orders_channel");
                 }
+            } catch (Exception ignored) {}
+
+            NotificationChannel existing = notificationManager.getNotificationChannel("orders_channel_v2");
+            if (existing != null) {
+                if (existing.getImportance() >= NotificationManager.IMPORTANCE_HIGH) {
+                    return;
+                }
+                try {
+                    notificationManager.deleteNotificationChannel("orders_channel_v2");
+                } catch (Exception ignored) {}
             }
 
             // 1. Primary channel for high-priority order and delivery alerts
             CharSequence ordersName = "Orders & Partner Alerts";
             String ordersDesc = "Instant notifications and continuous sirens for new orders and delivery dispatches";
             int ordersImportance = NotificationManager.IMPORTANCE_HIGH;
-            NotificationChannel ordersChannel = new NotificationChannel("orders_channel", ordersName, ordersImportance);
+            NotificationChannel ordersChannel = new NotificationChannel("orders_channel_v2", ordersName, ordersImportance);
             ordersChannel.setDescription(ordersDesc);
             ordersChannel.enableVibration(true);
             ordersChannel.setVibrationPattern(new long[]{0, 800, 400, 800, 400});
             ordersChannel.enableLights(true);
             ordersChannel.setLightColor(Color.parseColor("#F45D2C"));
+            ordersChannel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
 
             // Set alarm audio attributes with bundled order_siren
             AudioAttributes audioAttributes = new AudioAttributes.Builder()
@@ -474,17 +779,43 @@ public class MainActivity extends BridgeActivity {
                 }
                 PendingIntent pendingIntent = PendingIntent.getActivity(this, ALARM_NOTIFICATION_ID, intent, pendingFlags);
 
-                NotificationCompat.Builder builder = new NotificationCompat.Builder(this, "orders_channel")
-                        .setSmallIcon(R.mipmap.ic_launcher)
-                        .setContentTitle(title != null && !title.isEmpty() ? title : "🚨 NEW ORDER RECEIVED!")
-                        .setContentText(body != null && !body.isEmpty() ? body : "Tap to open and accept order immediately.")
+                Intent silenceIntent = new Intent(this, AlarmDismissReceiver.class);
+                silenceIntent.setAction(AlarmDismissReceiver.ACTION_DISMISS_ALARM);
+                silenceIntent.putExtra(AlarmDismissReceiver.EXTRA_NOTIFICATION_ID, ALARM_NOTIFICATION_ID);
+                PendingIntent silencePendingIntent = PendingIntent.getBroadcast(this, ALARM_NOTIFICATION_ID + 1, silenceIntent, pendingFlags);
+
+                // Decode circular/brand logo for right-side Large Icon
+                Bitmap largeIcon = null;
+                try {
+                    largeIcon = BitmapFactory.decodeResource(getResources(), R.drawable.ic_kgt_brand_logo);
+                    if (largeIcon == null) {
+                        largeIcon = PartnerFirebaseMessagingService.getDrawableBitmap(this, R.mipmap.ic_launcher_round);
+                    }
+                    if (largeIcon == null) {
+                        largeIcon = PartnerFirebaseMessagingService.getDrawableBitmap(this, R.mipmap.ic_launcher);
+                    }
+                } catch (Exception ignored) {}
+
+                String alertTitle = (title != null && !title.isEmpty()) ? title : "🚨 NEW ORDER RECEIVED!";
+                String alertBody = (body != null && !body.isEmpty()) ? body : "Tap to open and accept order immediately.";
+
+                NotificationCompat.Builder builder = new NotificationCompat.Builder(this, "orders_channel_v2")
+                        .setSmallIcon(R.drawable.ic_notification)
+                        .setColor(Color.parseColor("#F45D2C"))
+                        .setContentTitle(alertTitle)
+                        .setContentText(alertBody)
+                        .setStyle(new NotificationCompat.BigTextStyle().setBigContentTitle(alertTitle).bigText(alertBody))
                         .setPriority(NotificationCompat.PRIORITY_MAX)
                         .setCategory(NotificationCompat.CATEGORY_ALARM)
                         .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                         .setFullScreenIntent(pendingIntent, true)
-                        .setOngoing(true)
                         .setAutoCancel(true)
-                        .setContentIntent(pendingIntent);
+                        .setContentIntent(pendingIntent)
+                        .setDeleteIntent(silencePendingIntent);
+
+                if (largeIcon != null) {
+                    builder.setLargeIcon(largeIcon);
+                }
 
                 Notification notif = builder.build();
                 // FLAG_INSISTENT repeats audio until notification is handled
@@ -497,6 +828,7 @@ public class MainActivity extends BridgeActivity {
 
     public synchronized void stopContinuousAlarm() {
         isAlarmActive = false;
+        PartnerFirebaseMessagingService.stopAuxiliarySiren();
         try {
             if (alarmMediaPlayer != null) {
                 if (alarmMediaPlayer.isPlaying()) {
@@ -550,8 +882,9 @@ public class MainActivity extends BridgeActivity {
         if (accessToken == null || accessToken.trim().isEmpty()) {
             stopOrderPoller();
             final String savedFcmToken = prefs.getString("fcm_token", null);
+            final String prevAuth = this.activeAccessToken;
             if (savedFcmToken != null && !savedFcmToken.trim().isEmpty()) {
-                deactivateTokenInSupabase(savedFcmToken);
+                deactivateTokenInSupabase(savedFcmToken, prevAuth);
             }
             activeAccessToken = null;
             activeRole = null;
@@ -560,8 +893,13 @@ public class MainActivity extends BridgeActivity {
             return;
         }
 
+        String normalizedRole = (role != null && !role.isEmpty()) ? role.toLowerCase() : "restaurant";
+        boolean sessionChanged = !accessToken.equals(this.activeAccessToken)
+                || !normalizedRole.equals(this.activeRole)
+                || (userId != null && !userId.equals(this.activeUserId));
+
         this.activeAccessToken = accessToken;
-        this.activeRole = (role != null && !role.isEmpty()) ? role.toLowerCase() : "restaurant";
+        this.activeRole = normalizedRole;
         this.activeUserId = userId;
 
         prefs.edit()
@@ -570,46 +908,54 @@ public class MainActivity extends BridgeActivity {
             .putString("user_id", userId)
             .apply();
 
-        // Retrieve FCM token and sync to Supabase
-        try {
-            FirebaseMessaging.getInstance().getToken().addOnCompleteListener(new OnCompleteListener<String>() {
-                @Override
-                public void onComplete(@NonNull Task<String> task) {
-                    if (task.isSuccessful() && task.getResult() != null) {
-                        String token = task.getResult();
-                        prefs.edit().putString("fcm_token", token).apply();
-                        PartnerFirebaseMessagingService.syncTokenToSupabase(accessToken, userId, activeRole, token);
+        // Start native Order Poller
+        startOrderPoller();
+
+        // Retrieve FCM token and sync to Supabase (throttle to once per 60s unless session changed)
+        long lastSyncTime = prefs.getLong("last_fcm_sync_time", 0);
+        long now = System.currentTimeMillis();
+        if (sessionChanged || (now - lastSyncTime > 60000)) {
+            try {
+                FirebaseMessaging.getInstance().getToken().addOnCompleteListener(new OnCompleteListener<String>() {
+                    @Override
+                    public void onComplete(@NonNull Task<String> task) {
+                        if (task.isSuccessful() && task.getResult() != null) {
+                            String token = task.getResult();
+                            prefs.edit()
+                                .putString("fcm_token", token)
+                                .putLong("last_fcm_sync_time", System.currentTimeMillis())
+                                .apply();
+                            PartnerFirebaseMessagingService.syncTokenToSupabase(accessToken, userId, activeRole, token);
+                        }
                     }
-                }
-            });
-        } catch (Exception ignored) {}
+                });
+            } catch (Exception ignored) {}
+        }
     }
 
-    private void deactivateTokenInSupabase(final String fcmToken) {
+    private void deactivateTokenInSupabase(final String fcmToken, final String tokenAuth) {
         if (fcmToken == null || fcmToken.trim().isEmpty()) return;
         new Thread(new Runnable() {
             @Override
             public void run() {
                 HttpURLConnection conn = null;
                 try {
-                    URL url = new URL("https://bvacebeorvxwcfkselon.supabase.co/rest/v1/user_fcm_tokens?token=eq." + fcmToken);
+                    URL url = new URL("https://bvacebeorvxwcfkselon.supabase.co/rest/v1/push_devices?token=eq." + java.net.URLEncoder.encode(fcmToken, "UTF-8"));
                     conn = (HttpURLConnection) url.openConnection();
-                    conn.setRequestMethod("PATCH");
+                    conn.setRequestMethod("DELETE");
                     conn.setRequestProperty("apikey", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2YWNlYmVvcnZ4d2Nma3NlbG9uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3OTA2ODQsImV4cCI6MjA5NTM2NjY4NH0.3PUMlqniJqMnl_yNBc3Lu4JBOcMNK_RT0BLqb1nmohY");
-                    conn.setRequestProperty("Authorization", "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2YWNlYmVvcnZ4d2Nma3NlbG9uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3OTA2ODQsImV4cCI6MjA5NTM2NjY4NH0.3PUMlqniJqMnl_yNBc3Lu4JBOcMNK_RT0BLqb1nmohY");
-                    conn.setRequestProperty("Content-Type", "application/json");
+                    String auth = (tokenAuth != null && !tokenAuth.trim().isEmpty()) ? tokenAuth : activeAccessToken;
+                    if (auth != null && !auth.trim().isEmpty()) {
+                        conn.setRequestProperty("Authorization", "Bearer " + auth);
+                    } else {
+                        conn.setRequestProperty("Authorization", "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2YWNlYmVvcnZ4d2Nma3NlbG9uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3OTA2ODQsImV4cCI6MjA5NTM2NjY4NH0.3PUMlqniJqMnl_yNBc3Lu4JBOcMNK_RT0BLqb1nmohY");
+                    }
                     conn.setConnectTimeout(5000);
                     conn.setReadTimeout(5000);
-                    conn.setDoOutput(true);
-
-                    JSONObject body = new JSONObject();
-                    body.put("is_active", false);
-
-                    try (OutputStream os = conn.getOutputStream()) {
-                        os.write(body.toString().getBytes(StandardCharsets.UTF_8));
-                    }
-                    conn.getResponseCode();
-                } catch (Exception ignored) {
+                    int resCode = conn.getResponseCode();
+                    Log.d(TAG, "deactivateTokenInSupabase (push_devices DELETE) response code: " + resCode);
+                } catch (Exception e) {
+                    Log.w(TAG, "Failed to delete push_devices token on logout", e);
                 } finally {
                     if (conn != null) conn.disconnect();
                 }
@@ -957,6 +1303,12 @@ public class MainActivity extends BridgeActivity {
                     );
                 }
             });
+        }
+
+        @JavascriptInterface
+        public String getFcmToken() {
+            SharedPreferences prefs = getSharedPreferences("kgt_partner_prefs", Context.MODE_PRIVATE);
+            return prefs.getString("fcm_token", "");
         }
     }
 

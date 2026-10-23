@@ -8,21 +8,27 @@ import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
 import android.media.AudioAttributes;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Build;
 import android.os.PowerManager;
-import android.os.VibrationEffect;
-import android.os.Vibrator;
 import android.util.Log;
 import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
+import androidx.core.content.ContextCompat;
 import com.capacitorjs.plugins.pushnotifications.PushNotificationsPlugin;
 import com.google.firebase.messaging.FirebaseMessagingService;
 import com.google.firebase.messaging.RemoteMessage;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -35,10 +41,26 @@ import org.json.JSONObject;
 
 public class PartnerFirebaseMessagingService extends FirebaseMessagingService {
     private static final String TAG = "KGT_PartnerFCM";
-    private static final String ORDERS_CHANNEL_ID = "orders_channel";
+    public static final String ORDERS_CHANNEL_ID = "orders_channel_v2";
     private static final int ORDER_NOTIFICATION_BASE_ID = 9000;
 
     private static final Set<String> processedMessageIds = Collections.synchronizedSet(new HashSet<String>());
+    private static MediaPlayer auxiliaryMediaPlayer = null;
+
+    public static synchronized void stopAuxiliarySiren() {
+        try {
+            if (auxiliaryMediaPlayer != null) {
+                if (auxiliaryMediaPlayer.isPlaying()) {
+                    auxiliaryMediaPlayer.stop();
+                }
+                auxiliaryMediaPlayer.release();
+                auxiliaryMediaPlayer = null;
+                Log.d(TAG, "Auxiliary siren stopped.");
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Error stopping auxiliary siren", e);
+        }
+    }
 
     @Override
     public void onNewToken(@NonNull String token) {
@@ -58,7 +80,7 @@ public class PartnerFirebaseMessagingService extends FirebaseMessagingService {
         String accessToken = prefs.getString("access_token", null);
         String role = prefs.getString("role", "restaurant");
         String userId = prefs.getString("user_id", null);
-        if (accessToken != null && !accessToken.trim().isEmpty() && userId != null) {
+        if (accessToken != null && !accessToken.trim().isEmpty()) {
             syncTokenToSupabase(accessToken, userId, role, token);
         }
     }
@@ -80,13 +102,17 @@ public class PartnerFirebaseMessagingService extends FirebaseMessagingService {
         String orderId = data.containsKey("order_id") ? data.get("order_id") : "";
         String role = data.containsKey("role") ? data.get("role") : "restaurant";
 
-        String title = notification != null && notification.getTitle() != null
-                ? notification.getTitle()
-                : (data.containsKey("title") ? data.get("title") : "🔔 New Order Alert");
+        String title = (data.containsKey("title") && !data.get("title").isEmpty())
+                ? data.get("title")
+                : (notification != null && notification.getTitle() != null
+                    ? notification.getTitle()
+                    : "🔔 New Order Alert");
 
-        String body = notification != null && notification.getBody() != null
-                ? notification.getBody()
-                : (data.containsKey("body") ? data.get("body") : "You have a new update. Tap to view.");
+        String body = (data.containsKey("body") && !data.get("body").isEmpty())
+                ? data.get("body")
+                : (notification != null && notification.getBody() != null
+                    ? notification.getBody()
+                    : "You have a new update. Tap to view.");
 
         // Deduplication: prevent processing the exact same FCM message ID twice within memory
         String msgId = remoteMessage.getMessageId() != null ? remoteMessage.getMessageId() : (orderId + "_" + notificationType);
@@ -96,19 +122,16 @@ public class PartnerFirebaseMessagingService extends FirebaseMessagingService {
         }
         processedMessageIds.add(msgId);
 
+        // Always display high-priority heads-up system notification with order_siren from top of screen!
+        handleBackgroundOrClosedNotification(orderId, role, title, body, notificationType);
+
         // Check if MainActivity is currently running in the foreground
         MainActivity activity = MainActivity.getInstance();
         boolean isForeground = (activity != null && MainActivity.isAppInForeground());
 
         if (isForeground) {
-            // App is open in foreground: let MainActivity handle in-app alarm and UI refresh without duplicate system tray noise
-            Log.d(TAG, "App is in foreground. Passing to MainActivity.");
+            Log.d(TAG, "App is in foreground. Passing to MainActivity for UI update.");
             activity.onForegroundFcmAlert(orderId, role, title, body, notificationType);
-        } else {
-            // App is in Background, Screen Locked, or Completely Closed/Killed:
-            // Wake device up, display high-priority heads-up system notification with order_siren.wav
-            Log.d(TAG, "App is in background/closed. Posting system notification with order_siren.");
-            handleBackgroundOrClosedNotification(orderId, role, title, body, notificationType);
         }
     }
 
@@ -122,16 +145,16 @@ public class PartnerFirebaseMessagingService extends FirebaseMessagingService {
                         PowerManager.SCREEN_BRIGHT_WAKE_LOCK | PowerManager.ACQUIRE_CAUSES_WAKEUP | PowerManager.ON_AFTER_RELEASE,
                         "KhanaGharTak:PartnerFCMWakeLock"
                 );
-                wakeLock.acquire(15000); // 15 seconds
+                wakeLock.acquire(20000); // 20 seconds
             }
         } catch (Exception e) {
             Log.w(TAG, "Could not acquire WakeLock", e);
         }
 
-        // 2. Ensure notification channel exists with R.raw.order_siren sound
+        // 2. Ensure notification channel exists with canonical raw/order_siren sound
         ensureOrdersNotificationChannel();
 
-        // 3. Build Intent for tapping the notification
+        // 3. Build Intent for tapping the notification (Open / Accept)
         Intent intent = new Intent(this, MainActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
         intent.putExtra("from_order_alert", true);
@@ -150,24 +173,53 @@ public class PartnerFirebaseMessagingService extends FirebaseMessagingService {
         }
         PendingIntent pendingIntent = PendingIntent.getActivity(this, notifId, intent, pendingFlags);
 
-        // Sound URI for order_siren.wav
-        Uri soundUri = Uri.parse(ContentResolver.SCHEME_ANDROID_RESOURCE + "://" + getPackageName() + "/" + R.raw.order_siren);
+        // 4. Build Intent for silencing the notification
+        Intent silenceIntent = new Intent(this, AlarmDismissReceiver.class);
+        silenceIntent.setAction(AlarmDismissReceiver.ACTION_DISMISS_ALARM);
+        silenceIntent.putExtra(AlarmDismissReceiver.EXTRA_NOTIFICATION_ID, notifId);
+        PendingIntent silencePendingIntent = PendingIntent.getBroadcast(this, notifId + 1, silenceIntent, pendingFlags);
 
-        // 4. Construct High-Priority Notification
+        // Canonical Sound URI using resource name
+        Uri soundUri = Uri.parse(ContentResolver.SCHEME_ANDROID_RESOURCE + "://" + getPackageName() + "/raw/order_siren");
+
+        // Decode circular/brand logo for right-side Large Icon
+        Bitmap largeIcon = null;
+        try {
+            largeIcon = BitmapFactory.decodeResource(getResources(), R.drawable.ic_kgt_brand_logo);
+            if (largeIcon == null) {
+                largeIcon = getDrawableBitmap(this, R.mipmap.ic_launcher_round);
+            }
+            if (largeIcon == null) {
+                largeIcon = getDrawableBitmap(this, R.mipmap.ic_launcher);
+            }
+        } catch (Exception ignored) {}
+
+        // 5. Construct Modern High-Priority Notification (matching modern card style)
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, ORDERS_CHANNEL_ID)
-                .setSmallIcon(R.mipmap.ic_launcher)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setColor(Color.parseColor("#F45D2C"))
                 .setContentTitle(title)
                 .setContentText(body)
-                .setStyle(new NotificationCompat.BigTextStyle().bigText(body))
+                .setStyle(new NotificationCompat.BigTextStyle().setBigContentTitle(title).bigText(body))
                 .setPriority(NotificationCompat.PRIORITY_MAX)
                 .setCategory(NotificationCompat.CATEGORY_ALARM)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .setSound(soundUri, AudioManager.STREAM_ALARM)
                 .setVibrate(new long[]{0, 800, 400, 800, 400})
                 .setAutoCancel(true)
-                .setOngoing("NEW_ORDER".equals(notificationType) || "DELIVERY_AVAILABLE".equals(notificationType))
                 .setContentIntent(pendingIntent)
-                .setFullScreenIntent(pendingIntent, true);
+                .setFullScreenIntent(pendingIntent, true)
+                .setDeleteIntent(silencePendingIntent);
+
+        String actionTitle = "VIEW ORDER";
+        if ("rider".equals(role)) actionTitle = "VIEW DELIVERY";
+        else if ("restaurant".equals(role)) actionTitle = "ACCEPT ORDER";
+        builder.addAction(R.drawable.ic_notification, actionTitle, pendingIntent);
+        builder.addAction(android.R.drawable.ic_menu_close_clear_cancel, "DISMISS", silencePendingIntent);
+
+        if (largeIcon != null) {
+            builder.setLargeIcon(largeIcon);
+        }
 
         Notification notification = builder.build();
         if ("NEW_ORDER".equals(notificationType) || "DELIVERY_AVAILABLE".equals(notificationType)) {
@@ -179,7 +231,7 @@ public class PartnerFirebaseMessagingService extends FirebaseMessagingService {
             nm.notify(notifId, notification);
         }
 
-        // 5. For critical alerts (NEW_ORDER or DELIVERY_AVAILABLE), also trigger auxiliary MediaPlayer playback
+        // 6. For critical alerts (NEW_ORDER or DELIVERY_AVAILABLE), also trigger auxiliary MediaPlayer playback
         if ("NEW_ORDER".equals(notificationType) || "DELIVERY_AVAILABLE".equals(notificationType)) {
             playSirenAuxiliary();
         }
@@ -190,24 +242,31 @@ public class PartnerFirebaseMessagingService extends FirebaseMessagingService {
             NotificationManager nm = getSystemService(NotificationManager.class);
             if (nm == null) return;
 
-            Uri soundUri = Uri.parse(ContentResolver.SCHEME_ANDROID_RESOURCE + "://" + getPackageName() + "/" + R.raw.order_siren);
+            // Canonical sound URI
+            Uri soundUri = Uri.parse(ContentResolver.SCHEME_ANDROID_RESOURCE + "://" + getPackageName() + "/raw/order_siren");
 
             AudioAttributes audioAttributes = new AudioAttributes.Builder()
                     .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                     .setUsage(AudioAttributes.USAGE_ALARM)
                     .build();
 
-            NotificationChannel existing = nm.getNotificationChannel(ORDERS_CHANNEL_ID);
-            // If existing channel does not have the custom siren sound, recreate it
-            if (existing != null) {
-                Uri currSound = existing.getSound();
-                if (currSound == null || !currSound.toString().contains("order_siren")) {
-                    try {
-                        nm.deleteNotificationChannel(ORDERS_CHANNEL_ID);
-                    } catch (Exception ignored) {}
-                } else {
-                    return; // Already configured with order_siren
+            // Clean up old legacy channel if present
+            try {
+                NotificationChannel legacyChannel = nm.getNotificationChannel("orders_channel");
+                if (legacyChannel != null) {
+                    nm.deleteNotificationChannel("orders_channel");
                 }
+            } catch (Exception ignored) {}
+
+            NotificationChannel existing = nm.getNotificationChannel(ORDERS_CHANNEL_ID);
+            if (existing != null) {
+                // If the channel is already configured with HIGH importance, do not delete it!
+                if (existing.getImportance() >= NotificationManager.IMPORTANCE_HIGH) {
+                    return;
+                }
+                try {
+                    nm.deleteNotificationChannel(ORDERS_CHANNEL_ID);
+                } catch (Exception ignored) {}
             }
 
             CharSequence ordersName = "Orders & Partner Alerts";
@@ -219,13 +278,16 @@ public class PartnerFirebaseMessagingService extends FirebaseMessagingService {
             ordersChannel.enableLights(true);
             ordersChannel.setLightColor(Color.parseColor("#F45D2C"));
             ordersChannel.setSound(soundUri, audioAttributes);
+            ordersChannel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
 
             nm.createNotificationChannel(ordersChannel);
         }
     }
 
-    private void playSirenAuxiliary() {
+    private synchronized void playSirenAuxiliary() {
         try {
+            stopAuxiliarySiren();
+
             // Maximize alarm stream volume
             AudioManager am = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
             if (am != null) {
@@ -233,26 +295,30 @@ public class PartnerFirebaseMessagingService extends FirebaseMessagingService {
                 am.setStreamVolume(AudioManager.STREAM_ALARM, max, 0);
             }
 
-            final MediaPlayer mp = MediaPlayer.create(this, R.raw.order_siren);
-            if (mp != null) {
+            auxiliaryMediaPlayer = MediaPlayer.create(this, R.raw.order_siren);
+            if (auxiliaryMediaPlayer != null) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                     AudioAttributes attrs = new AudioAttributes.Builder()
                             .setUsage(AudioAttributes.USAGE_ALARM)
                             .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                             .build();
-                    mp.setAudioAttributes(attrs);
+                    auxiliaryMediaPlayer.setAudioAttributes(attrs);
                 } else {
-                    mp.setAudioStreamType(AudioManager.STREAM_ALARM);
+                    auxiliaryMediaPlayer.setAudioStreamType(AudioManager.STREAM_ALARM);
                 }
-                mp.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
+                auxiliaryMediaPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
                     @Override
                     public void onCompletion(MediaPlayer player) {
                         try {
                             player.release();
+                            if (auxiliaryMediaPlayer == player) {
+                                auxiliaryMediaPlayer = null;
+                            }
                         } catch (Exception ignored) {}
                     }
                 });
-                mp.start();
+                auxiliaryMediaPlayer.start();
+                Log.d(TAG, "Auxiliary siren started successfully.");
             }
         } catch (Exception e) {
             Log.w(TAG, "Error playing auxiliary siren", e);
@@ -264,42 +330,82 @@ public class PartnerFirebaseMessagingService extends FirebaseMessagingService {
             return;
         }
 
+        Log.i(TAG, "REGISTERED_FCM_TOKEN: " + fcmToken);
+
         new Thread(new Runnable() {
             @Override
             public void run() {
-                HttpURLConnection conn = null;
-                try {
-                    URL url = new URL("https://bvacebeorvxwcfkselon.supabase.co/rest/v1/user_fcm_tokens?on_conflict=token");
-                    conn = (HttpURLConnection) url.openConnection();
-                    conn.setRequestMethod("POST");
-                    conn.setRequestProperty("apikey", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2YWNlYmVvcnZ4d2Nma3NlbG9uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3OTA2ODQsImV4cCI6MjA5NTM2NjY4NH0.3PUMlqniJqMnl_yNBc3Lu4JBOcMNK_RT0BLqb1nmohY");
-                    conn.setRequestProperty("Authorization", "Bearer " + accessToken);
-                    conn.setRequestProperty("Content-Type", "application/json");
-                    conn.setRequestProperty("Prefer", "resolution=merge-duplicates");
-                    conn.setConnectTimeout(8000);
-                    conn.setReadTimeout(8000);
-                    conn.setDoOutput(true);
+                // Canonical, least-privilege token registration via SECURITY DEFINER register_push_device RPC
+                int maxRetries = 2;
+                for (int attempt = 1; attempt <= maxRetries; attempt++) {
+                    HttpURLConnection conn = null;
+                    try {
+                        URL rpcUrl = new URL("https://bvacebeorvxwcfkselon.supabase.co/rest/v1/rpc/register_push_device");
+                        conn = (HttpURLConnection) rpcUrl.openConnection();
+                        conn.setRequestMethod("POST");
+                        conn.setRequestProperty("apikey", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2YWNlYmVvcnZ4d2Nma3NlbG9uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3OTA2ODQsImV4cCI6MjA5NTM2NjY4NH0.3PUMlqniJqMnl_yNBc3Lu4JBOcMNK_RT0BLqb1nmohY");
+                        conn.setRequestProperty("Authorization", "Bearer " + accessToken);
+                        conn.setRequestProperty("Content-Type", "application/json");
+                        conn.setConnectTimeout(8000);
+                        conn.setReadTimeout(8000);
+                        conn.setDoOutput(true);
 
-                    JSONObject body = new JSONObject();
-                    body.put("user_id", userId);
-                    body.put("token", fcmToken);
-                    body.put("app_type", "partner");
-                    body.put("role", role != null ? role.toLowerCase() : "restaurant");
-                    body.put("platform", "android");
-                    body.put("is_active", true);
+                        JSONObject rpcBody = new JSONObject();
+                        rpcBody.put("_token", fcmToken.trim());
+                        rpcBody.put("_platform", "android");
 
-                    try (OutputStream os = conn.getOutputStream()) {
-                        os.write(body.toString().getBytes(StandardCharsets.UTF_8));
+                        try (OutputStream os = conn.getOutputStream()) {
+                            os.write(rpcBody.toString().getBytes(StandardCharsets.UTF_8));
+                        }
+
+                        int rpcCode = conn.getResponseCode();
+                        Log.d(TAG, "register_push_device RPC response code: " + rpcCode);
+                        if (rpcCode == 204 || (rpcCode >= 200 && rpcCode < 300)) {
+                            Log.i(TAG, "register_push_device RPC succeeded (" + rpcCode + "). Device registered in live Supabase.");
+                            break;
+                        } else {
+                            try (java.io.InputStream es = conn.getErrorStream()) {
+                                if (es != null) {
+                                    java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+                                    byte[] buf = new byte[1024];
+                                    int n;
+                                    while ((n = es.read(buf)) != -1) baos.write(buf, 0, n);
+                                    Log.w(TAG, "register_push_device RPC error (" + rpcCode + "): " + baos.toString("UTF-8"));
+                                }
+                            } catch (Exception ignored) {}
+                        }
+                    } catch (Exception e) {
+                        Log.w(TAG, "RPC register_push_device attempt " + attempt + " error", e);
+                    } finally {
+                        if (conn != null) conn.disconnect();
                     }
 
-                    int code = conn.getResponseCode();
-                    Log.d(TAG, "FCM token synced to Supabase. HTTP code: " + code);
-                } catch (Exception e) {
-                    Log.w(TAG, "Failed to sync FCM token to Supabase", e);
-                } finally {
-                    if (conn != null) conn.disconnect();
+                    if (attempt < maxRetries) {
+                        try {
+                            Thread.sleep(1500);
+                        } catch (InterruptedException ignored) {}
+                    }
                 }
             }
         }).start();
+    }
+
+    public static Bitmap getDrawableBitmap(Context context, int resId) {
+        try {
+            Drawable drawable = ContextCompat.getDrawable(context, resId);
+            if (drawable == null) return null;
+            if (drawable instanceof BitmapDrawable) {
+                return ((BitmapDrawable) drawable).getBitmap();
+            }
+            int w = drawable.getIntrinsicWidth() > 0 ? drawable.getIntrinsicWidth() : 192;
+            int h = drawable.getIntrinsicHeight() > 0 ? drawable.getIntrinsicHeight() : 192;
+            Bitmap bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+            Canvas canvas = new Canvas(bitmap);
+            drawable.setBounds(0, 0, canvas.getWidth(), canvas.getHeight());
+            drawable.draw(canvas);
+            return bitmap;
+        } catch (Exception e) {
+            return null;
+        }
     }
 }

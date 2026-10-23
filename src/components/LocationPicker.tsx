@@ -22,7 +22,18 @@ export default function LocationPicker({
   const holder = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<any>(null);
   const markerRef = useRef<any>(null);
-  const [picked, setPicked] = useState<LatLng>(value ?? DEFAULT_CENTER);
+  const getStart = (): LatLng => {
+    if (value && typeof value.lat === "number" && typeof value.lng === "number") return value;
+    if (typeof window !== "undefined") {
+      const native = (window as any).__native_device_coords;
+      if (native && typeof native.lat === "number" && typeof native.lng === "number") {
+        return { lat: native.lat, lng: native.lng };
+      }
+    }
+    return DEFAULT_CENTER;
+  };
+
+  const [picked, setPicked] = useState<LatLng>(getStart);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Suggestion[]>([]);
   const [searching, setSearching] = useState(false);
@@ -34,8 +45,8 @@ export default function LocationPicker({
       const L = (await import("leaflet")).default;
       await import("leaflet/dist/leaflet.css");
       if (cancelled || !holder.current || mapRef.current) return;
-      const start = value ?? DEFAULT_CENTER;
-      const map = L.map(holder.current).setView([start.lat, start.lng], value ? 16 : 13);
+      const start = getStart();
+      const map = L.map(holder.current).setView([start.lat, start.lng], value ? 16 : 14);
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         attribution: "&copy; OpenStreetMap",
         maxZoom: 19,

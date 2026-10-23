@@ -7,8 +7,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { useFormDraft } from "@/hooks/useFormDraft";
 
 import { BrandHeader } from "@/components/BrandHeader";
-import { MapPin, Navigation, Loader2, CheckCircle2, AlertCircle, Sparkles, Map, Search, X } from "lucide-react";
-import { fetchActiveZones, zoneForPoint, isLocationInServiceZone, type DeliveryZone } from "@/lib/zones";
+import { MapPin, Navigation, Loader2, CheckCircle2, AlertCircle, Map, Search, X } from "lucide-react";
+import { isPartnerApp } from "@/lib/capacitor";
+import { fetchActiveZones, zoneForPoint, resolveCustomerZone, isLocationInServiceZone, CHAKGHAT_CENTER, SHANKARGARH_CENTER, type DeliveryZone } from "@/lib/zones";
 import { isWithinServiceArea, SERVICE_CENTER, type LatLng } from "@/lib/geo";
 
 // Dynamically load the map picker
@@ -33,14 +34,6 @@ const schema = z.object({
   address: z.string().trim().min(3, "Enter a valid delivery address").max(300),
   landmark: z.string().trim().max(120).optional(),
 });
-
-const SHANKARGARH_PRESETS = [
-  { label: "Shankargarh Market", address: "Main Bazaar / Market, Shankargarh, Prayagraj - 212108", coords: { lat: 25.1842, lng: 81.6212 } },
-  { label: "Station Road", address: "Railway Station Road, Shankargarh, Prayagraj - 212108", coords: { lat: 25.1865, lng: 81.6190 } },
-  { label: "Raja Market", address: "Raja Market, Shankargarh, Prayagraj - 212108", coords: { lat: 25.1820, lng: 81.6235 } },
-  { label: "Bara Road", address: "Bara Road, Shankargarh, Prayagraj - 212108", coords: { lat: 25.1890, lng: 81.6280 } },
-  { label: "Lalita Nagar", address: "Lalita Nagar, Shankargarh, Prayagraj - 212108", coords: { lat: 25.1795, lng: 81.6160 } },
-];
 
 type PlaceSuggestion = {
   label: string;
@@ -123,11 +116,11 @@ function LocationPage() {
       setZoneStatus(null);
       return;
     }
+    const z = resolveCustomerZone(coords, address, activeZones);
     const inService = isLocationInServiceZone(coords, address, activeZones);
-    if (inService) {
+    if (inService || isPartnerApp() || z) {
       setZoneStatus("supported");
-      const z = coords ? zoneForPoint(coords, activeZones) : null;
-      setDetectedZoneName(z?.name ?? "Shankargarh Zone");
+      setDetectedZoneName(z?.name ?? "KhanaGharTak Active Zone");
     } else {
       setZoneStatus("unsupported");
       setDetectedZoneName("");
@@ -135,7 +128,7 @@ function LocationPage() {
   }, [coords, address, activeZones]);
 
   // Reverse geocode lat/lng to readable address
-  const reverseGeocode = async (lat: number, lng: number) => {
+  const reverseGeocode = async (lat: number, lng: number): Promise<string | null> => {
     try {
       const res = await fetch(
         `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
@@ -144,36 +137,91 @@ function LocationPage() {
       const data = await res.json();
       if (data && data.display_name) {
         setAddress(data.display_name);
+        return data.display_name;
       }
     } catch {
       // ignore
     }
+    return null;
   };
 
   // A) Use current GPS location
-  const detectLocation = () => {
+  const detectLocation = async () => {
+    setLocating(true);
+
+    const applyPos = async (p: { lat: number; lng: number }) => {
+      setCoords(p);
+      const resolvedAddr = await reverseGeocode(p.lat, p.lng);
+      const checkAddr = resolvedAddr || address;
+      const inService = isLocationInServiceZone(p, checkAddr, activeZones);
+      if (inService || isPartnerApp()) {
+        toast.success("Location pinned inside active delivery zone");
+      } else {
+        toast.warning("Pinned location is outside our active delivery area");
+      }
+      setLocating(false);
+    };
+
+    // 1. Check if fresh native bridge coordinates are already available (< 30s old)
+    try {
+      let nativeCoords: { lat: number; lng: number } | null = null;
+      if (typeof window !== "undefined") {
+        const androidApp = (window as any).AndroidApp;
+        if (androidApp && typeof androidApp.getDeviceCoordinates === "function") {
+          const raw = androidApp.getDeviceCoordinates();
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (typeof parsed?.lat === "number" && typeof parsed?.lng === "number" && (!parsed?.ts || Date.now() - parsed.ts < 30000)) {
+              nativeCoords = { lat: parsed.lat, lng: parsed.lng };
+            }
+          }
+        }
+        if (!nativeCoords && (window as any).__native_device_coords) {
+          const c = (window as any).__native_device_coords;
+          if (typeof c.lat === "number" && typeof c.lng === "number" && (!c?.ts || Date.now() - c.ts < 30000)) {
+            nativeCoords = { lat: c.lat, lng: c.lng };
+          }
+        }
+      }
+
+      if (nativeCoords) {
+        await applyPos(nativeCoords);
+        return;
+      }
+    } catch {
+      // Continue to fresh location
+    }
+
+    // Trigger native location refresh if running in Android app
+    try {
+      (window as any).AndroidApp?.refreshLocation?.();
+    } catch {}
+
     if (typeof navigator === "undefined" || !navigator.geolocation) {
+      setLocating(false);
       return toast.error("Geolocation is not supported by your device");
     }
-    setLocating(true);
+
+    // Request current location (routed through FusedLocationProvider in Android app)
     navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const p = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        setCoords(p);
-        await reverseGeocode(p.lat, p.lng);
-        const inService = isLocationInServiceZone(p, address, activeZones);
-        if (inService) {
-          toast.success("Location pinned inside Shankargarh service zone");
-        } else {
-          toast.warning("Pinned location is outside our active delivery area");
-        }
-        setLocating(false);
+      (pos) => {
+        void applyPos({ lat: pos.coords.latitude, lng: pos.coords.longitude });
       },
       (err) => {
-        toast.error(err.message || "Could not retrieve GPS location");
+        // Check if native coordinates arrived
+        const native = (window as any).__native_device_coords;
+        if (native && typeof native.lat === "number" && typeof native.lng === "number") {
+          void applyPos({ lat: native.lat, lng: native.lng });
+          return;
+        }
         setLocating(false);
+        if (err.code === 1) {
+          toast.error("Location permission denied. Please allow location access in device settings.");
+        } else {
+          toast.info("Could not detect exact location. Please search your area or select on the map.");
+        }
       },
-      { enableHighAccuracy: true, timeout: 12000 }
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 10000 }
     );
   };
 
@@ -224,11 +272,6 @@ function LocationPage() {
     toast.success("Map pin updated");
   };
 
-  const applyPreset = (preset: typeof SHANKARGARH_PRESETS[number]) => {
-    setAddress(preset.address);
-    setCoords(preset.coords);
-    toast.success(`Selected ${preset.label}`);
-  };
 
   // Save / Confirm Location
   const save = async () => {
@@ -243,12 +286,19 @@ function LocationPage() {
       setSaving(true);
       const lower = address.toLowerCase();
       if (
+        lower.includes("chakghat") ||
+        lower.includes("chak ghat") ||
+        lower.includes("486226") ||
+        lower.includes("teonthar")
+      ) {
+        targetCoords = CHAKGHAT_CENTER;
+      } else if (
         lower.includes("shankargarh") ||
         lower.includes("shankergarh") ||
         lower.includes("raja market") ||
         lower.includes("212108")
       ) {
-        targetCoords = SERVICE_CENTER;
+        targetCoords = SHANKARGARH_CENTER;
       } else {
         try {
           const res = await fetch(
@@ -266,7 +316,12 @@ function LocationPage() {
 
     // Default fallback to center only if completely unresolved
     if (!targetCoords) {
-      targetCoords = SERVICE_CENTER;
+      const lower = address.toLowerCase();
+      if (lower.includes("chakghat") || lower.includes("chak ghat") || lower.includes("486226") || lower.includes("teonthar")) {
+        targetCoords = CHAKGHAT_CENTER;
+      } else {
+        targetCoords = SHANKARGARH_CENTER;
+      }
     }
 
     setSaving(true);
@@ -387,7 +442,7 @@ function LocationPage() {
         {zoneStatus === "supported" && (
           <div className="mt-4 flex items-center gap-2.5 rounded-2xl bg-success/10 p-3 text-xs font-bold text-success border border-success/20">
             <CheckCircle2 className="h-4 w-4 shrink-0" />
-            <span>Serviceable zone: {detectedZoneName || "Shankargarh Zone"}. Fast delivery available!</span>
+            <span>Serviceable zone: {detectedZoneName || "Active Delivery Zone (Shankargarh & Chakghat)"}. Fast delivery available!</span>
           </div>
         )}
 
@@ -398,30 +453,10 @@ function LocationPage() {
               <span>Outside Active Delivery Area</span>
             </div>
             <p className="mt-1 text-[11px] text-muted-foreground leading-relaxed">
-              KhanaGharTak is currently delivering only in Shankargarh. You can still save this location to check availability.
+              KhanaGharTak is currently delivering in Shankargarh, Chakghat and nearby active zones. You can still save this location to check availability.
             </p>
           </div>
         )}
-
-        {/* Quick Shankargarh Localities (Helpful Shortcut, Not Restrictive) */}
-        <div className="mt-5">
-          <div className="flex items-center gap-1.5 mb-2 text-xs font-bold text-muted-foreground">
-            <Sparkles className="h-3.5 w-3.5 text-primary" />
-            <span>Quick Select Locality (Shankargarh):</span>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {SHANKARGARH_PRESETS.map((p) => (
-              <button
-                key={p.label}
-                type="button"
-                onClick={() => applyPreset(p)}
-                className="rounded-full border bg-secondary/80 px-3 py-1.5 text-xs font-medium text-foreground hover:border-primary hover:bg-accent transition active:scale-95"
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
-        </div>
 
         {/* Full Delivery Address & Landmark form */}
         <div className="mt-5 space-y-3.5">

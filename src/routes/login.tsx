@@ -91,14 +91,18 @@ function LoginPage() {
       // In partner app, wait for roles to resolve before navigating
       if (!rolesLoaded) return;
 
+      const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+      const targetOrderId = searchParams ? (searchParams.get("orderId") || searchParams.get("order_id")) : null;
+      const searchArg: any = targetOrderId ? { orderId: targetOrderId } : undefined;
+
       // If user selected a specific role in this session, strictly validate authorization
       if (partnerSelectedRole) {
         let authorized = false;
-        let targetPath = "/admin";
+        let targetPath = "/admin/orders";
 
         if (partnerSelectedRole === "restaurant") {
           authorized = isAdmin || primaryPartnerRole === "restaurant";
-          targetPath = "/admin";
+          targetPath = "/admin/orders";
         } else if (partnerSelectedRole === "rider") {
           authorized = isRider || primaryPartnerRole === "rider";
           targetPath = "/rider";
@@ -108,7 +112,7 @@ function LoginPage() {
         }
 
         if (authorized) {
-          navigate({ to: targetPath, replace: true });
+          navigate({ to: targetPath as any, search: searchArg, replace: true });
         } else {
           // Selected role does NOT match authorized role:
           // Do not open the dashboard! Show a clear error and allow user to return and select the correct role.
@@ -134,11 +138,11 @@ function LoginPage() {
 
       // If opening app with an existing valid session directly (partnerSelectedRole is null):
       if (isZoneManager || primaryPartnerRole === "zone_manager") {
-        navigate({ to: "/zone", replace: true });
+        navigate({ to: "/zone" as any, search: searchArg, replace: true });
       } else if (isAdmin || primaryPartnerRole === "restaurant") {
-        navigate({ to: "/admin", replace: true });
+        navigate({ to: "/admin/orders" as any, search: searchArg, replace: true });
       } else if (isRider || primaryPartnerRole === "rider") {
-        navigate({ to: "/rider", replace: true });
+        navigate({ to: "/rider" as any, search: searchArg, replace: true });
       }
       return;
     }

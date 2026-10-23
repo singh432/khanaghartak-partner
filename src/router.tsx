@@ -33,5 +33,39 @@ export const getRouter = () => {
     defaultErrorComponent: DefaultErrorComponent,
   });
 
+  if (typeof window !== "undefined") {
+    (window as any).__kgt_router = router;
+    (window as any).__kgt_navigate_to_order = (role: string, orderId: string) => {
+      let targetPath = "/admin/orders";
+      if (role === "rider") targetPath = "/rider";
+      else if (role === "zone_manager" || role === "manager") targetPath = "/zone";
+
+      const cleanId = orderId ? orderId.trim() : "";
+      const search = cleanId ? { orderId: cleanId } : {};
+
+      // If already on the screen, check if the screen's order opener can handle it directly
+      const curPath = window.location.pathname;
+      if (curPath === targetPath) {
+        if (targetPath === "/zone" && typeof (window as any).__kgt_open_zone_order === "function") {
+          if ((window as any).__kgt_open_zone_order(cleanId)) return;
+        } else if (targetPath === "/admin/orders" && typeof (window as any).__kgt_open_partner_order === "function") {
+          if ((window as any).__kgt_open_partner_order(cleanId)) return;
+        } else if (targetPath === "/rider" && typeof (window as any).__kgt_open_rider_order === "function") {
+          if ((window as any).__kgt_open_rider_order(cleanId)) return;
+        }
+      }
+
+      try {
+        router.navigate({ to: targetPath as any, search: search as any, replace: false });
+      } catch (e) {
+        try {
+          const finalUrl = targetPath + (cleanId ? "?orderId=" + encodeURIComponent(cleanId) : "");
+          window.history.pushState(null, "", finalUrl);
+          window.dispatchEvent(new PopStateEvent("popstate"));
+        } catch (err) {}
+      }
+    };
+  }
+
   return router;
 };

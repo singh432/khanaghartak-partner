@@ -32,13 +32,13 @@
         <!-- Push Notification defaults -->
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_icon"
-            android:resource="@mipmap/ic_launcher" />
+            android:resource="@drawable/ic_notification" />
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_color"
             android:resource="@color/colorPrimary" />
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
-            android:value="orders_channel" />
+            android:value="orders_channel_v2" />
 
         <service
             android:name=".PartnerFirebaseMessagingService"
@@ -47,6 +47,14 @@
                 <action android:name="com.google.firebase.MESSAGING_EVENT" />
             </intent-filter>
         </service>
+
+        <receiver
+            android:name=".AlarmDismissReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="in.khanaghartak.partner.ACTION_DISMISS_ALARM" />
+            </intent-filter>
+        </receiver>
 
         <!-- Replace Capacitor's default MessagingService with PartnerFirebaseMessagingService -->
         <service

@@ -14,6 +14,7 @@ import { withTimeout } from "@/lib/supabase-query";
 import { isCustomerApp, isPartnerApp } from "@/lib/capacitor";
 import { getCategoryImage } from "@/lib/categoryImages";
 import { RestaurantCoverCarousel } from "@/components/RestaurantCoverCarousel";
+import { browseEta } from "@/lib/eta";
 import { Star, Clock, MapPin, LogOut, Search, X, UtensilsCrossed, Navigation } from "lucide-react";
 import { khanaGharTakLogoUrl } from "@/assets/brand";
 import hero from "@/assets/hero.jpg";
@@ -587,29 +588,23 @@ function HomePage() {
 
         {!isSearchActive && categoryNames.length > 0 && (
           <div className="-mx-4 mb-5 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <div className="flex w-max gap-3 py-1">
+            <div className="flex w-max items-center gap-2 py-1">
               <button
                 type="button"
                 onClick={() => setActiveCategory(null)}
-                className="flex flex-col items-center gap-1.5 transition-transform active:scale-95 group focus:outline-none"
-              >
-                <div className={`relative h-16 w-16 overflow-hidden rounded-full border-2 p-0.5 transition-all shadow-sm ${
+                className={`inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-xs font-bold whitespace-nowrap transition-all shadow-sm active:scale-95 ${
                   activeCategory === null
-                    ? "border-primary ring-2 ring-primary/30 shadow-primary/20 scale-105"
-                    : "border-border/70 hover:border-primary/50 bg-card"
-                }`}>
-                  <img
-                    src={getCategoryImage("all")}
-                    alt="All"
-                    className="h-full w-full rounded-full object-cover"
-                    loading="eager"
-                  />
-                </div>
-                <span className={`text-[11px] font-bold tracking-tight max-w-[68px] text-center truncate ${
-                  activeCategory === null ? "text-primary font-extrabold" : "text-foreground"
-                }`}>
-                  All
-                </span>
+                    ? "border-primary bg-primary text-primary-foreground shadow-primary/25"
+                    : "border-border/80 bg-card text-foreground hover:border-primary/50"
+                }`}
+              >
+                <img
+                  src={getCategoryImage("all")}
+                  alt="All"
+                  className="h-5 w-5 rounded-full object-cover shrink-0"
+                  loading="eager"
+                />
+                <span>All</span>
               </button>
 
               {categoryNames.map((name) => {
@@ -620,25 +615,19 @@ function HomePage() {
                     key={name}
                     type="button"
                     onClick={() => setActiveCategory(isActive ? null : name)}
-                    className="flex flex-col items-center gap-1.5 transition-transform active:scale-95 group focus:outline-none"
-                  >
-                    <div className={`relative h-16 w-16 overflow-hidden rounded-full border-2 p-0.5 transition-all shadow-sm ${
+                    className={`inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-xs font-bold whitespace-nowrap transition-all shadow-sm active:scale-95 ${
                       isActive
-                        ? "border-primary ring-2 ring-primary/30 shadow-primary/20 scale-105"
-                        : "border-border/70 hover:border-primary/50 bg-card"
-                    }`}>
-                      <img
-                        src={imgUrl}
-                        alt={name}
-                        className="h-full w-full rounded-full object-cover"
-                        loading="lazy"
-                      />
-                    </div>
-                    <span className={`text-[11px] font-bold tracking-tight max-w-[68px] text-center truncate ${
-                      isActive ? "text-primary font-extrabold" : "text-foreground"
-                    }`}>
-                      {name}
-                    </span>
+                        ? "border-primary bg-primary text-primary-foreground shadow-primary/25"
+                        : "border-border/80 bg-card text-foreground hover:border-primary/50"
+                    }`}
+                  >
+                    <img
+                      src={imgUrl}
+                      alt={name}
+                      className="h-5 w-5 rounded-full object-cover shrink-0"
+                      loading="lazy"
+                    />
+                    <span>{name}</span>
                   </button>
                 );
               })}
@@ -855,34 +844,42 @@ function HomePage() {
                       to="/menu"
                       search={{ r: restaurant.id }}
                       aria-label={`View menu of ${restaurant.name}`}
-                      className="block overflow-hidden rounded-3xl bg-card shadow-[var(--shadow-card)] fade-in"
+                      className="block overflow-hidden rounded-3xl border border-border/60 bg-card shadow-[var(--shadow-card)] hover:shadow-lg transition-all active:scale-[0.99]"
                     >
                       <RestaurantCoverCarousel
                         restaurant={restaurant}
                         items={dishes.filter((d) => d.restaurant_id === restaurant.id)}
                         isOpen={isRestaurantOpen(restaurant)}
+                        etaLabel={browseEta(restaurant.distance).label}
                         autoSlideIntervalMs={3000}
                       />
 
-                      <div className="px-4 pb-4 pt-3">
-                        <h2 className="text-lg font-extrabold leading-tight tracking-tight">{restaurant.name}</h2>
-                        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+                      <div className="px-4 pb-4 pt-3 space-y-1">
+                        <div className="flex items-start justify-between gap-2">
+                          <h2 className="text-lg font-extrabold leading-tight tracking-tight text-foreground truncate">{restaurant.name}</h2>
                           {restaurant.rating_count > 0 && restaurant.rating != null && (
-                            <span className="inline-flex items-center gap-1 font-semibold text-success">
+                            <span className="inline-flex items-center gap-1 font-semibold text-success shrink-0">
                               <Star className="h-3.5 w-3.5 fill-current" />
                               {Number(restaurant.rating).toFixed(1)}
                               <span className="font-normal text-muted-foreground">({restaurant.rating_count})</span>
                             </span>
                           )}
-                          {restaurant.rating_count > 0 && restaurant.address && <span aria-hidden>•</span>}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
                           {restaurant.address && <span className="truncate">{restaurant.address}</span>}
+                          {restaurant.address && restaurant.distance != null && <span aria-hidden>•</span>}
                           {restaurant.distance != null && (
-                            <>
-                              <span aria-hidden>•</span>
-                              <span>{restaurant.distance.toFixed(1)} km</span>
-                            </>
+                            <span>{restaurant.distance.toFixed(1)} km</span>
                           )}
                         </div>
+                        {restaurant.tagline && (
+                          <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{restaurant.tagline}</p>
+                        )}
+                        {restaurant.rating_count === 0 && (
+                          <p className="mt-1 inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                            <Clock className="h-3 w-3" /> Newly added kitchen
+                          </p>
+                        )}
                       </div>
                     </Link>
                   ))}
@@ -915,71 +912,45 @@ function HomePage() {
                     to="/menu"
                     search={{ r: restaurant.id }}
                     aria-label={`View menu of ${restaurant.name}`}
-                    className="block overflow-hidden rounded-3xl bg-card shadow-[var(--shadow-card)] fade-in"
+                    className="block overflow-hidden rounded-3xl border border-border/60 bg-card shadow-[var(--shadow-card)] hover:shadow-lg transition-all active:scale-[0.99]"
                   >
                     <RestaurantCoverCarousel
                       restaurant={restaurant}
                       items={dishes.filter((d) => d.restaurant_id === restaurant.id)}
                       isOpen={isRestaurantOpen(restaurant)}
+                      etaLabel={browseEta(restaurant.distance).label}
                       autoSlideIntervalMs={3000}
                     />
 
-                    <div className="px-4 pb-4 pt-3">
-                      <h2 className="text-lg font-extrabold leading-tight tracking-tight">{restaurant.name}</h2>
-                      <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+                    <div className="px-4 pb-4 pt-3 space-y-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <h2 className="text-lg font-extrabold leading-tight tracking-tight text-foreground truncate">{restaurant.name}</h2>
                         {restaurant.rating_count > 0 && restaurant.rating != null && (
-                          <span className="inline-flex items-center gap-1 font-semibold text-success">
+                          <span className="inline-flex items-center gap-1 font-semibold text-success shrink-0">
                             <Star className="h-3.5 w-3.5 fill-current" />
                             {Number(restaurant.rating).toFixed(1)}
                             <span className="font-normal text-muted-foreground">({restaurant.rating_count})</span>
                           </span>
                         )}
-                        {restaurant.rating_count > 0 && restaurant.address && <span aria-hidden>•</span>}
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
                         {restaurant.address && <span className="truncate">{restaurant.address}</span>}
+                        {restaurant.address && restaurant.distance != null && <span aria-hidden>•</span>}
                         {restaurant.distance != null && (
-                          <>
-                            <span aria-hidden>•</span>
-                            <span>{restaurant.distance.toFixed(1)} km</span>
-                          </>
+                          <span>{restaurant.distance.toFixed(1)} km</span>
                         )}
                       </div>
+
                       {restaurant.tagline && (
-                        <p className="mt-1 truncate text-sm text-muted-foreground">{restaurant.tagline}</p>
-                      )}
-                      {restaurant.rating_count === 0 && (
-                        <p className="mt-1 inline-flex items-center gap-1 text-xs text-muted-foreground">
-                          <Clock className="h-3.5 w-3.5" /> Newly added kitchen
-                        </p>
+                        <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{restaurant.tagline}</p>
                       )}
 
-                      {/* 2-3 Dish preview items under each restaurant card */}
-                      {(() => {
-                        const restaurantDishes = dishes.filter((d) => d.restaurant_id === restaurant.id).slice(0, 3);
-                        if (restaurantDishes.length === 0) return null;
-                        return (
-                          <div className="mt-3 border-t border-border/40 pt-2.5">
-                            <div className="flex items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                              {restaurantDishes.map((dish) => (
-                                <div
-                                  key={dish.id}
-                                  className="flex flex-shrink-0 items-center gap-2 rounded-xl bg-muted/40 p-1.5 pr-2.5 border border-border/40 text-xs"
-                                >
-                                  <img
-                                    src={dish.image_url || getCategoryImage(dish.name)}
-                                    alt={dish.name}
-                                    className="h-9 w-9 rounded-lg object-cover"
-                                    loading="lazy"
-                                  />
-                                  <div className="min-w-0 max-w-[110px]">
-                                    <p className="truncate font-semibold text-foreground text-[11px]">{dish.name}</p>
-                                    <p className="text-[10px] font-bold text-primary">₹{dish.offer_price ?? dish.price}</p>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        );
-                      })()}
+                      {restaurant.rating_count === 0 && (
+                        <p className="mt-1 inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                          <Clock className="h-3 w-3" /> Newly added kitchen
+                        </p>
+                      )}
                     </div>
                   </Link>
                 ))}

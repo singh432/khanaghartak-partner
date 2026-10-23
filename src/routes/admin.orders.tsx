@@ -100,6 +100,41 @@ function AdminOrders() {
     }
   }, []);
 
+  useEffect(() => {
+    (window as any).__kgt_open_partner_order = (targetId: string) => {
+      if (!targetId) return false;
+      const clean = targetId.trim().toLowerCase();
+      const found = orders.find(
+        (o) =>
+          o.id.toLowerCase() === clean ||
+          o.id.toLowerCase().startsWith(clean) ||
+          o.id.replace(/-/g, "").toLowerCase().startsWith(clean.replace(/-/g, ""))
+      );
+      if (found) {
+        setSelectedOrder(found);
+        return true;
+      }
+      return false;
+    };
+
+    if (typeof window !== "undefined" && orders.length > 0) {
+      const params = new URLSearchParams(window.location.search);
+      const targetId = params.get("orderId") || params.get("order_id");
+      if (targetId) {
+        const clean = targetId.trim().toLowerCase();
+        const found = orders.find(
+          (o) =>
+            o.id.toLowerCase() === clean ||
+            o.id.toLowerCase().startsWith(clean) ||
+            o.id.replace(/-/g, "").toLowerCase().startsWith(clean.replace(/-/g, ""))
+        );
+        if (found) {
+          setSelectedOrder((prev) => (prev?.id === found.id ? prev : found));
+        }
+      }
+    }
+  }, [orders]);
+
   const filtered = useMemo(() => orders.filter((o) => {
     if (filter !== "all" && o.status !== filter) return false;
     if (q && !o.id.toLowerCase().includes(q.toLowerCase()) &&

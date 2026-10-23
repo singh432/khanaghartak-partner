@@ -9,12 +9,14 @@ import { track } from "@/lib/analytics";
 import { useAuth } from "@/hooks/useAuth";
 
 import { useLocationGate } from "@/hooks/useLocationGate";
-import { fetchActiveZones, isLocationInServiceZone, type DeliveryZone } from "@/lib/zones";
+import { fetchActiveZones, zoneForPoint, zoneForAddress, resolveCustomerZone, isLocationInServiceZone, type DeliveryZone } from "@/lib/zones";
+import { isPartnerApp } from "@/lib/capacitor";
 import { isCakeCategory, isPieceCategory, isSinglePriceCategory, isSweetCategory, isHandiCategory, HANDI_PREP_NOTE, CAKE_PREP_NOTE, PORTION_LABELS } from "@/lib/portions";
 import { PageError, PageSpinner } from "@/components/PageState";
 import { withTimeout } from "@/lib/supabase-query";
 import { getCategoryImage } from "@/lib/categoryImages";
-import { Plus, Minus, Search, Star, Clock, MapPin, Sparkles } from "lucide-react";
+import { toast } from "sonner";
+import { Plus, Minus, Search, Star, Clock, MapPin, AlertCircle } from "lucide-react";
 
 export const Route = createFileRoute("/menu")({
   component: MenuPage,
@@ -74,6 +76,7 @@ type Restaurant = {
   id: string; name: string; rating: number;
   opening_time: string | null; closing_time: string | null;
   latitude: number | null; longitude: number | null; status: string | null; is_open: boolean | null;
+  zone_id?: string | null;
 };
 
 function MenuPage() {
@@ -132,11 +135,25 @@ function MenuPage() {
     };
   }, []);
 
-  const effectiveCoords = selectedCoords || coords;
+  const gpsCoords = coords || (typeof window !== "undefined" && (window as any).__native_device_coords ? (window as any).__native_device_coords : null);
+  const effectiveCoords = gpsCoords || selectedCoords;
+  const currentZone = useMemo(() => {
+    if (activeZones.length === 0) return null;
+    return resolveCustomerZone(effectiveCoords, selectedAddress, activeZones);
+  }, [effectiveCoords, selectedAddress, activeZones]);
+
   const isOutsideZone = useMemo(() => {
+    if (isPartnerApp()) return false;
+    if (activeZones.length === 0) return false;
+    if (!effectiveCoords && !selectedAddress) return false;
     if (locationStatus === "outside_zone") return true;
-    return !isLocationInServiceZone(effectiveCoords, selectedAddress, activeZones);
-  }, [effectiveCoords, selectedAddress, activeZones, locationStatus]);
+    return !currentZone;
+  }, [effectiveCoords, selectedAddress, activeZones, locationStatus, currentZone]);
+
+  const isZoneMismatch = useMemo(() => {
+    if (!currentZone || !restaurant?.zone_id) return false;
+    return restaurant.zone_id !== currentZone.id;
+  }, [currentZone, restaurant]);
 
   const [activeCat, setActiveCat] = useState<string | null>(null);
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
@@ -154,18 +171,30 @@ function MenuPage() {
       setDataError(null);
       try {
         const [{ data: rs, error: rError }, { data: c, error: cError }, { data: m, error: mError }] = await Promise.all([
-          withTimeout(supabase.from("restaurants").select("id, name, rating, opening_time, closing_time, latitude, longitude, status, is_open").eq("status", "active")),
+          withTimeout(supabase.from("restaurants").select("id, name, rating, opening_time, closing_time, latitude, longitude, status, is_open, zone_id").eq("status", "active")),
           withTimeout(supabase.from("categories").select("*").order("priority")),
           withTimeout(supabase.from("menu_items").select("*").order("name")),
         ]);
         if (rError || cError || mError) throw rError ?? cError ?? mError;
         if (!active) return;
         const allRestaurants = (rs ?? []) as Restaurant[];
-        // Every approved restaurant is reachable, wherever it is pinned.
-        const selected =
-          (restaurantParam ? allRestaurants.find((r) => r.id === restaurantParam) : null) ??
-          allRestaurants[0] ??
-          null;
+        const zoneRestaurants = currentZone ? allRestaurants.filter((r) => r.zone_id === currentZone.id) : allRestaurants;
+        
+        let selected: Restaurant | null = null;
+        if (restaurantParam) {
+          const reqRest = allRestaurants.find((r) => r.id === restaurantParam);
+          if (reqRest) {
+            if (currentZone && reqRest.zone_id && reqRest.zone_id !== currentZone.id) {
+              toast.error("This kitchen belongs to another delivery zone and does not deliver to your area.");
+              selected = zoneRestaurants[0] ?? null;
+            } else {
+              selected = reqRest;
+            }
+          }
+        }
+        if (!selected) {
+          selected = zoneRestaurants[0] ?? null;
+        }
 
         setRestaurant(selected);
         const allItems = (m ?? []) as MenuItem[];
@@ -184,7 +213,7 @@ function MenuPage() {
       }
     })();
     return () => { active = false; };
-  }, [restaurantParam]);
+  }, [restaurantParam, currentZone?.id]);
 
 
   const filtered = useMemo(() => {
@@ -272,20 +301,6 @@ function MenuPage() {
             >
               Change delivery address
             </button>
-            <button
-              onClick={() => {
-                const shankargarhAddr = "Main Bazaar, Shankargarh, Prayagraj - 212108";
-                const shankargarhCoords = { lat: 25.1842, lng: 81.6212 };
-                localStorage.setItem("kgt:delivery-address", shankargarhAddr);
-                localStorage.setItem("kgt:user-coords", JSON.stringify({ ...shankargarhCoords, ts: Date.now() }));
-                window.dispatchEvent(new Event("kgt:address-changed"));
-                navigate({ to: "/home" });
-              }}
-              className="inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-2xl border border-primary/30 bg-primary/5 text-xs font-bold text-primary transition hover:bg-primary/10 active:scale-95"
-            >
-              <Sparkles className="h-3.5 w-3.5" />
-              Switch to Shankargarh Zone
-            </button>
           </div>
         </div>
       </div>
@@ -321,6 +336,23 @@ function MenuPage() {
                 This kitchen is closed right now. You can browse the menu, but ordering reopens
                 {hoursLabel(restaurant.opening_time, restaurant.closing_time) ? ` at their opening time (${hoursLabel(restaurant.opening_time, restaurant.closing_time)}).` : " when they’re back."}
               </p>
+            )}
+            {isZoneMismatch && (
+              <div className="mt-3 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
+                <div className="flex items-center gap-1.5 font-bold">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  <span>Outside your delivery zone</span>
+                </div>
+                <p className="mt-1 text-muted-foreground">
+                  This kitchen delivers to a different zone than your current delivery location.
+                </p>
+                <button
+                  onClick={() => navigate({ to: "/home" })}
+                  className="mt-2.5 inline-flex items-center rounded-xl bg-destructive px-3.5 py-1.5 text-xs font-bold text-destructive-foreground active:scale-95 transition"
+                >
+                  Browse kitchens in your zone
+                </button>
+              </div>
             )}
           </div>
         )}
@@ -421,11 +453,16 @@ function MenuPage() {
                                   ) : qty === 0 ? (
                                     <button
                                       onClick={() => {
+                                        if (isZoneMismatch) {
+                                          toast.error("This restaurant belongs to another zone and cannot deliver to your location.");
+                                          return;
+                                        }
                                         const payload = { menu_item_id: item.id, portion: p.portion, name: showLabel && p.portion !== "full" ? `${item.name} (${label})` : item.name, price: p.price, image_url: item.image_url, veg_type: item.veg_type, restaurant_id: item.restaurant_id, restaurant_name: restaurant?.name ?? null };
                                         if (add(payload) === "conflict") setPendingItem(payload);
                                         else track("add_to_cart", { restaurant_id: item.restaurant_id, item_id: key, value: p.price });
                                       }}
-                                      className="rounded-lg border-2 border-primary bg-card px-4 py-1 text-xs font-bold text-primary shadow-sm">
+                                      disabled={isZoneMismatch}
+                                      className="rounded-lg border-2 border-primary bg-card px-4 py-1 text-xs font-bold text-primary shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
                                       ADD
                                     </button>
                                   ) : (

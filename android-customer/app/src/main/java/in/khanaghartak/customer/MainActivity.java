@@ -34,6 +34,18 @@ import com.google.android.gms.auth.api.phone.SmsRetriever;
 import com.google.android.gms.auth.api.phone.SmsRetrieverClient;
 import com.google.android.gms.common.api.CommonStatusCodes;
 import com.google.android.gms.common.api.Status;
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.location.Priority;
+import com.google.android.gms.location.CurrentLocationRequest;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationCallback;
+import com.google.android.gms.location.LocationResult;
+import com.google.android.gms.location.LocationSettingsRequest;
+import com.google.android.gms.location.LocationSettingsResponse;
+import com.google.android.gms.location.SettingsClient;
+import com.google.android.gms.common.api.ResolvableApiException;
+import com.google.android.gms.tasks.CancellationTokenSource;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.graphics.Bitmap;
@@ -84,34 +96,74 @@ public class MainActivity extends BridgeActivity implements CFCheckoutResponseCa
     private static final int LOCATION_PERMISSION_REQUEST_CODE = 1001;
     private static final int SMS_CONSENT_REQUEST = 1002;
     private static final int NOTIFICATION_PERMISSION_REQUEST_CODE = 1003;
+    private static final int REQUEST_CHECK_SETTINGS = 1004;
 
     private BroadcastReceiver smsVerificationReceiver;
     private boolean isSmsConsentRegistered = false;
 
     private static final double SERVICE_CENTER_LAT = 25.1842;
     private static final double SERVICE_CENTER_LNG = 81.6212;
-    private static final double SERVICE_RADIUS_KM = 10.0;
+    private static final double SERVICE_RADIUS_KM = 12.0;
+
+    private static final double CHAKGHAT_CENTER_LAT = 25.0275;
+    private static final double CHAKGHAT_CENTER_LNG = 81.7375;
+    private static final double CHAKGHAT_RADIUS_KM = 15.0;
 
     private static final double[][] SHANKARGARH_POLYGON = {
-        {25.226876, 81.584642},
-        {25.225354, 81.619860},
-        {25.219242, 81.647636},
-        {25.218954, 81.667853},
-        {25.212449, 81.685936},
-        {25.200505, 81.672039},
-        {25.184447, 81.655593},
-        {25.155628, 81.645967},
-        {25.160616, 81.600931},
-        {25.177561, 81.592403},
+        {25.231022, 81.586002},
+        {25.222831, 81.599661},
+        {25.219243, 81.647637},
+        {25.224099, 81.676012},
+        {25.215332, 81.677157},
+        {25.202136, 81.664307},
+        {25.185085, 81.638961},
+        {25.157103, 81.640885},
+        {25.167217, 81.611500},
+        {25.185978, 81.594873},
         {25.197182, 81.559681}
     };
 
+    private static final double[][] CHAKGHAT_POLYGON = {
+        {24.981876, 81.690224},
+        {24.981205, 81.698695},
+        {24.988809, 81.702797},
+        {25.001377, 81.713872},
+        {25.000292, 81.729683},
+        {25.009535, 81.737373},
+        {25.019709, 81.749361},
+        {25.027381, 81.752970},
+        {25.039671, 81.748045},
+        {25.044969, 81.747826},
+        {25.059190, 81.740312},
+        {25.075695, 81.741864},
+        {25.076044, 81.759938},
+        {25.082158, 81.742176},
+        {25.083460, 81.728367},
+        {25.074721, 81.735442},
+        {25.053820, 81.728049},
+        {25.055585, 81.704847},
+        {25.055181, 81.694430},
+        {25.044400, 81.671121},
+        {25.044501, 81.650983},
+        {25.020127, 81.664495},
+        {25.018384, 81.700384},
+        {25.005071, 81.694029}
+    };
+
     private boolean isOutsideServiceZone = false;
+    private Location cachedDeviceLocation = null;
+    private FusedLocationProviderClient fusedLocationClient = null;
+    private SettingsClient settingsClient = null;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(CashfreePaymentPlugin.class);
         super.onCreate(savedInstanceState);
+
+        try {
+            fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+            settingsClient = LocationServices.getSettingsClient(this);
+        } catch (Exception ignored) {}
 
         createNotificationChannel();
 
@@ -152,6 +204,7 @@ public class MainActivity extends BridgeActivity implements CFCheckoutResponseCa
                     if (!ua.contains("KhanaGharTakCustomerApp")) {
                         webView.getSettings().setUserAgentString(ua + " KhanaGharTakCustomerApp");
                     }
+                    webView.getSettings().setGeolocationEnabled(true);
                 } catch (Exception ignored) {}
                 webView.addJavascriptInterface(new OtpJavascriptInterface(), "AndroidOtp");
                 webView.addJavascriptInterface(new AppJavascriptInterface(), "AndroidApp");
@@ -297,56 +350,170 @@ public class MainActivity extends BridgeActivity implements CFCheckoutResponseCa
     }
 
     private void evaluateLocation() {
+        boolean fine = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+        boolean coarse = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+        if (!fine && !coarse) return;
+
+        checkLocationSettings();
+
         try {
-            LocationManager lm = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-            if (lm == null) return;
-
-            Location bestLocation = null;
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
-                ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-
-                Location gpsLoc = lm.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-                Location netLoc = lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
-
-                if (gpsLoc != null && netLoc != null) {
-                    bestLocation = (gpsLoc.getTime() > netLoc.getTime()) ? gpsLoc : netLoc;
-                } else if (gpsLoc != null) {
-                    bestLocation = gpsLoc;
-                } else {
-                    bestLocation = netLoc;
+            if (fusedLocationClient == null) {
+                fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+            }
+            fusedLocationClient.getLastLocation().addOnSuccessListener(this, location -> {
+                if (location != null) {
+                    cachedDeviceLocation = location;
+                    processCoordinates(location.getLatitude(), location.getLongitude());
                 }
+                requestFreshLocation();
+            }).addOnFailureListener(e -> {
+                requestFreshLocation();
+            });
+        } catch (SecurityException ignored) {
+        } catch (Exception ignored) {
+            requestFreshLocation();
+        }
+    }
+
+    private void requestFreshLocation() {
+        boolean fine = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+        boolean coarse = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+        if (!fine && !coarse) return;
+
+        try {
+            if (fusedLocationClient == null) {
+                fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
             }
 
-            if (bestLocation != null) {
-                processCoordinates(bestLocation.getLatitude(), bestLocation.getLongitude());
-            } else {
-                requestSingleUpdate(lm);
-            }
+            CancellationTokenSource cts = new CancellationTokenSource();
+            CurrentLocationRequest currentReq = new CurrentLocationRequest.Builder()
+                .setPriority(Priority.PRIORITY_HIGH_ACCURACY)
+                .setDurationMillis(8000)
+                .setMaxUpdateAgeMillis(10000)
+                .build();
+
+            fusedLocationClient.getCurrentLocation(currentReq, cts.getToken())
+                .addOnSuccessListener(this, location -> {
+                    if (location != null) {
+                        cachedDeviceLocation = location;
+                        processCoordinates(location.getLatitude(), location.getLongitude());
+                    } else {
+                        requestBalancedLocation();
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    requestBalancedLocation();
+                });
         } catch (SecurityException ignored) {
+        } catch (Exception ignored) {
+            requestBalancedLocation();
+        }
+    }
+
+    private void requestBalancedLocation() {
+        boolean fine = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+        boolean coarse = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+        if (!fine && !coarse) return;
+
+        try {
+            if (fusedLocationClient == null) {
+                fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+            }
+
+            CancellationTokenSource cts = new CancellationTokenSource();
+            CurrentLocationRequest currentReq = new CurrentLocationRequest.Builder()
+                .setPriority(Priority.PRIORITY_BALANCED_POWER_ACCURACY)
+                .setDurationMillis(10000)
+                .setMaxUpdateAgeMillis(30000)
+                .build();
+
+            fusedLocationClient.getCurrentLocation(currentReq, cts.getToken())
+                .addOnSuccessListener(this, location -> {
+                    if (location != null) {
+                        cachedDeviceLocation = location;
+                        processCoordinates(location.getLatitude(), location.getLongitude());
+                    }
+                });
+        } catch (SecurityException ignored) {} catch (Exception ignored) {}
+    }
+
+    private void checkLocationSettings() {
+        try {
+            LocationRequest locationRequest = new LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 10000)
+                .setMinUpdateIntervalMillis(5000)
+                .build();
+
+            LocationSettingsRequest.Builder builder = new LocationSettingsRequest.Builder()
+                .addLocationRequest(locationRequest);
+
+            if (settingsClient == null) {
+                settingsClient = LocationServices.getSettingsClient(this);
+            }
+
+            settingsClient.checkLocationSettings(builder.build())
+                .addOnFailureListener(this, e -> {
+                    if (e instanceof ResolvableApiException) {
+                        try {
+                            ResolvableApiException resolvable = (ResolvableApiException) e;
+                            resolvable.startResolutionForResult(MainActivity.this, REQUEST_CHECK_SETTINGS);
+                        } catch (Exception ignored) {}
+                    }
+                });
         } catch (Exception ignored) {}
     }
 
-    private void requestSingleUpdate(final LocationManager lm) {
-        try {
-            LocationListener listener = new LocationListener() {
-                @Override
-                public void onLocationChanged(@NonNull Location location) {
-                    processCoordinates(location.getLatitude(), location.getLongitude());
-                    try {
-                        lm.removeUpdates(this);
-                    } catch (SecurityException ignored) {}
-                }
-                @Override
-                public void onProviderDisabled(@NonNull String provider) {}
-                @Override
-                public void onProviderEnabled(@NonNull String provider) {}
-            };
+    private void sendFusedLocationSuccess(String callbackId, Location loc) {
+        if (bridge == null || bridge.getWebView() == null || callbackId == null) return;
+        String js = String.format(java.util.Locale.US,
+            "if (typeof window.__kgt_on_native_location === 'function') { " +
+            "  window.__kgt_on_native_location('%s', %f, %f, %f, null); " +
+            "}",
+            callbackId, loc.getLatitude(), loc.getLongitude(), (double) loc.getAccuracy()
+        );
+        bridge.getWebView().post(() -> bridge.getWebView().evaluateJavascript(js, null));
+    }
 
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-                lm.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, listener);
-                lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, listener);
-            }
-        } catch (SecurityException ignored) {}
+    private void sendFusedLocationError(String callbackId, int code, String msg) {
+        if (bridge == null || bridge.getWebView() == null || callbackId == null) return;
+        String js = String.format(java.util.Locale.US,
+            "if (typeof window.__kgt_on_native_location === 'function') { " +
+            "  window.__kgt_on_native_location('%s', null, null, null, { code: %d, message: '%s' }); " +
+            "}",
+            callbackId, code, (msg != null ? msg.replace("'", "\\'") : "")
+        );
+        bridge.getWebView().post(() -> bridge.getWebView().evaluateJavascript(js, null));
+    }
+
+    private void requestBalancedForCallback(String callbackId) {
+        try {
+            if (fusedLocationClient == null) fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+            CancellationTokenSource cts = new CancellationTokenSource();
+            CurrentLocationRequest req = new CurrentLocationRequest.Builder()
+                .setPriority(Priority.PRIORITY_BALANCED_POWER_ACCURACY)
+                .setDurationMillis(8000)
+                .build();
+            fusedLocationClient.getCurrentLocation(req, cts.getToken())
+                .addOnSuccessListener(this, location -> {
+                    if (location != null) {
+                        cachedDeviceLocation = location;
+                        processCoordinates(location.getLatitude(), location.getLongitude());
+                        sendFusedLocationSuccess(callbackId, location);
+                    } else if (cachedDeviceLocation != null) {
+                        sendFusedLocationSuccess(callbackId, cachedDeviceLocation);
+                    } else {
+                        sendFusedLocationError(callbackId, 2, "Unable to detect GPS. Please select your address on the map.");
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    if (cachedDeviceLocation != null) {
+                        sendFusedLocationSuccess(callbackId, cachedDeviceLocation);
+                    } else {
+                        sendFusedLocationError(callbackId, 2, e.getMessage() != null ? e.getMessage() : "Location request failed");
+                    }
+                });
+        } catch (Exception e) {
+            sendFusedLocationError(callbackId, 2, e.getMessage() != null ? e.getMessage() : "Location request failed");
+        }
     }
 
     private void processCoordinates(double lat, double lng) {
@@ -357,18 +524,20 @@ public class MainActivity extends BridgeActivity implements CFCheckoutResponseCa
             this.bridge.getWebView().post(new Runnable() {
                 @Override
                 public void run() {
+                    float acc = (cachedDeviceLocation != null) ? cachedDeviceLocation.getAccuracy() : 20.0f;
                     String coordScript = String.format(java.util.Locale.US,
                         "try { " +
-                        "  window.__native_device_coords = {lat: %f, lng: %f, ts: Date.now()}; " +
-                        "  window.__native_device_outside = %s; " +
-                        "  localStorage.setItem('kgt:device-outside', '%s'); " +
-                        "  if (!localStorage.getItem('kgt:delivery-address')) { " +
-                        "    localStorage.setItem('kgt:user-coords', JSON.stringify(window.__native_device_coords)); " +
+                        "  window.__native_device_coords = {lat: %f, lng: %f, accuracy: %f, ts: Date.now()}; " +
+                        "  localStorage.setItem('kgt:user-coords', JSON.stringify(window.__native_device_coords)); " +
+                        "  if (%s) { " +
+                        "    window.__native_device_outside = false; " +
+                        "    localStorage.setItem('kgt:device-outside', 'false'); " +
                         "  } " +
+                        "  window.dispatchEvent(new CustomEvent('kgt:native-coords', {detail: window.__native_device_coords})); " +
                         "  window.dispatchEvent(new Event('storage')); " +
                         "  window.dispatchEvent(new Event('kgt:address-changed')); " +
                         "} catch(e){}",
-                        lat, lng, (isOutsideServiceZone ? "true" : "false"), (isOutsideServiceZone ? "true" : "false")
+                        lat, lng, (double) acc, (inside ? "true" : "false")
                     );
                     bridge.getWebView().evaluateJavascript(coordScript, null);
                     applyAppScripts(bridge.getWebView());
@@ -381,8 +550,15 @@ public class MainActivity extends BridgeActivity implements CFCheckoutResponseCa
         if (pointInPolygon(lat, lng, SHANKARGARH_POLYGON)) {
             return true;
         }
-        double dist = haversineKm(lat, lng, SERVICE_CENTER_LAT, SERVICE_CENTER_LNG);
-        return dist <= SERVICE_RADIUS_KM;
+        if (pointInPolygon(lat, lng, CHAKGHAT_POLYGON)) {
+            return true;
+        }
+        double distShankar = haversineKm(lat, lng, SERVICE_CENTER_LAT, SERVICE_CENTER_LNG);
+        if (distShankar <= SERVICE_RADIUS_KM) {
+            return true;
+        }
+        double distChakghat = haversineKm(lat, lng, CHAKGHAT_CENTER_LAT, CHAKGHAT_CENTER_LNG);
+        return distChakghat <= CHAKGHAT_RADIUS_KM;
     }
 
     private static boolean pointInPolygon(double lat, double lng, double[][] poly) {
@@ -464,6 +640,94 @@ public class MainActivity extends BridgeActivity implements CFCheckoutResponseCa
                         finishAffinity();
                     } catch (Exception e) {
                         finish();
+                    }
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public String getDeviceCoordinates() {
+            try {
+                if (cachedDeviceLocation != null) {
+                    JSONObject obj = new JSONObject();
+                    obj.put("lat", cachedDeviceLocation.getLatitude());
+                    obj.put("lng", cachedDeviceLocation.getLongitude());
+                    obj.put("accuracy", (double) cachedDeviceLocation.getAccuracy());
+                    obj.put("ts", cachedDeviceLocation.getTime());
+                    return obj.toString();
+                }
+            } catch (Exception ignored) {}
+            return null;
+        }
+
+        @JavascriptInterface
+        public void refreshLocation() {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    evaluateLocation();
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void requestFusedLocation(final String callbackId) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    boolean fine = ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+                    boolean coarse = ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+                    if (!fine && !coarse) {
+                        ActivityCompat.requestPermissions(
+                            MainActivity.this,
+                            new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION},
+                            LOCATION_PERMISSION_REQUEST_CODE
+                        );
+                        sendFusedLocationError(callbackId, 1, "Location permission not granted");
+                        return;
+                    }
+
+                    checkLocationSettings();
+
+                    if (fusedLocationClient == null) {
+                        fusedLocationClient = LocationServices.getFusedLocationProviderClient(MainActivity.this);
+                    }
+
+                    try {
+                        fusedLocationClient.getLastLocation().addOnSuccessListener(MainActivity.this, lastLoc -> {
+                            if (lastLoc != null && (System.currentTimeMillis() - lastLoc.getTime() < 30000)) {
+                                cachedDeviceLocation = lastLoc;
+                                processCoordinates(lastLoc.getLatitude(), lastLoc.getLongitude());
+                                sendFusedLocationSuccess(callbackId, lastLoc);
+                                return;
+                            }
+
+                            CancellationTokenSource cts = new CancellationTokenSource();
+                            CurrentLocationRequest req = new CurrentLocationRequest.Builder()
+                                .setPriority(Priority.PRIORITY_HIGH_ACCURACY)
+                                .setDurationMillis(8000)
+                                .build();
+
+                            fusedLocationClient.getCurrentLocation(req, cts.getToken())
+                                .addOnSuccessListener(MainActivity.this, location -> {
+                                    if (location != null) {
+                                        cachedDeviceLocation = location;
+                                        processCoordinates(location.getLatitude(), location.getLongitude());
+                                        sendFusedLocationSuccess(callbackId, location);
+                                    } else {
+                                        requestBalancedForCallback(callbackId);
+                                    }
+                                })
+                                .addOnFailureListener(e -> {
+                                    requestBalancedForCallback(callbackId);
+                                });
+                        }).addOnFailureListener(e -> {
+                            requestBalancedForCallback(callbackId);
+                        });
+                    } catch (SecurityException se) {
+                        sendFusedLocationError(callbackId, 1, "Location permission denied");
+                    } catch (Exception ex) {
+                        requestBalancedForCallback(callbackId);
                     }
                 }
             });

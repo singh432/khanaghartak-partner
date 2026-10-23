@@ -28,8 +28,134 @@ export function pointInPolygon(p: ZonePoint, polygon: ZonePoint[]): boolean {
   return inside;
 }
 
+export function haversineDistanceKm(a: ZonePoint, b: ZonePoint): number {
+  const R = 6371.0;
+  const dLat = ((b.lat - a.lat) * Math.PI) / 180;
+  const dLng = ((b.lng - a.lng) * Math.PI) / 180;
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((a.lat * Math.PI) / 180) *
+      Math.cos((b.lat * Math.PI) / 180) *
+      Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
+export const SHANKARGARH_CENTER = { lat: 25.1842, lng: 81.6212 };
+export const SHANKARGARH_RADIUS_KM = 12.0;
+
+export const CHAKGHAT_CENTER = { lat: 25.0275, lng: 81.7375 };
+export const CHAKGHAT_RADIUS_KM = 15.0;
+
 export function zoneForPoint(p: ZonePoint, zones: DeliveryZone[]): DeliveryZone | null {
-  return zones.find((z) => z.is_active && pointInPolygon(p, z.polygon)) ?? null;
+  if (!p || typeof p.lat !== "number" || typeof p.lng !== "number" || isNaN(p.lat) || isNaN(p.lng)) return null;
+  if (!zones || zones.length === 0) return null;
+
+  // 1. Strict point-in-polygon match (authoritative)
+  const directMatch = zones.find((z) => z.is_active && pointInPolygon(p, z.polygon));
+  if (directMatch) return directMatch;
+
+  // 2. Measure closest distance to EACH active zone
+  let bestZone: DeliveryZone | null = null;
+  let minDistance = Infinity;
+
+  for (const z of zones) {
+    if (!z.is_active || !z.polygon || z.polygon.length === 0) continue;
+    let dZone = Infinity;
+    for (const pt of z.polygon) {
+      const d = haversineDistanceKm(p, pt);
+      if (d < dZone) dZone = d;
+    }
+    const centerLat = z.polygon.reduce((acc, pt) => acc + pt.lat, 0) / z.polygon.length;
+    const centerLng = z.polygon.reduce((acc, pt) => acc + pt.lng, 0) / z.polygon.length;
+    const dCentroid = haversineDistanceKm(p, { lat: centerLat, lng: centerLng });
+    const effDist = Math.min(dZone, dCentroid);
+
+    if (effDist < minDistance) {
+      minDistance = effDist;
+      bestZone = z;
+    }
+  }
+
+  // If closest zone boundary is within 6km buffer (e.g. edge of town or GPS drift), assign to that zone
+  if (bestZone && minDistance <= 6.0) {
+    return bestZone;
+  }
+
+  // 3. Proximity check to known operational centers (with strict comparison so closest wins)
+  const dChakghat = haversineDistanceKm(p, CHAKGHAT_CENTER);
+  const dShankar = haversineDistanceKm(p, SHANKARGARH_CENTER);
+
+  if (dChakghat <= CHAKGHAT_RADIUS_KM && dChakghat < dShankar) {
+    const cz = zones.find((z) => z.is_active && z.name.toLowerCase().includes("chakghat"));
+    if (cz) return cz;
+  }
+
+  if (dShankar <= SHANKARGARH_RADIUS_KM && dShankar < dChakghat) {
+    const sz = zones.find((z) => z.is_active && (z.name.toLowerCase().includes("shankar") || z.name.toLowerCase().includes("main")));
+    if (sz) return sz;
+  }
+
+  return null;
+}
+
+export function zoneForAddress(address: string | null | undefined, zones: DeliveryZone[]): DeliveryZone | null {
+  if (!address || !address.trim() || !zones || zones.length === 0) return null;
+  const s = address.toLowerCase().trim();
+
+  // 1. Direct match on zone name or city
+  for (const z of zones) {
+    if (!z.is_active) continue;
+    const nameLower = z.name.toLowerCase().trim();
+    const cityLower = (z.city || "").toLowerCase().trim();
+    if (nameLower.length >= 3 && s.includes(nameLower)) return z;
+    if (cityLower.length >= 3 && s.includes(cityLower)) return z;
+  }
+
+  // 2. Chakghat keywords
+  if (
+    s.includes("chakghat") ||
+    s.includes("chak ghat") ||
+    s.includes("486226") ||
+    s.includes("teonthar") ||
+    s.includes("tamasa") ||
+    s.includes("ghuma")
+  ) {
+    const cz = zones.find((z) => z.is_active && z.name.toLowerCase().includes("chakghat"));
+    if (cz) return cz;
+  }
+
+  // 3. Shankargarh keywords
+  if (
+    s.includes("shankargarh") ||
+    s.includes("shankergarh") ||
+    s.includes("212108") ||
+    s.includes("raja market") ||
+    s.includes("station road") ||
+    s.includes("bara road") ||
+    s.includes("lalita nagar") ||
+    s.includes("main bazaar")
+  ) {
+    const sz = zones.find((z) => z.is_active && (z.name.toLowerCase().includes("shankar") || z.name.toLowerCase().includes("main")));
+    if (sz) return sz;
+  }
+
+  return null;
+}
+
+export function resolveCustomerZone(
+  coords: ZonePoint | null | undefined,
+  address: string | null | undefined,
+  zones: DeliveryZone[] = []
+): DeliveryZone | null {
+  if (coords && typeof coords.lat === "number" && typeof coords.lng === "number" && !isNaN(coords.lat) && !isNaN(coords.lng)) {
+    const z = zoneForPoint(coords, zones);
+    if (z) return z;
+  }
+  if (address && address.trim().length > 0) {
+    const z = zoneForAddress(address, zones);
+    if (z) return z;
+  }
+  return null;
 }
 
 function normalise(rows: any[]): DeliveryZone[] {
@@ -61,7 +187,8 @@ export async function fetchAllZones(): Promise<DeliveryZone[]> {
   return normalise(data ?? []);
 }
 
-const SHANKARGARH_IN_KEYWORDS = [
+const SERVICEABLE_KEYWORDS = [
+  // Shankargarh keywords
   "shankargarh",
   "shankergarh",
   "212108",
@@ -70,10 +197,16 @@ const SHANKARGARH_IN_KEYWORDS = [
   "bara road",
   "lalita nagar",
   "main bazaar",
+  // Chakghat keywords
+  "chakghat",
+  "chak ghat",
+  "486226",
+  "teonthar",
+  "ghuma",
+  "tamasa",
 ];
 
 const OUTSIDE_KEYWORDS = [
-  "rewa",
   "civil lines",
   "katra",
   "naini",
@@ -95,51 +228,16 @@ const OUTSIDE_KEYWORDS = [
 
 /**
  * Authoritative check to determine if a delivery location is within KhanaGharTak service zone.
- * If neither coordinates nor a recognized in-zone address is available, returns false.
+ * Covers both Shankargarh Zone and Chakghat Zone, plus any dynamically added zones in Supabase.
  */
 export function isLocationInServiceZone(
   coords: { lat: number; lng: number } | null | undefined,
   address: string | null | undefined,
   activeZones: DeliveryZone[] = []
 ): boolean {
-  // 1. If explicit coordinates are available:
-  if (coords && typeof coords.lat === "number" && typeof coords.lng === "number" && !isNaN(coords.lat) && !isNaN(coords.lng)) {
-    // Haversine check to Shankargarh center (25.1842, 81.6212) <= 10km
-    const R = 6371.0;
-    const dLat = ((coords.lat - 25.1842) * Math.PI) / 180;
-    const dLng = ((coords.lng - 81.6212) * Math.PI) / 180;
-    const a =
-      Math.sin(dLat / 2) ** 2 +
-      Math.cos((25.1842 * Math.PI) / 180) *
-        Math.cos((coords.lat * Math.PI) / 180) *
-        Math.sin(dLng / 2) ** 2;
-    const dist = 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
-    if (dist <= 10.0) return true;
-
-    // Active polygon delivery zones check
-    if (activeZones.length > 0 && zoneForPoint(coords, activeZones) != null) {
-      return true;
-    }
-    // Coordinates are outside all supported zones
-    return false;
+  if ((!coords || typeof coords.lat !== "number") && (!address || !address.trim())) {
+    // Neither coordinates nor address determined yet
+    return true;
   }
-
-  // 2. If address text is provided without coordinates:
-  if (address && address.trim().length > 0) {
-    const s = address.toLowerCase().trim();
-    const matchesOutside = OUTSIDE_KEYWORDS.some((kw) => s.includes(kw));
-    const matchesInside = SHANKARGARH_IN_KEYWORDS.some((kw) => s.includes(kw));
-
-    if (matchesInside && !s.includes("rewa") && !s.includes("civil lines")) {
-      return true;
-    }
-    if (matchesOutside) {
-      return false;
-    }
-    // Unrecognized address with no coordinates: do NOT assume inside zone
-    return false;
-  }
-
-  // 3. No address and no coordinates
-  return false;
+  return resolveCustomerZone(coords, address, activeZones) != null;
 }

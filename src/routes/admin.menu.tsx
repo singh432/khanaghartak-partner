@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState, type ChangeEvent } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Pencil, Trash2, Upload, X, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Upload, X, Loader2, Eye } from "lucide-react";
 import { isCakeCategory, isPieceCategory, isThaliCategory, isSinglePriceCategory, isSweetCategory } from "@/lib/portions";
 import { useFormDraft } from "@/hooks/useFormDraft";
 
@@ -33,6 +33,8 @@ function AdminMenu() {
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [newCat, setNewCat] = useState("");
+  const [viewingDish, setViewingDish] = useState<MenuItem | null>(null);
+  const [recentOrders, setRecentOrders] = useState<any[]>([]);
 
   const load = async () => {
     const { data: u } = await supabase.auth.getUser();
@@ -40,12 +42,21 @@ function AdminMenu() {
     const { data: r } = await supabase.from("restaurants").select("id").eq("owner_id", u.user.id).limit(1).maybeSingle();
     const rid = (r as any)?.id ?? null;
     setRestaurantId(rid);
-    const [{ data: c }, { data: m }] = await Promise.all([
+    const [{ data: c }, { data: m }, { data: o }] = await Promise.all([
       supabase.from("categories").select("*").eq("restaurant_id", rid).order("priority"),
       supabase.from("menu_items").select("*").eq("restaurant_id", rid).order("name"),
+      supabase.from("orders").select("id,customer_name,created_at,items,status,total,subtotal").eq("restaurant_id", rid).order("created_at", { ascending: false }).limit(200),
     ]);
     setCategories((c ?? []) as Category[]);
     setItems((m ?? []) as MenuItem[]);
+    const ordList = ((o ?? []) as any[]).map((ord) => {
+      let items = ord.items;
+      if (typeof items === "string") {
+        try { items = JSON.parse(items); } catch { items = []; }
+      }
+      return { ...ord, items: Array.isArray(items) ? items : [] };
+    });
+    setRecentOrders(ordList);
   };
 
   useEffect(() => {
@@ -217,63 +228,101 @@ function AdminMenu() {
       </div>
 
       {grouped.map(({ cat, list }) => (
-        <section key={cat.id} className="space-y-2">
+        <section key={cat.id} className="space-y-2" data-menu-section="true">
           <h2 className="text-sm font-bold uppercase tracking-wide text-muted-foreground">{cat.name} · {list.length}</h2>
           {list.length === 0 && <p className="rounded-xl border border-dashed bg-card p-4 text-center text-xs text-muted-foreground">No items in this category yet.</p>}
-          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {list.map((m) => (
-              <article key={m.id} className="flex gap-3 rounded-2xl border bg-card p-3 shadow-sm">
-                <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-secondary">
-                  {m.image_url ? <img src={m.image_url} alt={m.name} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-[10px] text-muted-foreground">No image</div>}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5">
-                    <span className={`inline-flex h-3.5 w-3.5 items-center justify-center rounded-sm border ${m.veg_type === "veg" ? "border-success" : "border-destructive"}`}>
-                      <span className={`h-1.5 w-1.5 rounded-full ${m.veg_type === "veg" ? "bg-success" : "bg-destructive"}`} />
-                    </span>
-                    <h3 className="truncate font-semibold leading-tight">{m.name}</h3>
+              <article
+                key={m.id}
+                data-menu-item="true"
+                className="kgt-menu-item-card flex flex-col justify-between rounded-2xl border bg-card p-3.5 shadow-sm transition-all hover:shadow-md"
+              >
+                {/* Top: Image + Info */}
+                <div className="flex gap-3 items-start">
+                  <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-secondary">
+                    {m.image_url ? (
+                      <img src={m.image_url} alt={m.name} className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-[10px] text-muted-foreground">No image</div>
+                    )}
                   </div>
-                  <p className="line-clamp-1 text-xs text-muted-foreground">{m.description}</p>
-                  {isCakeCategory(cat.name) ? (
-                    <p className="mt-1 flex flex-wrap gap-x-2 text-sm font-bold">
-                      {m.price_half_pound != null && <span>½ lb ₹{Number(m.price_half_pound).toFixed(0)}</span>}
-                      {m.price_pound != null && <span>1 lb ₹{Number(m.price_pound).toFixed(0)}</span>}
-                      {m.price_2pound != null && <span>2 lb ₹{Number(m.price_2pound).toFixed(0)}</span>}
-                      {m.price_half_pound == null && m.price_pound == null && m.price_2pound == null && <span>₹{Number(m.price).toFixed(0)}</span>}
-                    </p>
-                  ) : isSweetCategory(cat.name) ? (
-                    <p className="mt-1 flex flex-wrap gap-x-2 text-sm font-bold">
-                      {m.price_kg != null && <span>1 kg ₹{Number(m.price_kg).toFixed(0)}</span>}
-                      {m.price_500g != null && <span>500 g ₹{Number(m.price_500g).toFixed(0)}</span>}
-                      {m.price_250g != null && <span>250 g ₹{Number(m.price_250g).toFixed(0)}</span>}
-                      {m.price_piece != null && <span>1 pc ₹{Number(m.price_piece).toFixed(0)}</span>}
-                      {m.price_kg == null && m.price_500g == null && m.price_250g == null && m.price_piece == null && <span>₹{Number(m.price).toFixed(0)}</span>}
-                    </p>
-                  ) : isPieceCategory(cat.name) ? (
-                    <p className="mt-1 text-sm font-bold">₹{Number(m.price).toFixed(0)} <span className="font-semibold text-muted-foreground">/ piece</span></p>
-                  ) : isThaliCategory(cat.name) ? (
-                    <p className="mt-1 text-sm font-bold">₹{Number(m.price).toFixed(0)}</p>
-                  ) : (
-                    <p className="mt-1 text-sm font-bold">Full ₹{Number(m.price).toFixed(0)}{m.half_price != null && <span className="ml-2 font-semibold text-muted-foreground">Half ₹{Number(m.half_price).toFixed(0)}</span>}</p>
-                  )}
-                  <div className="mt-2 flex items-center gap-2">
-                    <label className="inline-flex cursor-pointer items-center gap-2">
-                      <span className="relative inline-block h-5 w-9 rounded-full bg-secondary">
-                        <input type="checkbox" className="peer sr-only" checked={m.is_available} onChange={() => toggleAvailable(m)} />
-                        <span className="absolute inset-0 rounded-full transition-colors peer-checked:bg-success" />
-                        <span className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white transition-transform peer-checked:translate-x-4" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className={`inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-sm border ${m.veg_type === "veg" ? "border-success" : "border-destructive"}`}>
+                        <span className={`h-1.5 w-1.5 rounded-full ${m.veg_type === "veg" ? "bg-success" : "bg-destructive"}`} />
                       </span>
-                      <span className={`text-[11px] font-semibold ${m.is_available ? "text-success" : "text-muted-foreground"}`}>
-                        {m.is_available ? "Available" : "Out of Stock"}
-                      </span>
-                    </label>
-                    <button onClick={() => startEdit(m)} className="ml-auto rounded-lg p-1.5 text-muted-foreground hover:bg-secondary" aria-label="Edit">
+                      <h3 className="truncate font-semibold text-sm leading-tight text-foreground">{m.name}</h3>
+                    </div>
+                    {m.description && <p className="line-clamp-1 text-xs text-muted-foreground mt-0.5">{m.description}</p>}
+                    {isCakeCategory(cat.name) ? (
+                      <p className="mt-1 flex flex-wrap gap-x-2 text-xs font-bold text-foreground">
+                        {m.price_half_pound != null && <span>½ lb ₹{Number(m.price_half_pound).toFixed(0)}</span>}
+                        {m.price_pound != null && <span>1 lb ₹{Number(m.price_pound).toFixed(0)}</span>}
+                        {m.price_2pound != null && <span>2 lb ₹{Number(m.price_2pound).toFixed(0)}</span>}
+                        {m.price_half_pound == null && m.price_pound == null && m.price_2pound == null && <span>₹{Number(m.price).toFixed(0)}</span>}
+                      </p>
+                    ) : isSweetCategory(cat.name) ? (
+                      <p className="mt-1 flex flex-wrap gap-x-2 text-xs font-bold text-foreground">
+                        {m.price_kg != null && <span>1 kg ₹{Number(m.price_kg).toFixed(0)}</span>}
+                        {m.price_500g != null && <span>500 g ₹{Number(m.price_500g).toFixed(0)}</span>}
+                        {m.price_250g != null && <span>250 g ₹{Number(m.price_250g).toFixed(0)}</span>}
+                        {m.price_piece != null && <span>1 pc ₹{Number(m.price_piece).toFixed(0)}</span>}
+                        {m.price_kg == null && m.price_500g == null && m.price_250g == null && m.price_piece == null && <span>₹{Number(m.price).toFixed(0)}</span>}
+                      </p>
+                    ) : isPieceCategory(cat.name) ? (
+                      <p className="mt-1 text-xs font-bold text-foreground">₹{Number(m.price).toFixed(0)} <span className="font-semibold text-muted-foreground">/ piece</span></p>
+                    ) : isThaliCategory(cat.name) ? (
+                      <p className="mt-1 text-xs font-bold text-foreground">₹{Number(m.price).toFixed(0)}</p>
+                    ) : (
+                      <p className="mt-1 text-xs font-bold text-foreground">Full ₹{Number(m.price).toFixed(0)}{m.half_price != null && <span className="ml-2 font-semibold text-muted-foreground">Half ₹{Number(m.half_price).toFixed(0)}</span>}</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Middle: Availability Toggle + Edit & Delete Actions */}
+                <div className="mt-3 flex items-center justify-between border-t border-dashed border-border/80 pt-2.5">
+                  <label className="inline-flex cursor-pointer items-center gap-2 select-none">
+                    <span className="relative inline-block h-5 w-9 shrink-0 rounded-full bg-secondary">
+                      <input type="checkbox" className="peer sr-only" checked={m.is_available} onChange={() => toggleAvailable(m)} />
+                      <span className="absolute inset-0 rounded-full transition-colors peer-checked:bg-success" />
+                      <span className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white transition-transform peer-checked:translate-x-4" />
+                    </span>
+                    <span className={`text-[11px] font-bold ${m.is_available ? "text-success" : "text-muted-foreground"}`}>
+                      {m.is_available ? "Available" : "Out of Stock"}
+                    </span>
+                  </label>
+
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => startEdit(m)}
+                      className="rounded-lg p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+                      aria-label="Edit"
+                    >
                       <Pencil className="h-4 w-4" />
                     </button>
-                    <button onClick={() => setDeleteId(m.id)} className="rounded-lg p-1.5 text-destructive hover:bg-destructive/10" aria-label="Delete">
+                    <button
+                      type="button"
+                      onClick={() => setDeleteId(m.id)}
+                      className="rounded-lg p-1.5 text-destructive hover:bg-destructive/10 transition-colors"
+                      aria-label="Delete"
+                    >
                       <Trash2 className="h-4 w-4" />
                     </button>
                   </div>
+                </div>
+
+                {/* Bottom: Dedicated Compact Action Area for View Ordered Items & Details */}
+                <div className="kgt-menu-item-actions mt-2.5 pt-2 border-t border-border/60">
+                  <button
+                    type="button"
+                    onClick={() => setViewingDish(m)}
+                    className="kgt-menu-view-orders-btn inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-orange-500 hover:bg-orange-600 active:scale-[0.98] text-white font-bold py-2 px-3 text-xs shadow-xs transition-all"
+                  >
+                    <Eye className="h-3.5 w-3.5" />
+                    <span>View Ordered Items &amp; Details</span>
+                  </button>
                 </div>
               </article>
             ))}
@@ -415,6 +464,119 @@ function AdminMenu() {
             <div className="mt-4 grid grid-cols-2 gap-2">
               <button onClick={() => setDeleteId(null)} className="rounded-xl bg-secondary py-2.5 text-sm font-bold">Cancel</button>
               <button onClick={confirmDelete} className="rounded-xl bg-destructive py-2.5 text-sm font-bold text-destructive-foreground">Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {viewingDish && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in"
+          onClick={() => setViewingDish(null)}
+        >
+          <div
+            className="w-full max-w-md max-h-[85vh] overflow-y-auto rounded-2xl border bg-card p-5 shadow-2xl space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b pb-3">
+              <div className="flex items-center gap-2.5 min-w-0">
+                {viewingDish.image_url ? (
+                  <img src={viewingDish.image_url} alt={viewingDish.name} className="h-10 w-10 shrink-0 rounded-lg object-cover" />
+                ) : (
+                  <div className="h-10 w-10 shrink-0 rounded-lg bg-secondary flex items-center justify-center text-[10px] text-muted-foreground">Dish</div>
+                )}
+                <div className="min-w-0">
+                  <h3 className="text-base font-extrabold text-foreground truncate">{viewingDish.name}</h3>
+                  <p className="text-xs text-muted-foreground">Ordered Items &amp; Details</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setViewingDish(null)}
+                className="rounded-full bg-secondary p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors shrink-0"
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Statistics */}
+            {(() => {
+              const matchedOrders = recentOrders.filter((ord) =>
+                ord.items && ord.items.some((it: any) =>
+                  it && (it.name?.trim().toLowerCase() === viewingDish.name.trim().toLowerCase() ||
+                         it.name?.toLowerCase().includes(viewingDish.name.toLowerCase()))
+                )
+              );
+              const totalUnits = matchedOrders.reduce((sum, ord) => {
+                const itemMatches = ord.items.filter((it: any) =>
+                  it && (it.name?.trim().toLowerCase() === viewingDish.name.trim().toLowerCase() ||
+                         it.name?.toLowerCase().includes(viewingDish.name.toLowerCase()))
+                );
+                return sum + itemMatches.reduce((s: number, it: any) => s + Number(it.qty || 1), 0);
+              }, 0);
+
+              return (
+                <>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="rounded-xl bg-orange-500/10 border border-orange-500/20 p-3">
+                      <p className="text-[10px] font-bold uppercase text-orange-600">Total Units Sold</p>
+                      <p className="text-xl font-extrabold text-orange-700">{totalUnits} pcs</p>
+                    </div>
+                    <div className="rounded-xl bg-secondary/80 p-3">
+                      <p className="text-[10px] font-bold uppercase text-muted-foreground">Total Orders</p>
+                      <p className="text-xl font-extrabold text-foreground">{matchedOrders.length}</p>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border bg-background p-3 space-y-2">
+                    <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      Recent Orders with this Item ({matchedOrders.length})
+                    </p>
+                    <div className="divide-y divide-border/60 max-h-60 overflow-y-auto">
+                      {matchedOrders.length > 0 ? (
+                        matchedOrders.map((ord) => {
+                          const thisItem = ord.items.find((it: any) =>
+                            it && (it.name?.trim().toLowerCase() === viewingDish.name.trim().toLowerCase() ||
+                                   it.name?.toLowerCase().includes(viewingDish.name.toLowerCase()))
+                          );
+                          return (
+                            <div key={ord.id} className="py-2.5 text-xs flex items-center justify-between gap-2">
+                              <div>
+                                <p className="font-mono text-[11px] font-bold text-muted-foreground">
+                                  #{ord.id.slice(0, 8).toUpperCase()} · <span className="text-foreground font-semibold">{ord.customer_name}</span>
+                                </p>
+                                <p className="text-[10px] text-muted-foreground mt-0.5">
+                                  {new Date(ord.created_at).toLocaleDateString("en-IN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                                </p>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <span className="font-extrabold text-primary text-sm">{thisItem?.qty ?? 1}×</span>
+                                <span className="ml-1 font-bold text-foreground">₹{thisItem ? Number(thisItem.price * thisItem.qty).toFixed(0) : "—"}</span>
+                                <p className="text-[10px] uppercase font-bold text-muted-foreground mt-0.5 capitalize">{ord.status}</p>
+                              </div>
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <p className="py-4 text-center text-xs text-muted-foreground italic">
+                          No customer orders placed for this dish yet.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </>
+              );
+            })()}
+
+            <div className="border-t pt-3">
+              <button
+                type="button"
+                onClick={() => setViewingDish(null)}
+                className="w-full rounded-xl bg-foreground py-2.5 text-xs font-bold text-background hover:opacity-90 transition-opacity"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>

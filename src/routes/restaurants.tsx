@@ -40,6 +40,7 @@ type PublicRestaurant = {
   closing_time: string | null;
   address: string | null;
   is_open: boolean | null;
+  zone_id?: string | null;
 };
 
 function RestaurantsPage() {
@@ -57,20 +58,46 @@ function RestaurantsPage() {
 
   useEffect(() => {
     let active = true;
-    withTimeout(
-      supabase
-        .from("restaurants")
-        .select("id,name,tagline,rating,opening_time,closing_time,address,is_open")
-        .eq("status", "active")
-        .order("rating", { ascending: false }),
-    )
-      .then(({ data }) => {
-        if (active) setRestaurants((data ?? []) as PublicRestaurant[]);
-      })
-      .catch(() => undefined)
-      .finally(() => {
+    (async () => {
+      try {
+        const { fetchActiveZones, resolveCustomerZone } = await import("@/lib/zones");
+        const activeZones = await fetchActiveZones().catch(() => []);
+        let userCoords: { lat: number; lng: number } | null = null;
+        let userAddress: string | null = null;
+        if (typeof window !== "undefined") {
+          userAddress = localStorage.getItem("kgt:delivery-address") || null;
+          const raw = localStorage.getItem("kgt:user-coords");
+          if (raw) {
+            try {
+              const p = JSON.parse(raw);
+              if (typeof p?.lat === "number" && typeof p?.lng === "number") userCoords = { lat: p.lat, lng: p.lng };
+            } catch {}
+          }
+        }
+        const currentZone = resolveCustomerZone(userCoords, userAddress, activeZones);
+        
+        if (!currentZone) {
+          if (active) setRestaurants([]);
+          return;
+        }
+
+        const q = supabase
+          .from("restaurants")
+          .select("id,name,tagline,rating,opening_time,closing_time,address,is_open,zone_id")
+          .eq("status", "active")
+          .eq("zone_id", currentZone.id);
+
+        const { data } = await withTimeout(q.order("rating", { ascending: false }));
+        if (active) {
+          const list = (data ?? []) as PublicRestaurant[];
+          setRestaurants(list.filter((r) => r.zone_id === currentZone.id));
+        }
+      } catch {
+        // fallback
+      } finally {
         if (active) setLoading(false);
-      });
+      }
+    })();
     return () => {
       active = false;
     };

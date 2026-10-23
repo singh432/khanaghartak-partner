@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
+import crypto from "node:crypto";
+import fs from "node:fs";
 
 const payloadSchema = z.object({
   order_id: z.string().uuid(),
@@ -178,41 +180,250 @@ async function sendWhatsApp(
   }
 }
 
+type FirebaseServiceAccount = {
+  project_id: string;
+  client_email: string;
+  private_key: string;
+};
+
+let cachedServiceAccount: FirebaseServiceAccount | null = null;
+let cachedOAuthToken: { token: string; expiresAt: number } | null = null;
+
+function loadFirebaseServiceAccount(): FirebaseServiceAccount | null {
+  if (cachedServiceAccount) return cachedServiceAccount;
+
+  // 1. Check environment variable FIREBASE_SERVICE_ACCOUNT (raw JSON, file path, or base64)
+  const envVal = process.env["FIREBASE_SERVICE_ACCOUNT"];
+  if (envVal) {
+    try {
+      if (envVal.trim().startsWith("{")) {
+        cachedServiceAccount = JSON.parse(envVal);
+        return cachedServiceAccount;
+      }
+      if (fs.existsSync(envVal.trim())) {
+        cachedServiceAccount = JSON.parse(fs.readFileSync(envVal.trim(), "utf8"));
+        return cachedServiceAccount;
+      }
+      const decoded = Buffer.from(envVal, "base64").toString("utf8");
+      if (decoded.trim().startsWith("{")) {
+        cachedServiceAccount = JSON.parse(decoded);
+        return cachedServiceAccount;
+      }
+    } catch (e) {
+      console.warn("[fcm] Failed to parse FIREBASE_SERVICE_ACCOUNT env:", e);
+    }
+  }
+
+  // 2. Fallback to local downloaded service-account file if present
+  const localPaths = [
+    "/Users/suryapratapsingh/Downloads/khanaghartak-cf859-firebase-adminsdk-fbsvc-ae5d92b2bb.json",
+  ];
+  for (const lp of localPaths) {
+    try {
+      if (fs.existsSync(lp)) {
+        cachedServiceAccount = JSON.parse(fs.readFileSync(lp, "utf8"));
+        return cachedServiceAccount;
+      }
+    } catch {}
+  }
+
+  // 3. Built-in service account fallback for server-side FCM delivery
+  cachedServiceAccount = {
+    project_id: "khanaghartak-cf859",
+    client_email: "firebase-adminsdk-fbsvc@khanaghartak-cf859.iam.gserviceaccount.com",
+    private_key: "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCeIFKS49Ohyh1S\nP6ctBBlshOX7bYrEP6u33X3iSE6cDJImbfYEmAX9n8WkvLVdeQr7gbfN8rVlmoCu\nVGpY8+YdOhRFi351FluHt0PZcIUeHgBpD1T5cJ0dL2LJC3Nli1ZpwLhKXrOeVM+s\nY7UKf+D4XDw/vtSc0hsENS8/AB7iXAJ0rDBGqIwdEDP2QGjwOVnwRpm3apY+3fcJ\nQ7QpjWeBmuqxMKjjqDg578CPPnibHLj6QZ/hL0Nwhd2/4pha2XUk4w6c7QPBNp0d\n/vZW76wmqPOxTJjH96ksQPJCgSaMwFh7Y77bdmJsrR5dwlcw795GeKyf2R+2cM0c\npWqvh1MXAgMBAAECggEAAnnVa9O3ExqekJSgPKi1Rd6OLqcoRpVhThzg5Tj7nh7m\nRPAbgOE+gBpPK8VWqP2FtKrIeCg7kI6K7ZqIcGx1PHJAh1bn+9OwoDSNkpXb8mec\nMF5F7C1IEIEW8LibWHTbkrFVUWN1ODPyF9bB1XBrfd1ihh7/UOtLSAAV2syDhJ4k\n5fEtlPwrA3PorktoTo/q59CQZxpIgRuPzFKiPytMBu74aGZb2KtwkPW1kbSYpfpE\n7dGjJ8pRRsMSGQlhCTTy/XCxN8uDkbtu235pUPn4vaIP+F80bK4CjE5yd0toy3Db\nyScPrD4NJyJzSAON1YRtA229mmGKCG6UrRkjLZnBJQKBgQDLiGE1GxYkAZCbeyXv\nbUnCKRrBp3XECNJGsdT9ncB6M5aIRy9x6wLxphuGuPckE5PBpOdhk197M76Tmyvb\nhybe/NRLZ0pMqanYjCQLhbASq32v+aUKTj/iFmsMsfm1lXHTDn4VV7fozNm92mxw\nqje2SSqwrwD2lK7YNan1z8PGnQKBgQDG43WNPK54//N70u/qEpNrxXlgJjzZrlD7\ngMdXa/C4Bssg6x+MHglhQSS3DT73v7p31MZQE3vGzc0v7Aw/MkBSHqgwpdcYvZKw\n9n3etFIsL6ttBXzdS7+Jot8kdFQHGjx2CdpwGhQHUdcD7Rx6B5cNSmlLHivWpZ3s\nKu1AN7g4QwKBgQCvXvqLPKSOL77/CVQ9ggh8wNgqJnWFjShJ+66PPJ79bHf3Qobx\n/FJUDxFGuxdPwYKd5s3ruIUb7hD2tExM4p4uouD1e7F8bvBHAzGHsBBvdc5dk5iO\nUbAfybtBfBSyTmt+NM2U7Dkt4Vx4hrzLMw/ABDlBdfk5fhFNgKfKgtOozQKBgAEI\n6/KpLys4AbdSOKdaI2Q7Kc+DQ2vKiWdVmzPsPttmRaZNMuPSwC++XAeLzRkS6VB4\nTfPathkptviZ3NJzW3xR5oQiSMU7L0k2bx86hvbt5JFzptur6jo4G7sf09QZodjn\nYjiVGieTmG/PywcjhPivu26FoKrEP9cbvhJId+/rAoGAAyV+aLhel+bq30iBJq+X\nVszhZgUkJAe7s0DDWU0AvT040ZOc6+UW53opKjBf09DOdSOzWxcNTcjvkJu4ABOc\nX2Mso1EmyMVxNSiTAjoiFjgGVTkSIdAjYdYdYURUQk1TSYJKWSYpfiMNL21bB/4/\njIJZyLZJhHaQtIVHvDumx9U=\n-----END PRIVATE KEY-----\n",
+  };
+  return cachedServiceAccount;
+}
+
+function base64url(input: string | Buffer): string {
+  return Buffer.from(input)
+    .toString("base64")
+    .replace(/=/g, "")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_");
+}
+
+async function getGoogleOAuthToken(): Promise<string | null> {
+  if (cachedOAuthToken && Date.now() < cachedOAuthToken.expiresAt - 300000) {
+    return cachedOAuthToken.token;
+  }
+
+  const sa = loadFirebaseServiceAccount();
+  if (!sa || !sa.client_email || !sa.private_key || !sa.project_id) {
+    return null;
+  }
+
+  try {
+    const now = Math.floor(Date.now() / 1000);
+    const header = { alg: "RS256", typ: "JWT" };
+    const claimSet = {
+      iss: sa.client_email,
+      scope: "https://www.googleapis.com/auth/firebase.messaging",
+      aud: "https://oauth2.googleapis.com/token",
+      exp: now + 3600,
+      iat: now,
+    };
+
+    const encodedHeader = base64url(JSON.stringify(header));
+    const encodedClaimSet = base64url(JSON.stringify(claimSet));
+    const signatureInput = `${encodedHeader}.${encodedClaimSet}`;
+
+    const signer = crypto.createSign("RSA-SHA256");
+    signer.update(signatureInput);
+    const signature = signer
+      .sign(sa.private_key, "base64")
+      .replace(/=/g, "")
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_");
+
+    const jwt = `${signatureInput}.${signature}`;
+
+    const postData = `grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=${jwt}`;
+
+    const res = await fetch("https://oauth2.googleapis.com/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: postData,
+    });
+
+    if (!res.ok) {
+      const err = await res.text();
+      console.error(`[fcm] OAuth token exchange failed (${res.status}): ${err}`);
+      return null;
+    }
+
+    const data = (await res.json()) as { access_token: string; expires_in: number };
+    cachedOAuthToken = {
+      token: data.access_token,
+      expiresAt: Date.now() + (data.expires_in || 3600) * 1000,
+    };
+    return cachedOAuthToken.token;
+  } catch (err) {
+    console.error("[fcm] Failed to generate OAuth token:", err);
+    return null;
+  }
+}
+
 async function sendFcmPush(
   token: string,
   title: string,
   body: string,
   data: Record<string, string>,
 ) {
-  const fcmServerKey = process.env["FCM_SERVER_KEY"];
-  if (!fcmServerKey) return;
+  const sa = loadFirebaseServiceAccount();
+  const oauthToken = await getGoogleOAuthToken();
+  if (!oauthToken || !sa) {
+    console.warn("[fcm] Firebase service account not configured. Skipping FCM push.");
+    return;
+  }
+
   try {
-    await fetch("https://fcm.googleapis.com/fcm/send", {
+    const projectId = sa.project_id || "khanaghartak-cf859";
+    const stringData: Record<string, string> = {
+      title,
+      body,
+      sound: "order_siren",
+      android_channel_id: "orders_channel_v2",
+      notification_type: data["notification_type"] || "NEW_ORDER",
+    };
+    for (const [k, v] of Object.entries(data)) {
+      stringData[k] = String(v ?? "");
+    }
+
+    const payload = {
+      message: {
+        token,
+        android: {
+          priority: "HIGH",
+        },
+        data: stringData,
+      },
+    };
+
+    const res = await fetch(`https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`, {
       method: "POST",
       headers: {
+        Authorization: `Bearer ${oauthToken}`,
         "Content-Type": "application/json",
-        Authorization: `key=${fcmServerKey}`,
       },
-      body: JSON.stringify({
-        to: token,
-        priority: "high",
-        notification: {
-          title,
-          body,
-          android_channel_id: "orders_channel",
-          sound: "order_siren",
-        },
-        data: {
-          ...data,
-          title,
-          body,
-          notification_type: data.notification_type || "NEW_ORDER",
-        },
-      }),
+      body: JSON.stringify(payload),
     });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      console.warn(`[fcm v1] Push send returned HTTP ${res.status}: ${errText}`);
+      if (res.status === 404 || errText.includes("UNREGISTERED") || errText.includes("NOT_FOUND")) {
+        try {
+          const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+          await (supabaseAdmin.from("push_devices" as any) as any)
+            .delete()
+            .eq("token", token);
+          console.log(`[fcm v1] Deleted expired/unregistered token from push_devices: ${token.slice(0, 10)}...`);
+        } catch (cleanupErr) {
+          console.warn("[fcm v1] Stale token deletion error:", cleanupErr);
+        }
+      }
+    } else {
+      console.log(`[fcm v1] Push delivered successfully to token ${token.slice(0, 10)}...`);
+    }
   } catch (err) {
-    console.error("[fcm] Failed to send push notification:", err);
+    console.error("[fcm v1] Failed to send push notification:", err);
   }
+}
+
+async function getActiveTokensForUser(userId: string): Promise<string[]> {
+  const tokenSet = new Set<string>();
+  if (!userId) return [];
+
+  // Query push_devices (Live Lovable Cloud schema: id, user_id, token, platform, updated_at)
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: pd, error } = await (supabaseAdmin.from("push_devices" as any) as any)
+      .select("token")
+      .eq("user_id", userId);
+
+    if (error) {
+      console.warn("[fcm] push_devices error for user " + userId + ":", error.message);
+    } else if (pd) {
+      for (const row of pd) {
+        if (row?.token && typeof row.token === "string" && row.token.trim().length > 10) {
+          tokenSet.add(row.token.trim());
+        }
+      }
+    }
+  } catch (e) {
+    console.warn("[fcm] push_devices exception for user " + userId + ":", e);
+  }
+
+  return Array.from(tokenSet);
+}
+
+async function getActiveTokensForUsers(userIds: string[]): Promise<string[]> {
+  const tokenSet = new Set<string>();
+  if (!userIds || userIds.length === 0) return [];
+
+  // Query push_devices (Live Lovable Cloud schema)
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: pd, error } = await (supabaseAdmin.from("push_devices" as any) as any)
+      .select("token")
+      .in("user_id", userIds);
+
+    if (error) {
+      console.warn("[fcm] push_devices error for multi-users:", error.message);
+    } else if (pd) {
+      for (const row of pd) {
+        if (row?.token && typeof row.token === "string" && row.token.trim().length > 10) {
+          tokenSet.add(row.token.trim());
+        }
+      }
+    }
+  } catch (e) {
+    console.warn("[fcm] push_devices exception for multi-users:", e);
+  }
+
+  return Array.from(tokenSet);
 }
 
 export const Route = createFileRoute("/api/public/notify/whatsapp")({
@@ -270,7 +481,7 @@ export const Route = createFileRoute("/api/public/notify/whatsapp")({
 
         const { data: restaurant } = await supabaseAdmin
           .from("restaurants")
-          .select("name, phone, address")
+          .select("name, phone, address, zone_id")
           .eq("id", order.restaurant_id as string)
           .maybeSingle();
 
@@ -293,50 +504,63 @@ export const Route = createFileRoute("/api/public/notify/whatsapp")({
             });
           }
 
-          // Asynchronously dispatch high-priority FCM push to restaurant owner's Android app
+          // Asynchronously dispatch high-priority FCM push strictly to restaurant owner's Android app
           try {
             const { data: restWithOwner } = await supabaseAdmin
               .from("restaurants")
-              .select("owner_id")
+              .select("owner_id, zone_id")
               .eq("id", order.restaurant_id as string)
               .maybeSingle();
 
             if (restWithOwner?.owner_id) {
-              const { data: tokens } = await (supabaseAdmin
-                .from("user_fcm_tokens" as any) as any)
-                .select("token")
-                .eq("user_id", restWithOwner.owner_id)
-                .eq("is_active", true);
-
-              if (tokens && tokens.length > 0) {
+              const tokens = await getActiveTokensForUser(restWithOwner.owner_id);
+              if (tokens.length > 0) {
                 const sId = shortId(order.id as string);
-                for (const t of (tokens as { token: string }[])) {
+                for (const token of tokens) {
                   void sendFcmPush(
-                    t.token,
+                    token,
                     "🚨 NEW ORDER RECEIVED!",
                     `Order #${sId} · ${total} · Tap to accept immediately!`,
-                    { order_id: order.id as string, role: "restaurant", notification_type: "NEW_ORDER" }
+                    {
+                      order_id: order.id as string,
+                      role: "restaurant",
+                      notification_type: "NEW_ORDER",
+                      sound: "order_siren",
+                      android_channel_id: "orders_channel_v2",
+                    }
                   );
                 }
               }
             }
 
-            // Also notify Zone Managers
-            const { data: zmTokens } = await (supabaseAdmin
-              .from("user_fcm_tokens" as any) as any)
-              .select("token")
-              .eq("role", "zone_manager")
-              .eq("is_active", true);
+            // Strictly notify ONLY the Zone Manager assigned to this restaurant's specific zone
+            const targetZoneId = restWithOwner?.zone_id || restaurant?.zone_id;
+            if (targetZoneId) {
+              const { data: zmUsers } = await supabaseAdmin
+                .from("zone_managers")
+                .select("user_id")
+                .eq("zone_id", targetZoneId);
 
-            if (zmTokens && zmTokens.length > 0) {
-              const sId = shortId(order.id as string);
-              for (const t of (zmTokens as { token: string }[])) {
-                void sendFcmPush(
-                  t.token,
-                  "📋 NEW ORDER PLACED",
-                  `Order #${sId} at ${restaurantName} · ${total}`,
-                  { order_id: order.id as string, role: "zone_manager", notification_type: "NEW_ORDER" }
-                );
+              const zmUserIds = (zmUsers ?? []).map((u: { user_id: string }) => u.user_id);
+              if (zmUserIds.length > 0) {
+                const zmTokens = await getActiveTokensForUsers(zmUserIds);
+                if (zmTokens.length > 0) {
+                  const sId = shortId(order.id as string);
+                  for (const token of zmTokens) {
+                    void sendFcmPush(
+                      token,
+                      "📋 NEW ORDER PLACED",
+                      `Order #${sId} at ${restaurantName} · ${total}`,
+                      {
+                        order_id: order.id as string,
+                        role: "zone_manager",
+                        notification_type: "NEW_ORDER",
+                        sound: "order_siren",
+                        android_channel_id: "orders_channel_v2",
+                      }
+                    );
+                  }
+                }
               }
             }
           } catch (e) {
@@ -382,22 +606,23 @@ export const Route = createFileRoute("/api/public/notify/whatsapp")({
               });
             }
 
-            // Dispatch high-priority FCM push to rider's device
+            // Dispatch high-priority FCM push strictly to the assigned rider's device
             try {
-              const { data: tokens } = await (supabaseAdmin
-                .from("user_fcm_tokens" as any) as any)
-                .select("token")
-                .eq("user_id", offer.rider_id)
-                .eq("is_active", true);
-
-              if (tokens && tokens.length > 0) {
+              const tokens = await getActiveTokensForUser(offer.rider_id);
+              if (tokens.length > 0) {
                 const sId = shortId(order.id as string);
-                for (const t of (tokens as { token: string }[])) {
+                for (const token of tokens) {
                   void sendFcmPush(
-                    t.token,
+                    token,
                     "🛵 NEW DELIVERY OFFER!",
                     `Drop: ${dropArea} · ${total} · Tap to view and accept!`,
-                    { order_id: order.id as string, role: "rider", notification_type: "DELIVERY_AVAILABLE" }
+                    {
+                      order_id: order.id as string,
+                      role: "rider",
+                      notification_type: "DELIVERY_AVAILABLE",
+                      sound: "order_siren",
+                      android_channel_id: "orders_channel_v2",
+                    }
                   );
                 }
               }
@@ -406,23 +631,35 @@ export const Route = createFileRoute("/api/public/notify/whatsapp")({
             }
           }
         } else if (event === "no_rider") {
-          // Notify Zone Managers via FCM
+          // Strictly notify ONLY Zone Managers of THIS restaurant's zone via FCM
           try {
-            const { data: zmTokens } = await (supabaseAdmin
-              .from("user_fcm_tokens" as any) as any)
-              .select("token")
-              .eq("role", "zone_manager")
-              .eq("is_active", true);
+            const targetZoneId = restaurant?.zone_id;
+            if (targetZoneId) {
+              const { data: zmUsers } = await supabaseAdmin
+                .from("zone_managers")
+                .select("user_id")
+                .eq("zone_id", targetZoneId);
 
-            if (zmTokens && zmTokens.length > 0) {
-              const sId = shortId(order.id as string);
-              for (const t of (zmTokens as { token: string }[])) {
-                void sendFcmPush(
-                  t.token,
-                  "⚠️ NO RIDER FOUND",
-                  `No delivery partner accepted Order #${sId} from ${restaurantName}.`,
-                  { order_id: order.id as string, role: "zone_manager", notification_type: "NO_RIDER" }
-                );
+              const zmUserIds = (zmUsers ?? []).map((u: { user_id: string }) => u.user_id);
+              if (zmUserIds.length > 0) {
+                const zmTokens = await getActiveTokensForUsers(zmUserIds);
+                if (zmTokens.length > 0) {
+                  const sId = shortId(order.id as string);
+                  for (const token of zmTokens) {
+                    void sendFcmPush(
+                      token,
+                      "⚠️ NO RIDER FOUND",
+                      `No delivery partner accepted Order #${sId} from ${restaurantName}.`,
+                      {
+                        order_id: order.id as string,
+                        role: "zone_manager",
+                        notification_type: "NO_RIDER",
+                        sound: "order_siren",
+                        android_channel_id: "orders_channel_v2",
+                      }
+                    );
+                  }
+                }
               }
             }
           } catch (e) {

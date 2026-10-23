@@ -207,91 +207,30 @@ export function RestaurantCoverCarousel({
         );
       })}
 
-      {/* Ambient gradient overlay for text readability */}
-      <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/75 via-black/35 to-transparent pointer-events-none z-20" />
-
-      {/* Top Left: Open / Closed Badge */}
+      {/* Top Left: Open / Closed Badge matching website */}
       <span
-        className={`absolute left-3 top-3 z-30 rounded-full px-3 py-1 text-xs font-semibold shadow-sm backdrop-blur-sm ${
+        className={`absolute left-3 top-3 z-30 rounded-full px-3 py-1 text-xs font-semibold shadow-sm ${
           isOpen ? "bg-success text-success-foreground" : "bg-destructive text-destructive-foreground"
         }`}
       >
         {isOpen ? "Open" : "Closed"}
       </span>
 
-      {/* Top Right: Slide dots indicator & photo count */}
+      {/* Bottom Center: Subtle slide dots indicator when multiple photos exist */}
       {slides.length > 1 && (
-        <div
-          className="absolute right-3 top-3 z-30 flex items-center gap-1.5 rounded-full bg-black/55 backdrop-blur-md px-2.5 py-1 text-white shadow-sm border border-white/10"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setCurrentIndex((prev) => (prev + 1) % slides.length);
-          }}
-          title="Click to next photo"
-        >
-          <div className="flex items-center gap-1">
-            {slides.slice(0, 6).map((_, idx) => (
-              <span
-                key={idx}
-                className={`h-1.5 rounded-full transition-all duration-300 ${
-                  idx === currentIndex ? "w-3.5 bg-primary" : "w-1.5 bg-white/60"
-                }`}
-              />
-            ))}
-            {slides.length > 6 && (
-              <span className="text-[9px] font-bold text-white/80 ml-0.5">+{slides.length - 6}</span>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Bottom Left: Item details badge when displaying a dish */}
-      {activeSlide && !activeSlide.isCover && (
-        <div className="absolute bottom-2.5 left-3 z-30 flex items-center gap-2 rounded-full bg-black/65 backdrop-blur-md pl-2 pr-3 py-1 text-white shadow-md border border-white/15 max-w-[calc(100%-110px)] animate-fadeIn">
-          {/* Veg / Non-veg indicator dot */}
-          <span
-            className={`flex-shrink-0 grid h-3 w-3 place-items-center rounded-[3px] border ${
-              activeSlide.vegType === "nonveg"
-                ? "border-red-500 bg-white"
-                : "border-emerald-600 bg-white"
-            }`}
-          >
+        <div className="absolute bottom-2.5 inset-x-0 z-30 flex items-center justify-center gap-1.5 pointer-events-none">
+          {slides.slice(0, 6).map((_, idx) => (
             <span
-              className={`h-1.5 w-1.5 rounded-full ${
-                activeSlide.vegType === "nonveg" ? "bg-red-500" : "bg-emerald-600"
+              key={idx}
+              className={`h-1.5 rounded-full transition-all duration-300 drop-shadow-md ${
+                idx === currentIndex ? "w-3 bg-white" : "w-1.5 bg-white/70"
               }`}
             />
-          </span>
-
-          {/* Dish name */}
-          <span className="truncate text-xs font-bold text-white tracking-tight">
-            {activeSlide.title}
-          </span>
-
-          {/* Price */}
-          {activeSlide.price != null && (
-            <span className="flex-shrink-0 text-xs font-extrabold text-amber-300 ml-auto">
-              ₹{activeSlide.price}
-              {activeSlide.originalPrice && (
-                <span className="text-[10px] text-white/60 line-through ml-1 font-normal">
-                  ₹{activeSlide.originalPrice}
-                </span>
-              )}
-            </span>
-          )}
+          ))}
         </div>
       )}
 
-      {/* Bottom Left: Cover photo label when displaying restaurant cover */}
-      {activeSlide && activeSlide.isCover && slides.length > 1 && (
-        <div className="absolute bottom-2.5 left-3 z-30 flex items-center gap-1.5 rounded-full bg-black/60 backdrop-blur-md px-2.5 py-0.5 text-[11px] font-medium text-white/90 shadow-sm border border-white/10">
-          <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-          <span>{slides.length - 1} Dishes with photos</span>
-        </div>
-      )}
-
-      {/* Bottom Right: ETA badge (hidden if not provided) */}
+      {/* Bottom Right: Delivery Time (ETA) badge matching website exactly */}
       {etaLabel ? (
         <span className="absolute bottom-0 right-0 z-30 rounded-tl-2xl bg-card px-3 py-1.5 text-xs font-extrabold tracking-tight shadow-sm text-foreground">
           {etaLabel}
