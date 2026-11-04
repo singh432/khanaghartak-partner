@@ -14,6 +14,7 @@ import { withTimeout } from "@/lib/supabase-query";
 import { isCustomerApp, isPartnerApp } from "@/lib/capacitor";
 import { getCategoryImage } from "@/lib/categoryImages";
 import { RestaurantCoverCarousel } from "@/components/RestaurantCoverCarousel";
+import { PromotionalBanner } from "@/components/PromotionalBanner";
 import { browseEta } from "@/lib/eta";
 import { Star, Clock, MapPin, LogOut, Search, X, UtensilsCrossed, Navigation } from "lucide-react";
 import { khanaGharTakLogoUrl } from "@/assets/brand";
@@ -585,6 +586,13 @@ function HomePage() {
             </div>
           )}
         </div>
+
+        {/* Promotional Banner */}
+        {!isSearchActive && (
+          <div className="mb-4">
+            <PromotionalBanner />
+          </div>
+        )}
 
         {!isSearchActive && categoryNames.length > 0 && (
           <div className="-mx-4 mb-5 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
