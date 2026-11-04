@@ -14,7 +14,6 @@ import { withTimeout } from "@/lib/supabase-query";
 import { isCustomerApp, isPartnerApp } from "@/lib/capacitor";
 import { getCategoryImage } from "@/lib/categoryImages";
 import { RestaurantCoverCarousel } from "@/components/RestaurantCoverCarousel";
-import { PromotionalBannerCarousel } from "@/components/PromotionalBannerCarousel";
 import { browseEta } from "@/lib/eta";
 import { Star, Clock, MapPin, LogOut, Search, X, UtensilsCrossed, Navigation } from "lucide-react";
 import { khanaGharTakLogoUrl } from "@/assets/brand";
@@ -447,12 +446,7 @@ function HomePage() {
     return (
       <div className="pb-10">
         <BrandHeader subtitle={`Deliver to: ${chipAddr}`} />
-        <div className="px-4 pt-4">
-          <div className="mb-4">
-            <PromotionalBannerCarousel />
-          </div>
-        </div>
-        <div className="mx-auto flex min-h-[50dvh] max-w-md flex-col items-center justify-center px-6 py-6 text-center">
+        <div className="mx-auto flex min-h-[70dvh] max-w-md flex-col items-center justify-center px-6 py-10 text-center">
           {/* Animated Location Radar / Map Pin */}
           <div className="relative mb-6 flex items-center justify-center">
             {/* Pulsing radar ripples */}
@@ -591,13 +585,6 @@ function HomePage() {
             </div>
           )}
         </div>
-
-        {/* Promotional Banner Carousel */}
-        {!isSearchActive && (
-          <div className="mb-5">
-            <PromotionalBannerCarousel />
-          </div>
-        )}
 
         {!isSearchActive && categoryNames.length > 0 && (
           <div className="-mx-4 mb-5 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
