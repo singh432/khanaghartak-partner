@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from "react";
 import priceComparisonBanner from "@/assets/banners/price-comparison.png";
+import { PRICE_COMPARISON_BANNER_BASE64 } from "@/assets/banners/priceComparisonBase64";
 
 export interface PromotionalBannerItem {
   id: string;
@@ -62,7 +63,11 @@ export function PromotionalBanner({
   if (banners.length === 1) {
     const banner = banners[0];
     return (
-      <section aria-label="Promotions" className={`w-full select-none ${className}`}>
+      <section
+        id="kgt-promotional-banner"
+        aria-label="Promotions"
+        className={`w-full select-none ${className}`}
+      >
         <div className="relative w-full overflow-hidden rounded-2xl border border-border/60 bg-card shadow-[var(--shadow-soft)]">
           <img
             src={banner.imageUrl}
@@ -73,6 +78,12 @@ export function PromotionalBanner({
             loading="eager"
             decoding="async"
             fetchPriority="high"
+            onError={(e) => {
+              // Instant fallback to embedded data URI if network asset fails
+              if (e.currentTarget.src !== PRICE_COMPARISON_BANNER_BASE64) {
+                e.currentTarget.src = PRICE_COMPARISON_BANNER_BASE64;
+              }
+            }}
             className="w-full aspect-[2/1] object-contain rounded-2xl block"
           />
         </div>
@@ -82,7 +93,11 @@ export function PromotionalBanner({
 
   // Multiple banners: swipeable carousel with CSS scroll-snap
   return (
-    <section aria-label="Promotions" className={`w-full select-none ${className}`}>
+    <section
+      id="kgt-promotional-banner"
+      aria-label="Promotions"
+      className={`w-full select-none ${className}`}
+    >
       <div
         ref={scrollRef}
         onScroll={handleScroll}

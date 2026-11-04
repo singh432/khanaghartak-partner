@@ -506,6 +506,13 @@ function HomePage() {
 
       <div className="px-4 pt-4">
 
+        {/* Promotional Banner: Positioned directly below Header and above Category filters */}
+        {!isSearchActive && (
+          <div className="mb-4">
+            <PromotionalBanner />
+          </div>
+        )}
+
         <div id="khana-customer-search-bar" className="mb-4 space-y-2.5">
           <div className="relative flex items-center">
             <Search className="absolute left-3.5 h-4 w-4 text-muted-foreground pointer-events-none" />
@@ -586,13 +593,6 @@ function HomePage() {
             </div>
           )}
         </div>
-
-        {/* Promotional Banner */}
-        {!isSearchActive && (
-          <div className="mb-4">
-            <PromotionalBanner />
-          </div>
-        )}
 
         {!isSearchActive && categoryNames.length > 0 && (
           <div className="-mx-4 mb-5 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
